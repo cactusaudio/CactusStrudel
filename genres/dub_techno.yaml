@@ -1,0 +1,51 @@
+slug: dub_techno
+display_name: Dub Techno
+bpm_range: [120, 132]
+section_template:
+  - { name: intro,      function: intro,      length_bars: 24 }
+  - { name: drop_a,     function: drop,       length_bars: 32 }
+  - { name: breakdown,  function: breakdown,  length_bars: 16 }
+  - { name: drop_b,     function: drop,       length_bars: 32 }
+  - { name: outro,      function: outro,      length_bars: 24 }
+drum_archetypes:
+  - 4-on-floor-kick
+  - shuffled-hat
+  - sparse-percussion
+  - rim-hit-on-three
+bass_archetypes:
+  - low-sub-quarter-note
+  - dub-bass-offbeat
+  - sustained-sub-pulse
+harmonic_palette:
+  modes: [minor, dorian, aeolian]
+  typical_chord_progressions:
+    - ["i", "VI", "III", "VII"]
+    - ["i", "iv", "VII", "III"]
+sound_palette:
+  kick:  ["bd:2", "bd:5"]
+  hat:   ["hh:1", "hh:3"]
+  rim:   ["rim"]
+  bass:  ["sawtooth", "sine"]
+  chord: ["triangle", "square"]
+  pad:   ["fm", "sawtooth"]
+  noise: ["noise"]
+mix_targets:
+  lufs: -10
+  true_peak_max: -1
+  reverb_send_chord_min: 0.4
+  stereo_mono_low_compliance_min: 0.9
+critic_rubric_hints:
+  - "chord stab needs long reverb tail (room > 0.4)"
+  - "low-end mono-compliance critical (no stereo bass below 200Hz)"
+  - "evolving chord cutoff modulation across full track length"
+  - "rain/noise texture barely audible (-25 to -30 dB band-RMS)"
+modifiers:
+  haunted:
+    sound_palette_bias: { chord: ["fm", "triangle"], noise: ["noise"] }
+    reverb_send_chord_bias: 0.55
+    energy_ceiling: 0.7
+  rain_texture:
+    layers_required: ["noise"]
+    noise_band_rms_target: 0.05
+  evolving_chords:
+    automation_required: { chord_lpf: "slow_sine_16cycles_500_1800" }

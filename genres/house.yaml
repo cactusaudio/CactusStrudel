@@ -1,0 +1,53 @@
+slug: house
+display_name: House
+bpm_range: [118, 130]
+section_template:
+  - { name: intro,      function: intro,      length_bars: 16 }
+  - { name: drop_a,     function: drop,       length_bars: 32 }
+  - { name: breakdown,  function: breakdown,  length_bars: 16 }
+  - { name: drop_b,     function: drop,       length_bars: 32 }
+  - { name: outro,      function: outro,      length_bars: 16 }
+drum_archetypes:
+  - 4-on-floor-kick
+  - offbeat-open-hat
+  - clap-on-2-4
+  - shuffle-hat
+bass_archetypes:
+  - bouncy-bassline
+  - sub-eighth-rolling
+  - filtered-disco-line
+harmonic_palette:
+  modes: [major, minor, dorian, mixolydian]
+  typical_chord_progressions:
+    - ["I", "vi", "IV", "V"]
+    - ["i", "VII", "VI", "V"]
+    - ["I", "IV", "V"]
+sound_palette:
+  kick:  ["bd:4", "bd:5", "bd:8"]
+  snare: ["sn:2"]
+  hat:   ["hh:2", "oh"]
+  clap:  ["cp:2"]
+  bass:  ["sawtooth", "square"]
+  chord: ["triangle", "square"]
+  pad:   ["sawtooth"]
+mix_targets:
+  lufs: -9
+  true_peak_max: -1
+  kick_low_band_rms_target: 0.35
+critic_rubric_hints:
+  - "open-hat on offbeat is the swing engine"
+  - "vocal chops or chord stabs on weak beats"
+  - "claps/snares heavily reverbed for 'hands in the air' feel"
+modifiers:
+  deep:
+    sound_palette_bias: { chord: ["fm"], pad: ["fm"] }
+    reverb_send_chord_bias: 0.4
+    bpm_bias: [118, 124]
+  acid:
+    layers_required: ["acid"]
+    bass_archetypes_bias: ["acid-303-line"]
+  lo_fi:
+    drum_archetypes_bias: ["4-on-floor-kick", "shuffle-hat"]
+    sound_palette_overrides:
+      kick:  ["bd:2"]
+    crush_required: true

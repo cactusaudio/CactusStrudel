@@ -1,0 +1,57 @@
+slug: dnb
+display_name: Drum & Bass
+bpm_range: [165, 180]
+section_template:
+  - { name: intro,      function: intro,      length_bars: 16 }
+  - { name: drop_a,     function: drop,       length_bars: 32 }
+  - { name: breakdown,  function: breakdown,  length_bars: 16 }
+  - { name: drop_b,     function: drop,       length_bars: 32 }
+  - { name: outro,      function: outro,      length_bars: 16 }
+drum_archetypes:
+  - amen-break
+  - tight-2-step-break
+  - tight-4-step-break
+  - half-time-break
+bass_archetypes:
+  - reece-bass
+  - growl-modulation-bass
+  - sub-rolling-bass
+  - amen-stab-bass
+harmonic_palette:
+  modes: [minor, phrygian, locrian]
+  typical_chord_progressions:
+    - ["i", "VI", "V"]
+    - ["i", "II", "i"]
+sound_palette:
+  kick:  ["bd:6", "bd:9"]
+  snare: ["sn:3", "sn:6"]
+  hat:   ["hh:1", "hh:2"]
+  break: ["amen"]
+  bass:  ["sawtooth"]
+  pad:   ["fm", "sawtooth"]
+  fx:    ["noise"]
+mix_targets:
+  lufs: -7
+  true_peak_max: -1
+  kick_low_band_rms_target: 0.45
+  stereo_mono_low_compliance_min: 0.9
+critic_rubric_hints:
+  - "kick + bass relationship critical: sidechain depth ≥ 0.5"
+  - "snare on 3 (or 2.5+3 for stepwork) drives the half-time feel"
+  - "atmosphere/pad fills space without muddying mids"
+  - "reece bass needs harmonic content above 200Hz to cut on small speakers"
+modifiers:
+  neurofunk:
+    bass_archetypes_bias: ["reece-bass", "growl-modulation-bass"]
+    distortion_required: true
+    energy_floor: 0.85
+  liquid:
+    bass_archetypes_bias: ["sub-rolling-bass"]
+    sound_palette_bias: { pad: ["fm"], chord: ["fm"] }
+    bpm_bias: [170, 175]
+  jungle:
+    drum_archetypes_bias: ["amen-break"]
+    sound_palette_overrides:
+      kick: ["bd:2"]
+      snare: ["sn:5"]
+    bpm_bias: [165, 175]

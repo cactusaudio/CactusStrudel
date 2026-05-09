@@ -1,0 +1,45 @@
+slug: idm
+display_name: IDM
+bpm_range: [120, 160]
+section_template:
+  - { name: intro,    function: intro,    length_bars: 8 }
+  - { name: develop,  function: main,     length_bars: 32 }
+  - { name: contrast, function: bridge,   length_bars: 16 }
+  - { name: resolve,  function: outro,    length_bars: 8 }
+drum_archetypes:
+  - granular-perc
+  - euclidean-kick
+  - polyrhythmic-hats
+  - chopped-break
+bass_archetypes:
+  - fm-stutter-bass
+  - random-walk-bass
+  - melodic-bass-counterpoint
+harmonic_palette:
+  modes: [phrygian, locrian, lydian, mixolydian, harmonic_minor]
+  typical_chord_progressions:
+    - ["i", "iv", "VII", "III"]
+    - [free]
+sound_palette:
+  kick:  ["bd:4", "bd:7"]
+  perc:  ["cp:2", "rim", "tom:1"]
+  hat:   ["hh:1", "hh:2", "hh:3"]
+  bass:  ["fm", "sawtooth"]
+  lead:  ["square", "fm", "sawtooth"]
+  fx:    ["noise"]
+mix_targets:
+  lufs: -10
+  true_peak_max: -1
+critic_rubric_hints:
+  - "polyrhythmic interplay between layers (3 vs 4 vs 5/7 euclids)"
+  - "transient interest: stutter, granular, glitch artifacts welcome"
+  - "harmonic dissonance acceptable; intentional micro-tuning OK"
+modifiers:
+  fractured:
+    drum_archetypes_bias: ["chopped-break", "granular-perc"]
+    pattern_variation_per_section_min: 3
+  polyrhythmic:
+    drum_archetypes_bias: ["polyrhythmic-hats", "euclidean-kick"]
+  granular:
+    sound_palette_bias: { fx: ["noise"] }
+    crush_required: true

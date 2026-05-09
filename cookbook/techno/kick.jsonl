@@ -1,0 +1,4 @@
+{"id": "tk-kick-001", "genre": "techno", "role": "kick", "mini_notation": "bd ~ ~ ~ bd ~ ~ ~", "tags": ["4-on-floor", "minimal"], "bpm_range": [125, 138]}
+{"id": "tk-kick-002", "genre": "techno", "role": "kick", "mini_notation": "bd*4", "tags": ["4-on-floor", "driving"], "bpm_range": [128, 138]}
+{"id": "tk-kick-003", "genre": "techno", "role": "kick", "mini_notation": "[bd ~ ~ ~]*2", "tags": ["4-on-floor"], "bpm_range": [125, 132]}
+{"id": "tk-kick-004", "genre": "techno", "role": "kick", "mini_notation": "bd bd ~ ~ bd ~ bd ~", "tags": ["broken", "industrial"], "bpm_range": [130, 138]}

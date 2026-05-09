@@ -1,0 +1,3 @@
+{"id": "idm-kick-001", "genre": "idm", "role": "kick", "mini_notation": "bd(3, 8)", "tags": ["euclid"], "bpm_range": [120, 160]}
+{"id": "idm-kick-002", "genre": "idm", "role": "kick", "mini_notation": "bd(5, 13)", "tags": ["euclid", "fractured"], "bpm_range": [125, 155]}
+{"id": "idm-kick-003", "genre": "idm", "role": "kick", "mini_notation": "bd(7, 16)", "tags": ["euclid", "polyrhythmic"], "bpm_range": [130, 160]}

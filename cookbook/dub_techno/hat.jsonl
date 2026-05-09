@@ -1,0 +1,3 @@
+{"id": "dt-hat-001", "genre": "dub_techno", "role": "hat", "mini_notation": "[~ hh]*4", "tags": ["offbeat"], "bpm_range": [120, 132]}
+{"id": "dt-hat-002", "genre": "dub_techno", "role": "hat", "mini_notation": "[~ hh hh ~]*2", "tags": ["shuffled"], "bpm_range": [120, 130]}
+{"id": "dt-hat-003", "genre": "dub_techno", "role": "hat", "mini_notation": "[~ hh ~ hh ~ hh ~ ~]", "tags": ["syncopated"], "bpm_range": [122, 132]}

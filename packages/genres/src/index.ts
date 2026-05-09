@@ -27,6 +27,7 @@ export const GenreSpecSchema = z.object({
       true_peak_max: z.number().default(-1),
       kick_low_band_rms_target: z.number().optional(),
       stereo_mono_low_compliance_min: z.number().optional(),
+      reverb_send_chord_min: z.number().optional(),
     })
     .default({ lufs: -9, true_peak_max: -1 }),
   critic_rubric_hints: z.array(z.string()).default([]),
@@ -34,6 +35,11 @@ export const GenreSpecSchema = z.object({
 });
 export type GenreSpec = z.infer<typeof GenreSpecSchema>;
 
-export async function loadGenre(_slug: string): Promise<GenreSpec> {
-  throw new Error('loadGenre not yet implemented (Phase 6)');
-}
+export {
+  loadGenre,
+  listGenres,
+  loadCookbookSnippets,
+  pickSnippet,
+  type CookbookSnippet,
+} from './loader.js';
+export { bridgeGenres } from './bridge.js';

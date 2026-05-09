@@ -1,0 +1,42 @@
+slug: ambient
+display_name: Ambient
+bpm_range: [40, 90]
+section_template:
+  - { name: emerge,    function: intro, length_bars: 8 }
+  - { name: swell,     function: main,  length_bars: 16 }
+  - { name: dissolve,  function: outro, length_bars: 8 }
+drum_archetypes:
+  - none
+  - sparse-percussion
+bass_archetypes:
+  - drone-sub
+  - none
+harmonic_palette:
+  modes: [dorian, lydian, mixolydian, major, minor]
+  typical_chord_progressions:
+    - [free]
+    - ["I"]
+    - ["I", "iii"]
+sound_palette:
+  pad:   ["fm", "sine", "triangle"]
+  drone: ["fm", "sawtooth"]
+  fx:    ["noise"]
+mix_targets:
+  lufs: -16
+  true_peak_max: -1
+critic_rubric_hints:
+  - "long attack/release envelopes (a > 2s, r > 2s)"
+  - "wide stereo image except in lows"
+  - "minimal rhythmic content; let textures evolve"
+modifiers:
+  drone:
+    drum_archetypes_bias: ["none"]
+    sound_palette_bias: { drone: ["fm", "sawtooth"] }
+    energy_ceiling: 0.4
+  cinematic:
+    sound_palette_bias: { pad: ["fm"], fx: ["noise"] }
+    automation_required: { master_volume: "slow_swell_8_to_1" }
+  fm_textures:
+    sound_palette_overrides:
+      pad: ["fm"]
+      drone: ["fm"]

@@ -1,0 +1,54 @@
+slug: techno
+display_name: Techno
+bpm_range: [125, 138]
+section_template:
+  - { name: intro,      function: intro,      length_bars: 16 }
+  - { name: build_a,    function: build,      length_bars: 8 }
+  - { name: drop_a,     function: drop,       length_bars: 32 }
+  - { name: breakdown,  function: breakdown,  length_bars: 16 }
+  - { name: build_b,    function: build,      length_bars: 8 }
+  - { name: drop_b,     function: drop,       length_bars: 32 }
+  - { name: outro,      function: outro,      length_bars: 16 }
+drum_archetypes:
+  - 4-on-floor-kick
+  - offbeat-hat
+  - eighth-hat
+  - clap-on-three
+bass_archetypes:
+  - low-sub-rolling
+  - syncopated-mid-bass
+  - acid-303-line
+harmonic_palette:
+  modes: [minor, phrygian, dorian, hijaz]
+  typical_chord_progressions:
+    - ["i", "VI", "VII"]
+    - ["i", "iv", "VII"]
+    - ["i", "II", "i"]
+sound_palette:
+  kick:  ["bd:5", "bd:6", "bd:9"]
+  snare: ["sn:1"]
+  hat:   ["hh:1", "hh:5"]
+  clap:  ["cp:1"]
+  bass:  ["sawtooth", "square", "sine"]
+  chord: ["sawtooth", "square"]
+  pad:   ["triangle", "fm"]
+mix_targets:
+  lufs: -8
+  true_peak_max: -1
+  kick_low_band_rms_target: 0.4
+  stereo_mono_low_compliance_min: 0.85
+critic_rubric_hints:
+  - "kick must dominate sub band; bass tucks under via sidechain"
+  - "stereo width near zero below 200Hz"
+  - "drop_a + drop_b energy diff via filter sweep on hat or chord"
+  - "clap/snare on 2 and 4 only"
+modifiers:
+  driving:
+    drum_archetypes_bias: ["4-on-floor-kick", "eighth-hat"]
+    energy_floor: 0.7
+  hypnotic:
+    drum_archetypes_bias: ["4-on-floor-kick", "offbeat-hat"]
+    pattern_change_per_section_max: 1
+  peak_time:
+    bpm_bias: [132, 138]
+    lufs_target_override: -7

@@ -1,0 +1,4 @@
+{"id": "tk-bass-001", "genre": "techno", "role": "bass", "mini_notation": "a1 ~ a1 ~", "tags": ["sub", "minimal"], "bpm_range": [125, 138]}
+{"id": "tk-bass-002", "genre": "techno", "role": "bass", "mini_notation": "a1 a1 c2 a1", "tags": ["rolling"], "bpm_range": [128, 138]}
+{"id": "tk-bass-003", "genre": "techno", "role": "bass", "mini_notation": "a1 ~ ~ a1 ~ ~ c2 ~", "tags": ["syncopated"], "bpm_range": [125, 135]}
+{"id": "tk-bass-004", "genre": "techno", "role": "bass", "mini_notation": "<a1 c2 e2 g1>", "tags": ["sequential"], "bpm_range": [128, 138]}

@@ -1,0 +1,3 @@
+{"id": "amb-pad-001", "genre": "ambient", "role": "pad", "mini_notation": "<c3 e3 g3>", "tags": ["triad", "slow"], "bpm_range": [40, 90]}
+{"id": "amb-pad-002", "genre": "ambient", "role": "pad", "mini_notation": "d3", "tags": ["drone"], "bpm_range": [40, 60]}
+{"id": "amb-pad-003", "genre": "ambient", "role": "pad", "mini_notation": "<a3 g3 f3 d3>", "tags": ["evolving"], "bpm_range": [50, 90]}

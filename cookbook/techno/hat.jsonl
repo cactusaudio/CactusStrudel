@@ -1,0 +1,4 @@
+{"id": "tk-hat-001", "genre": "techno", "role": "hat", "mini_notation": "[~ hh]*4", "tags": ["offbeat"], "bpm_range": [125, 138]}
+{"id": "tk-hat-002", "genre": "techno", "role": "hat", "mini_notation": "[hh hh]*4", "tags": ["eighth"], "bpm_range": [128, 138]}
+{"id": "tk-hat-003", "genre": "techno", "role": "hat", "mini_notation": "hh*8", "tags": ["sixteenth", "driving"], "bpm_range": [128, 138]}
+{"id": "tk-hat-004", "genre": "techno", "role": "hat", "mini_notation": "[~ hh ~ hh hh ~ hh hh]", "tags": ["syncopated"], "bpm_range": [125, 135]}
