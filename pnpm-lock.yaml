@@ -83,6 +83,12 @@ importers:
         specifier: ^6.0.3
         version: 6.4.2(@types/node@22.19.18)(tsx@4.21.0)(yaml@2.8.4)
 
+  apps/studio-ui:
+    devDependencies:
+      vite:
+        specifier: ^6.0.3
+        version: 6.4.2(@types/node@22.19.18)(tsx@4.21.0)(yaml@2.8.4)
+
   packages/agent-runtime:
     dependencies:
       '@cactus/analyzer':
@@ -259,6 +265,27 @@ importers:
       acorn-walk:
         specifier: ^8.3.4
         version: 8.3.5
+
+  tests:
+    dependencies:
+      '@cactus/agent-runtime':
+        specifier: workspace:*
+        version: link:../packages/agent-runtime
+      '@cactus/critic':
+        specifier: workspace:*
+        version: link:../packages/critic
+      '@cactus/ir':
+        specifier: workspace:*
+        version: link:../packages/ir
+      '@cactus/preference':
+        specifier: workspace:*
+        version: link:../packages/preference
+      '@cactus/strudel-compiler':
+        specifier: workspace:*
+        version: link:../packages/strudel-compiler
+      '@cactus/strudel-validator':
+        specifier: workspace:*
+        version: link:../packages/strudel-validator
 
 packages:
 

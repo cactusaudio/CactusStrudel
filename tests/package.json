@@ -1,0 +1,15 @@
+{
+  "name": "@cactus/tests",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "@cactus/ir": "workspace:*",
+    "@cactus/agent-runtime": "workspace:*",
+    "@cactus/strudel-compiler": "workspace:*",
+    "@cactus/strudel-validator": "workspace:*",
+    "@cactus/critic": "workspace:*",
+    "@cactus/preference": "workspace:*"
+  }
+}

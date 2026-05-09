@@ -1,0 +1,16 @@
+{
+  "name": "@cactus/studio-ui",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --port 5174",
+    "preview": "vite preview --port 5174",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "vite": "^6.0.3"
+  }
+}
