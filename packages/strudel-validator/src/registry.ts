@@ -54,10 +54,14 @@ const REGISTRY_LIST: ReadonlyArray<string> = [
 // Top-level constructs not registered via register(...) but exported by @strudel/core.
 // Source: @strudel/core pattern.mjs / index.mjs.
 const CORE_TOP_LEVEL: ReadonlyArray<string> = [
-  'stack','cat','seq','sequence','polymeter','polyrhythm','silence','pure','reify','timeCat',
-  'timecat','fast','slow','setcps','setBpm','setbpm','mini','m','register','registerControl',
-  'evaluate','evalScope','controls','samples','setSampleBaseUrl','initAudioOnFirstClick',
-  'initAudio','getAudioContext','panic',
+  'stack','stackLeft','stackRight','stackCentre','stackBy',
+  'cat','seq','sequence','sequenceP','seqPLoop',
+  'polymeter','polyrhythm','silence','pure','reify','timeCat','timecat',
+  'arrange','stepcat',
+  'fast','slow','setcps','setBpm','setbpm','mini','m',
+  'register','registerControl',
+  'evaluate','evalScope','controls','samples','setSampleBaseUrl',
+  'initAudioOnFirstClick','initAudio','getAudioContext','panic','gap',
 ];
 
 export const STRUDEL_FUNCTIONS: ReadonlySet<string> = new Set([
