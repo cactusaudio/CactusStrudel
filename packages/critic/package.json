@@ -12,6 +12,12 @@
   },
   "dependencies": {
     "@cactus/ir": "workspace:*",
-    "@cactus/analyzer": "workspace:*"
+    "@cactus/analyzer": "workspace:*",
+    "@cactus/genres": "workspace:*",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "@cactus/agent-runtime": "workspace:*"
   }
 }

@@ -127,9 +127,22 @@ importers:
       '@cactus/analyzer':
         specifier: workspace:*
         version: link:../analyzer
+      '@cactus/genres':
+        specifier: workspace:*
+        version: link:../genres
       '@cactus/ir':
         specifier: workspace:*
         version: link:../ir
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+    devDependencies:
+      '@cactus/agent-runtime':
+        specifier: workspace:*
+        version: link:../agent-runtime
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
 
   packages/genres:
     dependencies:
