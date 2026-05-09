@@ -21,4 +21,13 @@ export { parseBrief } from './brief-parser.js';
 export { buildSessionGraphFromBrief } from './build-graph.js';
 export { produce, type ProduceOptions, type ProduceResult } from './produce.js';
 export { createRng, hashStringToSeed } from './seed-rng.js';
-export { planRevisions } from './agents/revision-planner.js';
+export {
+  planRevisions,
+  createSketches,
+  rankCandidates,
+  closedLoopRevise,
+  type SketchOptions,
+  type RankedCandidate,
+  type LoopInput,
+  type LoopResult,
+} from './agents/index.js';
