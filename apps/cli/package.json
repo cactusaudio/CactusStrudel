@@ -17,6 +17,15 @@
     "@cactus/ir": "workspace:*",
     "@cactus/session-store": "workspace:*",
     "@cactus/agent-runtime": "workspace:*",
-    "commander": "^12.1.0"
+    "@cactus/strudel-compiler": "workspace:*",
+    "@cactus/critic": "workspace:*",
+    "@cactus/preference": "workspace:*",
+    "@cactus/renderer": "workspace:*",
+    "@cactus/mastering": "workspace:*",
+    "commander": "^12.1.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0"
   }
 }

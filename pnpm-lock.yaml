@@ -26,15 +26,37 @@ importers:
       '@cactus/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
+      '@cactus/critic':
+        specifier: workspace:*
+        version: link:../../packages/critic
       '@cactus/ir':
         specifier: workspace:*
         version: link:../../packages/ir
+      '@cactus/mastering':
+        specifier: workspace:*
+        version: link:../../packages/mastering
+      '@cactus/preference':
+        specifier: workspace:*
+        version: link:../../packages/preference
+      '@cactus/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
       '@cactus/session-store':
         specifier: workspace:*
         version: link:../../packages/session-store
+      '@cactus/strudel-compiler':
+        specifier: workspace:*
+        version: link:../../packages/strudel-compiler
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+    devDependencies:
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
 
   apps/renderer-page:
     dependencies:
@@ -180,6 +202,12 @@ importers:
       '@cactus/analyzer':
         specifier: workspace:*
         version: link:../analyzer
+      '@cactus/ir':
+        specifier: workspace:*
+        version: link:../ir
+      '@cactus/strudel-compiler':
+        specifier: workspace:*
+        version: link:../strudel-compiler
       wavefile:
         specifier: ^11.0.0
         version: 11.0.0

@@ -20,3 +20,5 @@ export function weightedScore(scores: ScoreVector, weights: ScoreVector): number
   }
   return normalizer === 0 ? 0 : total / normalizer;
 }
+
+export { parseFeedback, applyFeedback, type ParsedFeedback } from './feedback.js';
