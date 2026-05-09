@@ -1,0 +1,22 @@
+{
+  "name": "@cactus/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "main": "./src/index.ts",
+  "bin": {
+    "cactus": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "cactus": "tsx ./src/index.ts"
+  },
+  "dependencies": {
+    "@cactus/ir": "workspace:*",
+    "@cactus/session-store": "workspace:*",
+    "@cactus/agent-runtime": "workspace:*",
+    "commander": "^12.1.0"
+  }
+}

@@ -1,0 +1,42 @@
+node_modules/
+dist/
+.turbo/
+.cache/
+*.tsbuildinfo
+coverage/
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Runtime artifacts
+sessions/*/
+!sessions/.gitkeep
+refs/*
+!refs/README.md
+!refs/.gitkeep
+
+# Build artifacts
+apps/renderer-page/dist/
+apps/cli/dist/
+packages/*/dist/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Renders (huge, regenerable)
+*.wav
+*.mp3
+*.flac
+*.opus
+!tests/fixtures/audio/*.wav
+
+# Logs
+*.log

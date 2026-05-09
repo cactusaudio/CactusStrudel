@@ -1,0 +1,7 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+
+# pnpm 11 build-script allowlist. Enable trusted native-binary builds.
+allowBuilds:
+  esbuild: true

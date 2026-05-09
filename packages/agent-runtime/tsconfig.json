@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../ir" },
+    { "path": "../session-store" },
+    { "path": "../strudel-compiler" },
+    { "path": "../renderer" },
+    { "path": "../analyzer" },
+    { "path": "../critic" },
+    { "path": "../genres" },
+    { "path": "../cookbook" },
+    { "path": "../preference" }
+  ]
+}

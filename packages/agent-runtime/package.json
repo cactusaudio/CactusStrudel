@@ -1,0 +1,24 @@
+{
+  "name": "@cactus/agent-runtime",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cactus/ir": "workspace:*",
+    "@cactus/session-store": "workspace:*",
+    "@cactus/strudel-compiler": "workspace:*",
+    "@cactus/renderer": "workspace:*",
+    "@cactus/analyzer": "workspace:*",
+    "@cactus/critic": "workspace:*",
+    "@cactus/genres": "workspace:*",
+    "@cactus/cookbook": "workspace:*",
+    "@cactus/preference": "workspace:*"
+  }
+}
