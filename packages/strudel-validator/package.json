@@ -8,7 +8,8 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "extract-registry": "tsx scripts/extract-registry.ts"
   },
   "dependencies": {
     "@cactus/ir": "workspace:*",

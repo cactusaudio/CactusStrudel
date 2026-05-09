@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0.0",
+  "session_id": "44444444-4444-4444-8444-444444444444",
+  "created_at": "2026-05-10T00:00:00.000Z",
+  "brief": {
+    "text": "rolling neurofunk dnb 174 BPM, tight breakbeat, reece bass, dark",
+    "bpm": 174,
+    "key": { "tonic": "E", "mode": "minor" },
+    "duration_target_sec": 240,
+    "energy": "high",
+    "mood": ["dark", "rolling", "tight"],
+    "references": [],
+    "primary_genre": "dnb",
+    "modifiers": ["neurofunk", "reece-bass"],
+    "constraints": {}
+  },
+  "song": {
+    "cycles_per_bar": 1,
+    "total_bars": 64,
+    "sections": [
+      { "id": "s1", "name": "intro",  "start_bar": 0,  "end_bar": 16, "energy": 0.4,  "function": "intro" },
+      { "id": "s2", "name": "drop_a", "start_bar": 16, "end_bar": 40, "energy": 0.9,  "function": "drop" },
+      { "id": "s3", "name": "break",  "start_bar": 40, "end_bar": 48, "energy": 0.5,  "function": "breakdown" },
+      { "id": "s4", "name": "drop_b", "start_bar": 48, "end_bar": 64, "energy": 0.95, "function": "drop" }
+    ],
+    "energy_curve": [
+      0.3,0.32,0.35,0.4,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.7,0.75,0.78,0.82,0.85,
+      0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,
+      0.9,0.9,0.9,0.9,0.9,0.9,0.9,0.9,
+      0.6,0.55,0.5,0.45,0.4,0.45,0.55,0.7,
+      0.85,0.92,0.95,0.95,0.95,0.95,0.95,0.95,0.95,0.95,0.95,0.95,0.95,0.95,0.95,0.95
+    ],
+    "layer_activation": {
+      "kick":   { "sections": { "s1": true, "s2": true, "s3": false, "s4": true } },
+      "snare":  { "sections": { "s1": true, "s2": true, "s3": false, "s4": true } },
+      "hat":    { "sections": { "s1": true, "s2": true, "s3": true,  "s4": true } },
+      "reece":  { "sections": { "s1": false, "s2": true, "s3": false, "s4": true } },
+      "atmos":  { "sections": { "s1": true, "s2": true, "s3": true,  "s4": true } }
+    }
+  },
+  "layers": [
+    { "id": "kick",  "role": "kick",        "orbit": 0 },
+    { "id": "snare", "role": "snare",       "orbit": 1 },
+    { "id": "hat",   "role": "hat",         "orbit": 2 },
+    { "id": "reece", "role": "bass",        "orbit": 3, "description": "neurofunk reece bass" },
+    { "id": "atmos", "role": "fx",          "orbit": 4 }
+  ],
+  "pattern_bank": {
+    "patterns": {
+      "kick":  { "s1": { "mini_notation": "bd ~ ~ ~ ~ ~ bd ~" }, "s2": { "mini_notation": "bd ~ ~ ~ ~ ~ bd ~" }, "s4": { "mini_notation": "bd ~ ~ ~ ~ ~ bd ~" } },
+      "snare": { "s1": { "mini_notation": "~ ~ sd ~ ~ ~ ~ ~" }, "s2": { "mini_notation": "~ ~ sd ~ ~ ~ ~ ~" }, "s4": { "mini_notation": "~ ~ sd ~ ~ ~ ~ ~" } },
+      "hat":   { "s1": { "mini_notation": "[~ hh]*4" }, "s2": { "mini_notation": "[~ hh hh ~]*2" }, "s3": { "mini_notation": "[~ hh]*4" }, "s4": { "mini_notation": "[hh ~ hh hh]*2" } },
+      "reece": { "s2": { "mini_notation": "e1 ~ ~ ~ e1 ~ g1 ~" }, "s4": { "mini_notation": "e1 ~ d1 ~ e1 ~ g1 b1" } },
+      "atmos": { "s1": { "mini_notation": "~", "raw": "noise.gain(0.05).bpf(800)" }, "s2": { "mini_notation": "~", "raw": "noise.gain(0.04).bpf(1200)" }, "s3": { "mini_notation": "~", "raw": "noise.gain(0.07).bpf(800)" }, "s4": { "mini_notation": "~", "raw": "noise.gain(0.04).bpf(1200)" } }
+    }
+  },
+  "sound_palette": {
+    "layers": {
+      "kick":  { "source": { "kind": "sample", "name": "bd", "options": { "n": 6 } }, "effects": [], "envelope": { "a": 0.001, "d": 0.12, "s": 0, "r": 0.05 } },
+      "snare": { "source": { "kind": "sample", "name": "sn", "options": {} }, "effects": [{ "type": "hpf", "params": { "freq": 200 } }] },
+      "hat":   { "source": { "kind": "sample", "name": "hh", "options": {} }, "effects": [{ "type": "hpf", "params": { "freq": 8000 } }] },
+      "reece": { "source": { "kind": "synth", "name": "sawtooth", "options": { "detune": 7 } }, "effects": [{ "type": "lpf", "params": { "freq": 350 } }, { "type": "distort", "params": { "amount": 0.3 } }] },
+      "atmos": { "source": { "kind": "synth", "name": "noise", "options": {} }, "effects": [{ "type": "bpf", "params": { "freq": 1000 } }] }
+    }
+  },
+  "mix_graph": {
+    "orbits": {
+      "0": { "gain": 1, "pan": 0, "width": 1, "room_send": 0.05, "delay_send": 0 },
+      "1": { "gain": 0.85, "pan": 0, "width": 1.1, "room_send": 0.15, "delay_send": 0.05 },
+      "2": { "gain": 0.6, "pan": 0.1, "width": 1.4, "room_send": 0.1, "delay_send": 0 },
+      "3": { "gain": 0.95, "pan": 0, "width": 0.7, "room_send": 0.05, "delay_send": 0 },
+      "4": { "gain": 0.25, "pan": 0, "width": 1.6, "room_send": 0.4, "delay_send": 0.2 }
+    },
+    "master": { "gain": 1, "lufs_target": -7, "true_peak_max": -1 },
+    "sidechain": [
+      { "layer": "reece", "source": "kick", "depth": 0.55, "attack_ms": 5, "release_ms": 100 }
+    ],
+    "bus_sends": []
+  },
+  "render_graph": [],
+  "critique_graph": [],
+  "preference_graph": {
+    "decisions": [],
+    "weights": {
+      "genre_fit": 0.18, "groove": 0.16, "arrangement_arc": 0.13, "sound_design": 0.1,
+      "mix_translation": 0.12, "memorability_hook": 0.08, "originality": 0.06,
+      "user_taste_fit": 0.05, "technical_validity": 0.12
+    },
+    "motif_likes": [], "sound_likes": [], "arrangement_likes": []
+  },
+  "iteration_log": []
+}

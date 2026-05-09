@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "session_id": "33333333-3333-4333-8333-333333333333",
+  "created_at": "2026-05-10T00:00:00.000Z",
+  "brief": {
+    "text": "ambient drone, slow evolving, no rhythm, FM textures, 60 BPM equivalent",
+    "bpm": 60,
+    "key": { "tonic": "D", "mode": "dorian" },
+    "duration_target_sec": 480,
+    "energy": "low",
+    "mood": ["meditative", "evolving", "weightless"],
+    "references": [],
+    "primary_genre": "ambient",
+    "modifiers": ["drone", "fm-textures"],
+    "constraints": { "no_rhythmic_grid": true }
+  },
+  "song": {
+    "cycles_per_bar": 1,
+    "total_bars": 24,
+    "sections": [
+      { "id": "s1", "name": "emerge", "start_bar": 0,  "end_bar": 8,  "energy": 0.2, "function": "intro" },
+      { "id": "s2", "name": "swell",  "start_bar": 8,  "end_bar": 18, "energy": 0.55, "function": "main" },
+      { "id": "s3", "name": "dissolve","start_bar": 18, "end_bar": 24, "energy": 0.25, "function": "outro" }
+    ],
+    "energy_curve": [0.1, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.52, 0.55, 0.55, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.22, 0.15, 0.1],
+    "layer_activation": {
+      "drone1": { "sections": { "s1": true, "s2": true, "s3": true } },
+      "drone2": { "sections": { "s1": false, "s2": true, "s3": true } },
+      "swell":  { "sections": { "s1": false, "s2": true, "s3": false } }
+    }
+  },
+  "layers": [
+    { "id": "drone1", "role": "pad", "orbit": 0 },
+    { "id": "drone2", "role": "pad", "orbit": 1 },
+    { "id": "swell",  "role": "fx",  "orbit": 2 }
+  ],
+  "pattern_bank": {
+    "patterns": {
+      "drone1": { "s1": { "mini_notation": "d3", "density": 0.05 }, "s2": { "mini_notation": "d3", "density": 0.05 }, "s3": { "mini_notation": "d3", "density": 0.05 } },
+      "drone2": { "s2": { "mini_notation": "<a3 g3 f3>", "density": 0.05 }, "s3": { "mini_notation": "<a3 g3>", "density": 0.05 } },
+      "swell":  { "s2": { "mini_notation": "[~]*8", "raw": "noise.gain(slow(8, 0.0, 0.2)).lpf(slow(8, 200, 4000))", "density": 0.1 } }
+    }
+  },
+  "sound_palette": {
+    "layers": {
+      "drone1": { "source": { "kind": "synth", "name": "fm", "options": { "harmonicity": 1.5, "modulationIndex": 4 } }, "effects": [{ "type": "lpf", "params": { "freq": 1200 } }], "envelope": { "a": 4, "d": 0, "s": 1, "r": 4 } },
+      "drone2": { "source": { "kind": "synth", "name": "fm", "options": { "harmonicity": 2.5, "modulationIndex": 6 } }, "effects": [{ "type": "lpf", "params": { "freq": 800 } }], "envelope": { "a": 6, "d": 0, "s": 1, "r": 6 } },
+      "swell":  { "source": { "kind": "synth", "name": "noise", "options": {} }, "effects": [{ "type": "bpf", "params": { "freq": 800 } }] }
+    }
+  },
+  "mix_graph": {
+    "orbits": {
+      "0": { "gain": 0.7, "pan": -0.3, "width": 1.6, "room_send": 0.6, "delay_send": 0.3 },
+      "1": { "gain": 0.6, "pan": 0.3, "width": 1.6, "room_send": 0.6, "delay_send": 0.3 },
+      "2": { "gain": 0.4, "pan": 0, "width": 2, "room_send": 0.7, "delay_send": 0.2 }
+    },
+    "master": { "gain": 0.9, "lufs_target": -16, "true_peak_max": -1 },
+    "sidechain": [],
+    "bus_sends": []
+  },
+  "render_graph": [],
+  "critique_graph": [],
+  "preference_graph": {
+    "decisions": [],
+    "weights": {
+      "genre_fit": 0.18, "groove": 0.16, "arrangement_arc": 0.13, "sound_design": 0.1,
+      "mix_translation": 0.12, "memorability_hook": 0.08, "originality": 0.06,
+      "user_taste_fit": 0.05, "technical_validity": 0.12
+    },
+    "motif_likes": [], "sound_likes": [], "arrangement_likes": []
+  },
+  "iteration_log": []
+}

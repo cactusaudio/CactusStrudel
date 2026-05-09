@@ -1,6 +1,7 @@
 export * from './schema.js';
 export * from './factory.js';
 export * from './agent-paths.js';
+export * from './fixtures.js';
 export {
   parsePointer,
   getByPointer,

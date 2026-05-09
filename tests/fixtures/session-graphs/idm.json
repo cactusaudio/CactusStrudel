@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0.0",
+  "session_id": "55555555-5555-4555-8555-555555555555",
+  "created_at": "2026-05-10T00:00:00.000Z",
+  "brief": {
+    "text": "fractured idm, broken kick patterns, polyrhythmic, granular textures, 138 BPM",
+    "bpm": 138,
+    "key": { "tonic": "F", "mode": "phrygian" },
+    "duration_target_sec": 200,
+    "energy": "mid",
+    "mood": ["fractured", "intricate", "alien"],
+    "references": [],
+    "primary_genre": "idm",
+    "modifiers": ["polyrhythm", "granular"],
+    "constraints": {}
+  },
+  "song": {
+    "cycles_per_bar": 1,
+    "total_bars": 32,
+    "sections": [
+      { "id": "s1", "name": "intro", "start_bar": 0,  "end_bar": 8,  "energy": 0.4, "function": "intro" },
+      { "id": "s2", "name": "main",  "start_bar": 8,  "end_bar": 24, "energy": 0.7, "function": "main" },
+      { "id": "s3", "name": "outro", "start_bar": 24, "end_bar": 32, "energy": 0.4, "function": "outro" }
+    ],
+    "energy_curve": [
+      0.3,0.35,0.4,0.4,0.45,0.45,0.5,0.55,
+      0.6,0.65,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,
+      0.6,0.55,0.5,0.45,0.4,0.4,0.35,0.3
+    ],
+    "layer_activation": {
+      "kick":  { "sections": { "s1": true, "s2": true, "s3": false } },
+      "perc":  { "sections": { "s1": false, "s2": true, "s3": true } },
+      "bass":  { "sections": { "s1": false, "s2": true, "s3": false } },
+      "lead":  { "sections": { "s1": true, "s2": true, "s3": true } }
+    }
+  },
+  "layers": [
+    { "id": "kick", "role": "kick",        "orbit": 0 },
+    { "id": "perc", "role": "percussion",  "orbit": 1 },
+    { "id": "bass", "role": "bass",        "orbit": 2 },
+    { "id": "lead", "role": "lead",        "orbit": 3 }
+  ],
+  "pattern_bank": {
+    "patterns": {
+      "kick": { "s1": { "mini_notation": "bd(3, 8)" }, "s2": { "mini_notation": "bd(5, 13)" } },
+      "perc": { "s2": { "mini_notation": "{cp ~ ~ ~, hh hh hh}" }, "s3": { "mini_notation": "{cp ~ cp, hh hh}" } },
+      "bass": { "s2": { "mini_notation": "f1*7" } },
+      "lead": { "s1": { "mini_notation": "<f4 ab4 c5>" }, "s2": { "mini_notation": "<f4 ab4 c5 db5 eb5>" }, "s3": { "mini_notation": "<f4 ab4>" } }
+    }
+  },
+  "sound_palette": {
+    "layers": {
+      "kick": { "source": { "kind": "sample", "name": "bd", "options": { "n": 4 } }, "effects": [{ "type": "crush", "params": { "bits": 6 } }] },
+      "perc": { "source": { "kind": "sample", "name": "cp", "options": {} }, "effects": [{ "type": "hpf", "params": { "freq": 1500 } }] },
+      "bass": { "source": { "kind": "synth", "name": "fm", "options": {} }, "effects": [{ "type": "lpf", "params": { "freq": 280 } }] },
+      "lead": { "source": { "kind": "synth", "name": "square", "options": {} }, "effects": [{ "type": "lpf", "params": { "freq": 2400 } }, { "type": "delay", "params": { "time": 0.375, "feedback": 0.5 } }] }
+    }
+  },
+  "mix_graph": {
+    "orbits": {
+      "0": { "gain": 0.95, "pan": 0, "width": 0.9, "room_send": 0.05, "delay_send": 0 },
+      "1": { "gain": 0.7, "pan": 0.15, "width": 1.4, "room_send": 0.2, "delay_send": 0.1 },
+      "2": { "gain": 0.85, "pan": 0, "width": 0.6, "room_send": 0.05, "delay_send": 0 },
+      "3": { "gain": 0.7, "pan": -0.1, "width": 1.5, "room_send": 0.3, "delay_send": 0.4 }
+    },
+    "master": { "gain": 1, "lufs_target": -10, "true_peak_max": -1 },
+    "sidechain": [
+      { "layer": "bass", "source": "kick", "depth": 0.4, "attack_ms": 5, "release_ms": 80 }
+    ],
+    "bus_sends": []
+  },
+  "render_graph": [],
+  "critique_graph": [],
+  "preference_graph": {
+    "decisions": [],
+    "weights": {
+      "genre_fit": 0.18, "groove": 0.16, "arrangement_arc": 0.13, "sound_design": 0.1,
+      "mix_translation": 0.12, "memorability_hook": 0.08, "originality": 0.06,
+      "user_taste_fit": 0.05, "technical_validity": 0.12
+    },
+    "motif_likes": [], "sound_likes": [], "arrangement_likes": []
+  },
+  "iteration_log": []
+}

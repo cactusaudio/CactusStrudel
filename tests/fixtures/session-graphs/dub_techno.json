@@ -1,0 +1,109 @@
+{
+  "schema_version": "1.0.0",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "created_at": "2026-05-10T00:00:00.000Z",
+  "brief": {
+    "text": "dark spacious dub techno; Burial rain texture; 132 BPM; club-functional but haunted; 909 core; evolving chords",
+    "bpm": 132,
+    "key": { "tonic": "C", "mode": "minor" },
+    "duration_target_sec": 360,
+    "energy": "mid",
+    "mood": ["haunted", "spacious", "rainy", "club-functional"],
+    "references": [
+      { "kind": "artist", "value": "Burial" },
+      { "kind": "attribute", "value": "909-core" }
+    ],
+    "primary_genre": "dub_techno",
+    "modifiers": ["evolving-chords", "rain-texture"],
+    "constraints": {}
+  },
+  "song": {
+    "cycles_per_bar": 1,
+    "total_bars": 96,
+    "sections": [
+      { "id": "s1", "name": "intro",     "start_bar": 0,  "end_bar": 24, "energy": 0.3, "function": "intro" },
+      { "id": "s2", "name": "drop_a",    "start_bar": 24, "end_bar": 56, "energy": 0.7, "function": "drop" },
+      { "id": "s3", "name": "breakdown", "start_bar": 56, "end_bar": 72, "energy": 0.4, "function": "breakdown" },
+      { "id": "s4", "name": "drop_b",    "start_bar": 72, "end_bar": 96, "energy": 0.8, "function": "drop" }
+    ],
+    "energy_curve": [
+      0.25, 0.27, 0.3, 0.3, 0.32, 0.35, 0.35, 0.4, 0.4, 0.42, 0.45, 0.45,
+      0.5, 0.5, 0.55, 0.55, 0.6, 0.6, 0.6, 0.62, 0.65, 0.65, 0.68, 0.7,
+      0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7,
+      0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7,
+      0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.4, 0.4,
+      0.42, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.72,
+      0.75, 0.78, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+      0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+      0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+      0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8
+    ],
+    "layer_activation": {
+      "kick":  { "sections": { "s1": true, "s2": true, "s3": false, "s4": true } },
+      "hat":   { "sections": { "s1": true, "s2": true, "s3": true, "s4": true } },
+      "bass":  { "sections": { "s1": false, "s2": true, "s3": false, "s4": true } },
+      "chord": { "sections": { "s1": true, "s2": true, "s3": true, "s4": true } },
+      "rain":  { "sections": { "s1": true, "s2": true, "s3": true, "s4": true } }
+    }
+  },
+  "layers": [
+    { "id": "kick",  "role": "kick", "orbit": 0 },
+    { "id": "hat",   "role": "hat",  "orbit": 1 },
+    { "id": "bass",  "role": "bass", "orbit": 2 },
+    { "id": "chord", "role": "chord","orbit": 3, "description": "long-tail dub chord stab" },
+    { "id": "rain",  "role": "noise","orbit": 4, "description": "Burial rain/vinyl texture" }
+  ],
+  "pattern_bank": {
+    "patterns": {
+      "kick":  { "s1": { "mini_notation": "bd ~ ~ ~ bd ~ ~ ~", "density": 0.4 }, "s2": { "mini_notation": "bd ~ ~ ~ bd ~ ~ ~", "density": 0.4 }, "s4": { "mini_notation": "bd ~ ~ ~ bd ~ ~ ~", "density": 0.4 } },
+      "hat":   { "s1": { "mini_notation": "[~ hh]*4", "density": 0.5 }, "s2": { "mini_notation": "[~ hh]*4", "density": 0.5, "syncopation": 0.3 }, "s3": { "mini_notation": "[~ hh]*4", "density": 0.45 }, "s4": { "mini_notation": "[~ hh hh ~]*2", "density": 0.55, "syncopation": 0.4 } },
+      "bass":  { "s2": { "mini_notation": "c2 ~ ~ ~ c2 ~ g1 ~" }, "s4": { "mini_notation": "c2 ~ ~ ~ c2 ~ eb2 ~" } },
+      "chord": { "s1": { "mini_notation": "<cm7 fm7>", "density": 0.2 }, "s2": { "mini_notation": "<cm7 fm7 abmaj7 gm7>", "density": 0.3 }, "s3": { "mini_notation": "<cm7 abmaj7>", "density": 0.25 }, "s4": { "mini_notation": "<cm7 fm7 abmaj7 gm7>", "density": 0.35 } },
+      "rain":  { "s1": { "mini_notation": "~", "raw": "noise.gain(0.05).bpf(2000)" }, "s2": { "mini_notation": "~", "raw": "noise.gain(0.04).bpf(2000)" }, "s3": { "mini_notation": "~", "raw": "noise.gain(0.07).bpf(2000)" }, "s4": { "mini_notation": "~", "raw": "noise.gain(0.05).bpf(2000)" } }
+    }
+  },
+  "sound_palette": {
+    "layers": {
+      "kick":  { "source": { "kind": "sample", "name": "bd", "options": { "n": 2 } }, "effects": [], "envelope": { "a": 0.001, "d": 0.22, "s": 0, "r": 0.08 } },
+      "hat":   { "source": { "kind": "sample", "name": "hh", "options": {} }, "effects": [{ "type": "hpf", "params": { "freq": 7000 } }] },
+      "bass":  { "source": { "kind": "synth",  "name": "sawtooth", "options": {} }, "effects": [{ "type": "lpf", "params": { "freq": 200 } }] },
+      "chord": { "source": { "kind": "synth",  "name": "triangle", "options": {} }, "effects": [{ "type": "lpf", "params": { "freq": 900, "automation": "slow_sine_16_cycles_500_1800" } }] },
+      "rain":  { "source": { "kind": "synth",  "name": "noise", "options": {} }, "effects": [{ "type": "bpf", "params": { "freq": 2000, "q": 0.5 } }] }
+    }
+  },
+  "mix_graph": {
+    "orbits": {
+      "0": { "gain": 0.95, "pan": 0,    "width": 1,   "room_send": 0.1, "delay_send": 0 },
+      "1": { "gain": 0.55, "pan": 0.2,  "width": 1.3, "room_send": 0.3, "delay_send": 0.15 },
+      "2": { "gain": 0.85, "pan": 0,    "width": 0.5, "room_send": 0.1, "delay_send": 0 },
+      "3": { "gain": 0.65, "pan": -0.1, "width": 1.5, "room_send": 0.55, "delay_send": 0.4 },
+      "4": { "gain": 0.18, "pan": 0,    "width": 1.5, "room_send": 0.1, "delay_send": 0 }
+    },
+    "master": { "gain": 1, "lufs_target": -10, "true_peak_max": -1 },
+    "sidechain": [
+      { "layer": "bass",  "source": "kick", "depth": 0.45, "attack_ms": 5,  "release_ms": 150 },
+      { "layer": "chord", "source": "kick", "depth": 0.32, "attack_ms": 8,  "release_ms": 180 }
+    ],
+    "bus_sends": []
+  },
+  "render_graph": [],
+  "critique_graph": [],
+  "preference_graph": {
+    "decisions": [],
+    "weights": {
+      "genre_fit": 0.18,
+      "groove": 0.16,
+      "arrangement_arc": 0.13,
+      "sound_design": 0.1,
+      "mix_translation": 0.12,
+      "memorability_hook": 0.08,
+      "originality": 0.06,
+      "user_taste_fit": 0.05,
+      "technical_validity": 0.12
+    },
+    "motif_likes": [],
+    "sound_likes": [],
+    "arrangement_likes": []
+  },
+  "iteration_log": []
+}
