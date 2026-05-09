@@ -4,10 +4,37 @@
     <meta charset="UTF-8" />
     <title>Cactus Strudel renderer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body { font: 14px/1.4 system-ui, -apple-system, sans-serif; margin: 24px; max-width: 720px; }
+      pre { background: #f4f4f4; padding: 8px 12px; border-radius: 4px; font-size: 12px; overflow: auto; }
+      .ok { color: green; }
+      .err { color: #c00; }
+    </style>
   </head>
   <body>
     <h1>cactus-strudel renderer page</h1>
-    <p>Headless render harness. Driven by Playwright via <code>window.__cactusRender</code>.</p>
+    <p>
+      Headless render harness driven by Playwright via <code>window.__cactusRender</code>.
+      Boot status: <span id="status">booting…</span>
+    </p>
+    <pre id="versions"></pre>
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      const status = document.getElementById('status');
+      const versions = document.getElementById('versions');
+      const tick = () => {
+        if (window.__cactusReady) {
+          status.textContent = 'ready';
+          status.className = 'ok';
+          versions.textContent = JSON.stringify(window.__cactusVersions, null, 2);
+        } else if (window.__cactusInitError) {
+          status.textContent = 'init error: ' + window.__cactusInitError;
+          status.className = 'err';
+        } else {
+          requestAnimationFrame(tick);
+        }
+      };
+      tick();
+    </script>
   </body>
 </html>
