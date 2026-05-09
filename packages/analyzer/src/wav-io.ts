@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
-import { WaveFile } from 'wavefile';
+import wavefilePkg from 'wavefile';
+const { WaveFile } = wavefilePkg;
 
 export interface DecodedAudio {
   channels: Float32Array[];

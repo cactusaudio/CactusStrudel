@@ -13,12 +13,17 @@
   "dependencies": {
     "@cactus/ir": "workspace:*",
     "@cactus/session-store": "workspace:*",
+    "@cactus/strudel-validator": "workspace:*",
     "@cactus/strudel-compiler": "workspace:*",
     "@cactus/renderer": "workspace:*",
     "@cactus/analyzer": "workspace:*",
     "@cactus/critic": "workspace:*",
     "@cactus/genres": "workspace:*",
     "@cactus/cookbook": "workspace:*",
-    "@cactus/preference": "workspace:*"
+    "@cactus/preference": "workspace:*",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0"
   }
 }

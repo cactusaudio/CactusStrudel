@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import { WaveFile } from 'wavefile';
+import wavefilePkg from 'wavefile';
+const { WaveFile } = wavefilePkg;
 
 export interface RenderInput {
   code: string;

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { WaveFile } from 'wavefile';
+import wavefilePkg from 'wavefile';
+const { WaveFile } = wavefilePkg;
 import { analyzeWav, computeLoudness, generateSpectrogram } from './index.js';
 
 const TMP = path.join(os.tmpdir(), 'cactus-analyzer-tests');

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { createSessionGraph } from '@cactus/ir';
+import { produce } from '@cactus/agent-runtime';
 
 const program = new Command();
 program
@@ -13,18 +13,45 @@ program
   .description('Generate N candidate sketches and rank them')
   .requiredOption('-b, --brief <text>', 'free-text brief')
   .option('-n, --count <n>', 'number of candidates', '5')
-  .action(async (opts: { brief: string; count: string }) => {
-    const graph = createSessionGraph({ brief: { text: opts.brief } });
-    console.log(JSON.stringify({ ok: true, session: graph.session_id, mode: 'sketch', count: opts.count }, null, 2));
+  .option('--no-render', 'skip rendering audio')
+  .action(async (opts: { brief: string; count: string; render: boolean }) => {
+    const n = Math.max(1, parseInt(opts.count, 10) || 1);
+    const results = [];
+    for (let i = 0; i < n; i++) {
+      const r = await produce(opts.brief, { skipRender: !opts.render, seed: i + 1 });
+      results.push({
+        session: r.graph.session_id,
+        seed: i + 1,
+        sessionDir: r.sessionDir,
+        wavPath: r.wavPath,
+        validatorIssues: r.validatorIssues,
+      });
+    }
+    console.log(JSON.stringify({ ok: true, mode: 'sketch', count: n, results }, null, 2));
   });
 
 program
   .command('produce')
-  .description('Expand to a full track')
+  .description('Generate a full track from a brief')
   .requiredOption('-b, --brief <text>', 'free-text brief')
-  .action(async (opts: { brief: string }) => {
-    const graph = createSessionGraph({ brief: { text: opts.brief } });
-    console.log(JSON.stringify({ ok: true, session: graph.session_id, mode: 'produce' }, null, 2));
+  .option('--no-render', 'skip rendering audio (graph + code only)')
+  .option('--seed <n>', 'PRNG seed for deterministic graph generation')
+  .action(async (opts: { brief: string; render: boolean; seed?: string }) => {
+    const seed = opts.seed !== undefined ? parseInt(opts.seed, 10) : undefined;
+    const r = await produce(opts.brief, {
+      skipRender: !opts.render,
+      ...(seed !== undefined ? { seed } : {}),
+    });
+    console.log(JSON.stringify({
+      ok: true,
+      mode: 'produce',
+      session: r.graph.session_id,
+      sessionDir: r.sessionDir,
+      wavPath: r.wavPath,
+      featuresPath: r.featuresPath,
+      reportPath: r.reportPath,
+      validatorIssues: r.validatorIssues,
+    }, null, 2));
   });
 
 program
