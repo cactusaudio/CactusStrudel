@@ -14,6 +14,13 @@ export interface LocalityInput {
   requested_paths: string[];
   /** Brief constraints that must remain unchanged regardless of the revision. */
   invariants?: Array<{ path: string; description: string }>;
+  /**
+   * Paths (or path prefixes) considered housekeeping — excluded from the
+   * locality calculation entirely. Use for things the revise loop bumps
+   * unconditionally (e.g. `/preference_graph` weight + decision log writes).
+   * Default: empty (no exclusions).
+   */
+  ignored_path_prefixes?: string[];
 }
 
 export interface LocalityResult {
@@ -35,7 +42,11 @@ export interface LocalityResult {
  * - drift_severity: 0 if perfectly local, 1 if every change is unrelated AND invariants broken
  */
 export function scoreRevisionLocality(input: LocalityInput): LocalityResult {
-  const changed = diffPaths(input.before, input.after);
+  const allChanged = diffPaths(input.before, input.after);
+  const ignored = input.ignored_path_prefixes ?? [];
+  const changed = ignored.length === 0
+    ? allChanged
+    : allChanged.filter((p) => !ignored.some((pre) => p === pre || p.startsWith(pre + '/')));
   // A change is "related" if its path equals or descends from any requested path,
   // OR if the requested path equals or descends from it (parent edits cover children).
   const requested = input.requested_paths;

@@ -199,10 +199,40 @@ program
 
 program
   .command('revise')
-  .description('Apply natural-language feedback to an existing session')
+  .description('G3: apply natural-language feedback (en/zh/mixed) — parses feedback, plans + applies patches, re-renders, scores locality, writes revision report')
   .requiredOption('-s, --session <id>', 'session id (uuid) to revise')
-  .requiredOption('-f, --feedback <text>', 'natural-language feedback')
-  .option('--no-render', 'skip rendering audio for the revised iteration')
+  .requiredOption('-f, --feedback <text>', 'natural-language feedback (English / Chinese / mixed)')
+  .option('--no-render', 'skip rendering the revised iteration (graph + plan + locality only)')
+  .option('--fatal', 'render/analyze failure aborts the revise (default: best-effort)')
+  .option('--root <dir>', 'sessions directory root', './sessions')
+  .action(async (opts: { session: string; feedback: string; render: boolean; fatal?: boolean; root: string }) => {
+    const sessionDir = path.resolve(opts.root, opts.session);
+    const { revise } = await import('./revise.js');
+    const r = await revise({
+      sessionDir,
+      feedback: opts.feedback,
+      bestEffort: opts.fatal !== true,
+      skipRender: opts.render === false,
+    });
+    console.log(JSON.stringify({
+      ok: r.ok, mode: 'revise', session: r.sessionId,
+      prev_iter: r.prevIter, next_iter: r.nextIter,
+      patches_planned: r.patchesPlanned, patches_applied: r.patchesApplied,
+      drift_severity: r.drift_severity, invariant_violations: r.invariant_violations,
+      rendered_wav: r.renderedWav, report: r.reportPath,
+      hard_failures: r.hardFailures,
+    }, null, 2));
+  });
+
+// Legacy revise (kept for back-compat) — preserved below as a hidden alternative
+// command path is not added; the revise above replaces it. The local-only iteration
+// listing helper stays for `cactus stems` / `cactus explain` / `cactus taste`.
+program
+  .command('revise-legacy', { hidden: true })
+  .description('legacy weight-only revise (preserved for back-compat)')
+  .requiredOption('-s, --session <id>')
+  .requiredOption('-f, --feedback <text>')
+  .option('--no-render')
   .option('--root <dir>', 'sessions directory root', './sessions')
   .action(async (opts: { session: string; feedback: string; render: boolean; root: string }) => {
     const sessionDir = path.resolve(opts.root, opts.session);

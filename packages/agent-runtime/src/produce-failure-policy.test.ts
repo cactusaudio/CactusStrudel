@@ -10,17 +10,26 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { produce } from './produce.js';
+import { produce, type ProduceResult } from './produce.js';
 
 const TMP = path.join(os.tmpdir(), 'cactus-produce-failure-policy-tests');
 
 beforeEach(async () => { await fs.mkdir(TMP, { recursive: true }); });
 afterEach(() => { vi.restoreAllMocks(); vi.resetModules(); });
 
+// Helper: re-imports produce after mocks are set, returning the freshly-resolved
+// function. Cast through unknown because vitest's module resolution and tsc's
+// view of dynamic imports diverge here.
+async function freshProduce(): Promise<typeof produce> {
+  vi.resetModules();
+  const mod = (await import('./produce.js')) as unknown as { produce: typeof produce };
+  return mod.produce;
+}
+
 describe('produce — failure policy (G2)', () => {
   it('skipRender + skipAnalyze succeeds with empty failures array', async () => {
     const out = path.join(TMP, `skipboth-${Date.now()}`);
-    const r = await produce('peak time techno 130 BPM, 10 seconds', {
+    const r: ProduceResult = await produce('peak time techno 130 BPM, 10 seconds', {
       sessionsRoot: out, seed: 1, skipRender: true, skipAnalyze: true,
     });
     expect(r.failures).toEqual([]);
@@ -33,8 +42,7 @@ describe('produce — failure policy (G2)', () => {
     vi.doMock('@cactus/renderer', () => ({
       render: () => Promise.reject(new Error('mock: renderer unavailable')),
     }));
-    // Re-import produce so the mock is picked up.
-    const { produce: produceFresh } = await import('./produce.js?mock=fail-fatal');
+    const produceFresh = await freshProduce();
     const out = path.join(TMP, `fatal-${Date.now()}`);
     await expect(
       produceFresh('peak time techno 130 BPM, 10 seconds', {
@@ -47,33 +55,31 @@ describe('produce — failure policy (G2)', () => {
     vi.doMock('@cactus/renderer', () => ({
       render: () => Promise.reject(new Error('mock: renderer unavailable')),
     }));
-    const { produce: produceFresh } = await import('./produce.js?mock=fail-best-effort');
+    const produceFresh = await freshProduce();
     const out = path.join(TMP, `best-effort-${Date.now()}`);
     const r = await produceFresh('peak time techno 130 BPM, 10 seconds', {
       sessionsRoot: out, seed: 3, bestEffort: true,
     });
     expect(r.failures.length).toBeGreaterThan(0);
-    expect(r.failures.some((f) => f.includes('render failed'))).toBe(true);
+    expect(r.failures.some((f: string) => f.includes('render failed'))).toBe(true);
     expect(r.wavPath).toBeUndefined();
-    // Report still written.
     const report = await fs.readFile(r.reportPath, 'utf8');
     expect(report).toContain('non-fatal failures');
   });
 
   it('analyze failure surfaces in failures array under bestEffort', async () => {
-    // Make render succeed (write a tiny WAV file the analyzer will reject).
     vi.doMock('@cactus/renderer', () => ({
       render: async (input: { outputPath: string }) => {
         // Write a non-WAV file. analyzeWav will throw on parse.
         await fs.writeFile(input.outputPath, 'not-a-wav-file');
       },
     }));
-    const { produce: produceFresh } = await import('./produce.js?mock=analyze-fail');
+    const produceFresh = await freshProduce();
     const out = path.join(TMP, `analyze-fail-${Date.now()}`);
     const r = await produceFresh('peak time techno 130 BPM, 10 seconds', {
       sessionsRoot: out, seed: 4, bestEffort: true,
     });
-    expect(r.failures.some((f) => f.includes('analyze failed'))).toBe(true);
+    expect(r.failures.some((f: string) => f.includes('analyze failed'))).toBe(true);
   });
 
   it('throws when no genre is detectable from brief', async () => {

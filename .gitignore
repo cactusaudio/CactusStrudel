@@ -12,6 +12,7 @@ coverage/
 # Runtime artifacts
 sessions/*/
 !sessions/.gitkeep
+apps/cli/sessions/
 refs/*
 !refs/README.md
 !refs/.gitkeep
