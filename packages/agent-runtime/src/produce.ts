@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { compileSessionGraph } from '@cactus/strudel-compiler';
 import { validateStrudelCode } from '@cactus/strudel-validator';
-import type { SessionGraph } from '@cactus/ir';
+import { validateSemanticInvariants, formatSemanticReport, type SessionGraph } from '@cactus/ir';
 import { parseBrief } from './brief-parser.js';
 import { buildSessionGraphFromBrief } from './build-graph.js';
 
@@ -62,6 +62,13 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
     brief,
     options.seed !== undefined ? { seed: options.seed } : {},
   );
+
+  // 3a. G5: cross-field semantic invariants (section coverage, energy curve
+  // length, layer/orbit/sample refs). Errors block compile.
+  const sem = validateSemanticInvariants(graph);
+  if (!sem.ok) {
+    throw new Error(`produce: ${formatSemanticReport(sem)}`);
+  }
 
   // 3. Compile + validate (validator failures always throw — clean Strudel
   // is a precondition of any downstream work).

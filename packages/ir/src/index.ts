@@ -2,6 +2,7 @@ export * from './schema.js';
 export * from './factory.js';
 export * from './agent-paths.js';
 export * from './fixtures.js';
+export * from './semantic-invariants.js';
 export {
   parsePointer,
   getByPointer,

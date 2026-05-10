@@ -24,7 +24,7 @@ import {
 import { compileSessionGraph } from '@cactus/strudel-compiler';
 import { validateStrudelCode } from '@cactus/strudel-validator';
 import {
-  applyPatch, isAgentAllowedToWrite,
+  applyPatch, isAgentAllowedToWrite, validateSemanticInvariants, formatSemanticReport,
   type Patch, type SessionGraph, type AnalyzerFeatures, type CritiqueEntry,
 } from '@cactus/ir';
 import { runQualityGates, analyzeWav, type QualityGatesReport } from '@cactus/analyzer';
@@ -112,6 +112,13 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
     const critiquePath = path.join(sessionDir, `${iterTag}.critique.json`);
     const planPath = path.join(sessionDir, `${iterTag}.revision-plan.json`);
     const localityPath = path.join(sessionDir, `${iterTag}.locality.json`);
+
+    // G5: refuse to compile a graph that violates semantic invariants. This
+    // catches bad patches BEFORE we waste a render on them.
+    const sem = validateSemanticInvariants(graph);
+    if (!sem.ok) {
+      throw new Error(`closed-loop produce: ${iterTag} ${formatSemanticReport(sem)}`);
+    }
 
     const compiled = compileSessionGraph(graph);
     const validation = validateStrudelCode(compiled.code);

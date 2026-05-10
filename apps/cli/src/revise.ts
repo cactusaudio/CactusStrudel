@@ -8,7 +8,7 @@ import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 import {
   applyPatch, isAgentAllowedToWrite,
-  SessionGraphSchema,
+  SessionGraphSchema, validateSemanticInvariants, formatSemanticReport,
   type CritiqueEntry, type Patch, type SessionGraph,
 } from '@cactus/ir';
 import { compileSessionGraph } from '@cactus/strudel-compiler';
@@ -113,6 +113,12 @@ export async function revise(input: ReviseInput): Promise<ReviseResult> {
   // if you want fatal-on-render failures.
   await fs.writeFile(nextGraphPath, JSON.stringify(graph, null, 2));
   await fs.writeFile(nextPlanPath, JSON.stringify({ planned: patchesPlanned, applied: patchesApplied, requested_paths: requestedPaths, parsed_feedback: parsed }, null, 2));
+
+  // G5: refuse to compile a revision that violates semantic invariants.
+  const sem = validateSemanticInvariants(graph);
+  if (!sem.ok) {
+    throw new Error(`revise: revised graph ${formatSemanticReport(sem)}`);
+  }
 
   const compiled = compileSessionGraph(graph);
   const validation = validateStrudelCode(compiled.code);
