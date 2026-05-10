@@ -1,5 +1,5 @@
 {
-  "name": "@cactus/orchestrator",
+  "name": "@cactus/mix",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -12,13 +12,8 @@
   },
   "dependencies": {
     "@cactus/ir": "workspace:*",
-    "@cactus/agent-runtime": "workspace:*",
-    "@cactus/strudel-compiler": "workspace:*",
-    "@cactus/strudel-validator": "workspace:*",
+    "@cactus/analyzer": "workspace:*",
     "@cactus/genres": "workspace:*",
-    "uuid": "^10.0.0"
-  },
-  "devDependencies": {
-    "@types/uuid": "^10.0.0"
+    "wavefile": "^11.0.0"
   }
 }

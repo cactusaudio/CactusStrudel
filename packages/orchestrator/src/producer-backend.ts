@@ -12,6 +12,7 @@ import {
 } from '@cactus/ir';
 import { compileSessionGraph } from '@cactus/strudel-compiler';
 import { validateStrudelCode } from '@cactus/strudel-validator';
+import { applyArrangementCoverage } from './arrangement-coverage.js';
 
 export type BackendName = 'rules' | 'claude-shadow' | 'hybrid';
 
@@ -51,14 +52,22 @@ export class RulesBackend implements ProducerBackend {
       brief,
       input.seed !== undefined ? { seed: input.seed } : {},
     );
+    // Genre-aware arrangement coverage: ensure every section has the layers
+    // its function requires (e.g. techno intro must include a hat). Repairs the
+    // dead-air-intro failure that Phase 14 smoke surfaced. Honors brief.constraints.
+    const coverage = applyArrangementCoverage(graph);
     const compiled = compileSessionGraph(graph);
     const validation = validateStrudelCode(compiled.code);
+    const warnings = [...compiled.warnings];
+    if (coverage.mutations.length > 0) {
+      warnings.push(`coverage: ${coverage.mutations.length} section(s) had layers activated/deactivated to satisfy ${coverage.genre} constraints`);
+    }
     return {
       backend: 'rules',
       graph,
       code: compiled.code,
       validator_issues: validation.issues.length,
-      warnings: compiled.warnings,
+      warnings,
     };
   }
 }

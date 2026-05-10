@@ -118,6 +118,41 @@ function collect(value: string, prev: string[]): string[] {
 }
 
 program
+  .command('audit:repair')
+  .description('Champion repair audit: smoke suite, real WAV, rules backend only, diagnostics on. Default loop for baseline improvement work.')
+  .option('--out <dir>', 'output directory (default: sessions/audits/repair-<timestamp>)')
+  .option('--seeds <n>', 'seeds per prompt', '1')
+  .option('--no-mix', 'skip post-render mix pass (for diff comparisons against pre-Phase-15 audio)')
+  .action(async (opts: { out?: string; seeds: string; mix: boolean }) => {
+    const seeds = Math.max(1, parseInt(opts.seeds, 10) || 1);
+    const outDir = opts.out ?? path.resolve('sessions', 'audits', `repair-${new Date().toISOString().replace(/[:.]/g, '-')}`);
+    const r = await runAudit({
+      suite: 'smoke',
+      seeds,
+      outDir,
+      skipRender: false,
+      postRenderMix: opts.mix,
+      diagnostics: true,
+      challengers: [],
+    });
+    const failureSummary = Object.keys(r.champion_failures_by_category).length === 0
+      ? 'no failures classified'
+      : Object.entries(r.champion_failures_by_category).map(([cat, n]) => `${cat}=${n}`).join(', ');
+    console.log(JSON.stringify({
+      ok: true,
+      mode: 'audit:repair',
+      seeds,
+      outDir: r.outDir,
+      prompts_total: r.prompts_total,
+      champion_pass: r.champion_pass,
+      champion_fail: r.champion_fail,
+      failures: failureSummary,
+      report: path.join(r.outDir, 'audit-report.md'),
+      diagnostics_dir: path.join(r.outDir, 'diagnostics'),
+    }, null, 2));
+  });
+
+program
   .command('revise')
   .description('Apply natural-language feedback to an existing session')
   .requiredOption('-s, --session <id>', 'session id (uuid) to revise')

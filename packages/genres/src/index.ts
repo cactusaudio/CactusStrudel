@@ -43,3 +43,12 @@ export {
   type CookbookSnippet,
 } from './loader.js';
 export { bridgeGenres } from './bridge.js';
+export {
+  getCoverageConstraints,
+  type SectionCoverage,
+  type GenreCoverageConstraints,
+} from './coverage-constraints.js';
+export {
+  applyArrangementCoverage,
+  type ArrangementCoverageReport,
+} from './coverage-applier.js';

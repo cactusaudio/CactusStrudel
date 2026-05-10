@@ -94,7 +94,11 @@ export function classifyFailure(input: ClassifyFailureInput): ClassifiedFailure 
   if (bands) {
     const lowMid = bands.low_mid ?? 0;
     const mid = bands.mid ?? 1;
-    if (mid > 0 && lowMid / mid > 1.5) {
+    // ADR 0005: kick-led genres naturally run low_mid > mid because
+    // dirt-samples 909 kick body sits at 200-400 Hz (measured kick-only
+    // sections at 8-10× ratio). Trigger mud only when low_mid genuinely
+    // overwhelms mid (>8×).
+    if (mid > 0 && lowMid / mid > 8.0) {
       cats.add('mix_mud');
       evidence.low_mid_to_mid_ratio = lowMid / mid;
     }

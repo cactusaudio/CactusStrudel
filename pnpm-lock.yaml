@@ -112,6 +112,9 @@ importers:
       '@cactus/ir':
         specifier: workspace:*
         version: link:../ir
+      '@cactus/mix':
+        specifier: workspace:*
+        version: link:../mix
       '@cactus/preference':
         specifier: workspace:*
         version: link:../preference
@@ -167,6 +170,12 @@ importers:
       '@cactus/ir':
         specifier: workspace:*
         version: link:../ir
+      '@cactus/mastering':
+        specifier: workspace:*
+        version: link:../mastering
+      '@cactus/mix':
+        specifier: workspace:*
+        version: link:../mix
       '@cactus/orchestrator':
         specifier: workspace:*
         version: link:../orchestrator
@@ -270,11 +279,29 @@ importers:
         specifier: ^11.0.0
         version: 11.0.0
 
+  packages/mix:
+    dependencies:
+      '@cactus/analyzer':
+        specifier: workspace:*
+        version: link:../analyzer
+      '@cactus/genres':
+        specifier: workspace:*
+        version: link:../genres
+      '@cactus/ir':
+        specifier: workspace:*
+        version: link:../ir
+      wavefile:
+        specifier: ^11.0.0
+        version: 11.0.0
+
   packages/orchestrator:
     dependencies:
       '@cactus/agent-runtime':
         specifier: workspace:*
         version: link:../agent-runtime
+      '@cactus/genres':
+        specifier: workspace:*
+        version: link:../genres
       '@cactus/ir':
         specifier: workspace:*
         version: link:../ir

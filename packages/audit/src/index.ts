@@ -38,3 +38,9 @@ export {
   type RunAuditOptions,
   type RunAuditResult,
 } from './run-audit.js';
+export { applyGenreDiscriminators } from './genre-discriminators.js';
+export {
+  writeDiagnosticReport,
+  type DiagnosticReportInput,
+  type DiagnosticReportPaths,
+} from './diagnostic-report.js';

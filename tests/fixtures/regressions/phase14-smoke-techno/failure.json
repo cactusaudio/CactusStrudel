@@ -1,0 +1,128 @@
+{
+  "prompt": {
+    "id": "smoke-001",
+    "text": "peak time techno 130 BPM, 10 seconds",
+    "intent_genre": "techno",
+    "bpm_target": 130,
+    "expected_modifiers": [
+      "peak_time"
+    ],
+    "forbidden_modifiers": [],
+    "intent_class": "canonical",
+    "suite_genre": "smoke",
+    "seed": 1
+  },
+  "categories": [
+    "silence_or_near_silence",
+    "mix_mud",
+    "genre_collapse"
+  ],
+  "evidence": {
+    "non_silent_ratio": 0.38305084745762713,
+    "true_peak": -0.058937356400047304,
+    "lufs_distance": 10.323439494781915,
+    "intended_genre": "techno",
+    "actual_top1": "idm",
+    "intended_top3": false,
+    "low_mid_to_mid_ratio": 13.244539427698234
+  },
+  "gates": [
+    {
+      "name": "non_silent_ratio",
+      "passed": false,
+      "value": 0.38305084745762713,
+      "threshold": 0.6,
+      "severity": 0.4338983050847457,
+      "notes": "38.3% of windows above -55 dB"
+    },
+    {
+      "name": "active_band_count",
+      "passed": true,
+      "value": 7,
+      "threshold": 3,
+      "severity": 0,
+      "notes": "7/7 bands active above -46 dBFS"
+    },
+    {
+      "name": "low_band_energy_floor",
+      "passed": true,
+      "value": 20.112000563094213,
+      "threshold": 0.01,
+      "severity": 0
+    },
+    {
+      "name": "onset_count_floor",
+      "passed": true,
+      "value": 4.502601206302643,
+      "threshold": 2,
+      "severity": 0,
+      "notes": "total onset density 4.50/s over 29.5s"
+    },
+    {
+      "name": "section_energy_delta",
+      "passed": true,
+      "value": 229.78022517471348,
+      "threshold": 3,
+      "severity": 0,
+      "notes": "loudest section -10.2 dB, quietest -240.0 dB"
+    },
+    {
+      "name": "feature_novelty_per_8_bars",
+      "passed": true,
+      "value": 1,
+      "threshold": 0.05,
+      "severity": 0,
+      "notes": "CV across 2 eight-bar windows = 1.000"
+    },
+    {
+      "name": "arrangement_arc_score",
+      "passed": true,
+      "value": 229.78022517471348,
+      "threshold": 1,
+      "severity": 0,
+      "notes": "drop sections avg -10.2 dB; intro/outro avg -240.0 dB"
+    },
+    {
+      "name": "loop_fatigue_score",
+      "passed": true,
+      "value": 0,
+      "threshold": 0.95,
+      "severity": 0,
+      "notes": "2 consecutive 8-bar windows; mean cosine similarity 0.000"
+    },
+    {
+      "name": "stereo_low_mono_guard",
+      "passed": true,
+      "value": 0.9997906092644698,
+      "threshold": 0.85,
+      "severity": 0
+    },
+    {
+      "name": "true_peak_guard",
+      "passed": false,
+      "value": -0.058937356400047304,
+      "threshold": -1,
+      "severity": 0.9410626435999527,
+      "notes": "peak -0.06 dBTP vs ceiling -1"
+    },
+    {
+      "name": "lufs_target_distance",
+      "passed": false,
+      "value": 10.323439494781915,
+      "threshold": 4,
+      "severity": 0.7904299368477394,
+      "notes": "integrated -18.3 LUFS vs target -8 (Δ=10.3)"
+    }
+  ],
+  "confusion": {
+    "top1": "idm",
+    "top3": [
+      "idm",
+      "house",
+      "dub_techno"
+    ],
+    "intended_top1": false
+  },
+  "validator_issues": 0,
+  "hard_failures": []
+}

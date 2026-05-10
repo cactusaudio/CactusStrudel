@@ -1,0 +1,183 @@
+{
+  "gates": [
+    {
+      "name": "non_silent_ratio",
+      "passed": false,
+      "value": 0.38305084745762713,
+      "threshold": 0.6,
+      "severity": 0.4338983050847457,
+      "notes": "38.3% of windows above -55 dB"
+    },
+    {
+      "name": "active_band_count",
+      "passed": true,
+      "value": 7,
+      "threshold": 3,
+      "severity": 0,
+      "notes": "7/7 bands active above -46 dBFS"
+    },
+    {
+      "name": "low_band_energy_floor",
+      "passed": true,
+      "value": 20.112000563094213,
+      "threshold": 0.01,
+      "severity": 0
+    },
+    {
+      "name": "onset_count_floor",
+      "passed": true,
+      "value": 4.502601206302643,
+      "threshold": 2,
+      "severity": 0,
+      "notes": "total onset density 4.50/s over 29.5s"
+    },
+    {
+      "name": "section_energy_delta",
+      "passed": true,
+      "value": 229.78022517471348,
+      "threshold": 3,
+      "severity": 0,
+      "notes": "loudest section -10.2 dB, quietest -240.0 dB"
+    },
+    {
+      "name": "feature_novelty_per_8_bars",
+      "passed": true,
+      "value": 1,
+      "threshold": 0.05,
+      "severity": 0,
+      "notes": "CV across 2 eight-bar windows = 1.000"
+    },
+    {
+      "name": "arrangement_arc_score",
+      "passed": true,
+      "value": 229.78022517471348,
+      "threshold": 1,
+      "severity": 0,
+      "notes": "drop sections avg -10.2 dB; intro/outro avg -240.0 dB"
+    },
+    {
+      "name": "loop_fatigue_score",
+      "passed": true,
+      "value": 0,
+      "threshold": 0.95,
+      "severity": 0,
+      "notes": "2 consecutive 8-bar windows; mean cosine similarity 0.000"
+    },
+    {
+      "name": "stereo_low_mono_guard",
+      "passed": true,
+      "value": 0.9997906092644698,
+      "threshold": 0.85,
+      "severity": 0
+    },
+    {
+      "name": "true_peak_guard",
+      "passed": false,
+      "value": -0.058937356400047304,
+      "threshold": -1,
+      "severity": 0.9410626435999527,
+      "notes": "peak -0.06 dBTP vs ceiling -1"
+    },
+    {
+      "name": "lufs_target_distance",
+      "passed": false,
+      "value": 10.323439494781915,
+      "threshold": 4,
+      "severity": 0.7904299368477394,
+      "notes": "integrated -18.3 LUFS vs target -8 (Δ=10.3)"
+    }
+  ],
+  "pass_count": 8,
+  "fail_count": 3,
+  "overall_pass": false,
+  "per_section": {
+    "total_duration_sec": 29.538479166666665,
+    "sample_rate": 48000,
+    "sections": [
+      {
+        "section_id": "a08ff49b-6f77-4263-8271-6c43069c43a8",
+        "name": "intro",
+        "start_sec": 0,
+        "end_sec": 14.76923076923077,
+        "rms": 0,
+        "rms_db": -240,
+        "energy_db": -240,
+        "centroid": 0,
+        "zero_crossings_per_sec": 0,
+        "onset_rate": 0
+      },
+      {
+        "section_id": "c3b7cf3c-2563-42b9-8240-9d3fb64afebe",
+        "name": "build_a",
+        "start_sec": 14.76923076923077,
+        "end_sec": 22.153846153846157,
+        "rms": 0.10001689036166755,
+        "rms_db": -19.998533045709543,
+        "energy_db": -12.382023273035825,
+        "centroid": 1412.4035511469683,
+        "zero_crossings_per_sec": 4895.997020828808,
+        "onset_rate": 0.13541666666666663
+      },
+      {
+        "section_id": "de10d4e8-eb2a-4f2f-8261-65a881cd424e",
+        "name": "drop_a",
+        "start_sec": 22.153846153846157,
+        "end_sec": 29.538479166666665,
+        "rms": 0.12715748013566786,
+        "rms_db": -17.913161740659284,
+        "energy_db": -10.219774825286525,
+        "centroid": 559.5391866323315,
+        "zero_crossings_per_sec": 4219.295102732866,
+        "onset_rate": 0.13541634340716643
+      },
+      {
+        "section_id": "42a85121-4aa1-4883-8c4f-fd020f5bd14d",
+        "name": "breakdown",
+        "start_sec": 29.538479166666665,
+        "end_sec": 29.538479166666665,
+        "rms": 0,
+        "rms_db": null,
+        "energy_db": null,
+        "centroid": 0,
+        "zero_crossings_per_sec": 0,
+        "onset_rate": 0
+      },
+      {
+        "section_id": "cc312684-e4ed-4aa3-8643-4ef2510c632d",
+        "name": "build_b",
+        "start_sec": 29.538479166666665,
+        "end_sec": 29.538479166666665,
+        "rms": 0,
+        "rms_db": null,
+        "energy_db": null,
+        "centroid": 0,
+        "zero_crossings_per_sec": 0,
+        "onset_rate": 0
+      },
+      {
+        "section_id": "4e86a538-cc03-4aa0-856d-a5590e89a11d",
+        "name": "drop_b",
+        "start_sec": 29.538479166666665,
+        "end_sec": 29.538479166666665,
+        "rms": 0,
+        "rms_db": null,
+        "energy_db": null,
+        "centroid": 0,
+        "zero_crossings_per_sec": 0,
+        "onset_rate": 0
+      },
+      {
+        "section_id": "2b4a48e1-12a0-486c-841f-f0d16986b24f",
+        "name": "outro",
+        "start_sec": 29.538479166666665,
+        "end_sec": 29.538479166666665,
+        "rms": 0,
+        "rms_db": null,
+        "energy_db": null,
+        "centroid": 0,
+        "zero_crossings_per_sec": 0,
+        "onset_rate": 0
+      }
+    ]
+  }
+}

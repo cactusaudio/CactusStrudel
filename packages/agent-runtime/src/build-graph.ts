@@ -16,8 +16,10 @@ import {
   loadGenre,
   loadCookbookSnippets,
   pickSnippet,
+  applyArrangementCoverage,
   type GenreSpec,
 } from '@cactus/genres';
+import { applyGainStaging, applyBandBalance } from '@cactus/mix';
 import { createRng, hashStringToSeed } from './seed-rng.js';
 
 export interface BuildGraphOptions {
@@ -44,6 +46,17 @@ export async function buildSessionGraphFromBrief(
   const layers = buildLayers(genre, briefFinal);
   const layerActivation = buildLayerActivation(layers, song);
   song.layer_activation = layerActivation;
+
+  // Phase 15 fix: arrangement coverage BEFORE pattern bank so any layer the
+  // coverage applier activates gets a real pattern (not compile-time silence).
+  // Build a temporary graph stub the applier can mutate; the final graph below
+  // re-uses the same song + layers references so the activation persists.
+  const stub = {
+    brief: briefFinal,
+    layers,
+    song,
+  } as unknown as SessionGraph;
+  applyArrangementCoverage(stub);
 
   const patternBank = await buildPatternBank(genre, briefFinal, layers, song, rng);
   const soundPalette = buildSoundPalette(genre, layers, briefFinal);
@@ -80,6 +93,12 @@ export async function buildSessionGraphFromBrief(
     },
     iteration_log: [],
   };
+
+  // Deterministic mix controller: per-genre layer gain defaults + band-balance
+  // HPF defaults to keep low_mid clean. Compile happens downstream.
+  applyGainStaging(graph);
+  applyBandBalance(graph);
+
   return graph;
 }
 
@@ -87,25 +106,51 @@ function buildSong(genre: GenreSpec, brief: BriefGraph, rng: () => number): Song
   const targetSec = brief.duration_target_sec ?? 180;
   const cps = (brief.bpm ?? 120) / 240;
   const targetCycles = targetSec * cps;
-  // Sum of section lengths in genre's template:
-  const templateTotal = genre.section_template.reduce((a, s) => a + s.length_bars, 0);
-  // Scale to fit target duration; round to whole bars; never below template total / 2.
-  let scale = templateTotal === 0 ? 1 : Math.max(0.5, targetCycles / templateTotal);
-  scale = Math.min(scale, 2.0);
 
+  // Phase 15 fix: a short brief (≤ 30 s) used to be forced into the genre's
+  // full template via a 0.5 scale clamp, producing a 64-bar arrangement that
+  // no audit could ever render past intro+build. Switch to a compact
+  // intro/main/outro template that fits the requested duration so renders
+  // contain real groove, not dead air.
   const sections: Section[] = [];
   let bar = 0;
-  for (const tpl of genre.section_template) {
-    const length = Math.max(1, Math.round(tpl.length_bars * scale));
-    sections.push({
-      id: deterministicUuid(rng),
-      name: tpl.name,
-      start_bar: bar,
-      end_bar: bar + length,
-      energy: energyForFunction(tpl.function as SectionFunction, brief.energy ?? 'mid'),
-      function: tpl.function as SectionFunction,
-    });
-    bar += length;
+  if (brief.duration_target_sec !== undefined && targetSec <= 30) {
+    const totalCompact = Math.max(4, Math.ceil(targetCycles));
+    const introBars = Math.max(1, Math.round(totalCompact * 0.15));
+    const outroBars = Math.max(1, Math.round(totalCompact * 0.15));
+    const mainBars = Math.max(2, totalCompact - introBars - outroBars);
+    const compactTpl: Array<{ name: string; fn: SectionFunction; len: number }> = [
+      { name: 'intro', fn: 'intro', len: introBars },
+      { name: 'main',  fn: 'main',  len: mainBars },
+      { name: 'outro', fn: 'outro', len: outroBars },
+    ];
+    for (const t of compactTpl) {
+      sections.push({
+        id: deterministicUuid(rng),
+        name: t.name,
+        start_bar: bar,
+        end_bar: bar + t.len,
+        energy: energyForFunction(t.fn, brief.energy ?? 'mid'),
+        function: t.fn,
+      });
+      bar += t.len;
+    }
+  } else {
+    const templateTotal = genre.section_template.reduce((a, s) => a + s.length_bars, 0);
+    let scale = templateTotal === 0 ? 1 : Math.max(0.5, targetCycles / templateTotal);
+    scale = Math.min(scale, 2.0);
+    for (const tpl of genre.section_template) {
+      const length = Math.max(1, Math.round(tpl.length_bars * scale));
+      sections.push({
+        id: deterministicUuid(rng),
+        name: tpl.name,
+        start_bar: bar,
+        end_bar: bar + length,
+        energy: energyForFunction(tpl.function as SectionFunction, brief.energy ?? 'mid'),
+        function: tpl.function as SectionFunction,
+      });
+      bar += length;
+    }
   }
   const totalBars = bar;
   const energyCurve = buildEnergyCurve(sections, totalBars);

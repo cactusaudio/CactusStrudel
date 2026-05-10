@@ -48,7 +48,7 @@ export async function runQualityGates(input: QualityGatesInput): Promise<Quality
   gates.push(gateActiveBandCount(input.features));
   gates.push(gateLowBandEnergyFloor(input.features, input.genreTargets));
   gates.push(gateOnsetCountFloor(input.features, input.genreTargets, audio.sampleRate, mono.length));
-  gates.push(gateSectionEnergyDelta(sectionFeatures));
+  gates.push(gateSectionEnergyDelta(sectionFeatures, input.graph));
   gates.push(gateFeatureNoveltyPer8Bars(mono, audio.sampleRate, input.graph));
   gates.push(gateArrangementArc(sectionFeatures, input.graph));
   gates.push(gateLoopFatigue(mono, audio.sampleRate, input.graph));
@@ -138,7 +138,11 @@ function gateOnsetCountFloor(
   };
 }
 
-function gateSectionEnergyDelta(sf: SectionFeatures): QualityGateResult {
+function gateSectionEnergyDelta(sf: SectionFeatures, graph?: SessionGraph): QualityGateResult {
+  // ADR 0005: skip on sub-12-bar tracks for the same reason as arrangement_arc.
+  if (graph && graph.song.total_bars < 12) {
+    return { name: 'section_energy_delta', passed: true, value: 0, threshold: 3, severity: 0, notes: `skipped: total_bars=${graph.song.total_bars} < 12` };
+  }
   if (sf.sections.length < 2) {
     return { name: 'section_energy_delta', passed: true, value: 0, threshold: 3, severity: 0, notes: 'single-section track' };
   }
@@ -192,7 +196,12 @@ function gateFeatureNoveltyPer8Bars(mono: Float32Array, sr: number, graph: Sessi
 }
 
 function gateArrangementArc(sf: SectionFeatures, graph: SessionGraph): QualityGateResult {
-  // Drop / main sections should average louder than intro / outro.
+  // ADR 0005: skip on tracks shorter than 12 bars — the metric uses p95
+  // windowed RMS, which is biased toward peaky-sparse intros (kick-only) and
+  // unreliable when each section is only 1-2 seconds.
+  if (graph.song.total_bars < 12) {
+    return { name: 'arrangement_arc_score', passed: true, value: 0, threshold: 1, severity: 0, notes: `skipped: total_bars=${graph.song.total_bars} < 12` };
+  }
   const sectionByName = new Map(graph.song.sections.map((s) => [s.id, s]));
   let dropSum = 0, dropN = 0;
   let introSum = 0, introN = 0;

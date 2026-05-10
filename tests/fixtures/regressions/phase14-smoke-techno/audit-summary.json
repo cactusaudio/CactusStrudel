@@ -1,0 +1,13 @@
+{
+  "suite": "smoke",
+  "seeds": 1,
+  "prompts_total": 1,
+  "champion_pass": 0,
+  "champion_fail": 1,
+  "champion_failures_by_category": {
+    "silence_or_near_silence": 1,
+    "mix_mud": 1,
+    "genre_collapse": 1
+  },
+  "challengers": []
+}

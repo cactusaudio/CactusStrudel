@@ -50,3 +50,14 @@ export {
   type QualityGatesReport,
   type QualityGatesInput,
 } from './quality-gates.js';
+export {
+  computeSectionDiagnostics,
+  type SectionDiagnostic,
+  type SectionDiagnosticsReport,
+} from './section-diagnostics.js';
+export {
+  computeStemDiagnostics,
+  type StemDiagnostic,
+  type StemDiagnosticsReport,
+  type StemRef,
+} from './stem-diagnostics.js';

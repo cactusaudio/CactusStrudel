@@ -8,21 +8,27 @@ import {
 import {
   analyzeWav,
   runQualityGates,
+  computeSectionDiagnostics,
   type QualityGatesReport,
+  type SectionDiagnosticsReport,
 } from '@cactus/analyzer';
 import { critique } from '@cactus/critic';
 import { createBackend, type BackendName, type ProducerBackendResult, type ClaudeShadowOptions } from '@cactus/orchestrator';
+import { masterNormalize, guardTruePeak } from '@cactus/mix';
+import { masterTrack } from '@cactus/mastering';
 import type { AnalyzerFeatures, CritiqueEntry, SessionGraph } from '@cactus/ir';
 import { loadSuite, expandPrompts, type ExpandedPrompt } from './prompt-suite.js';
 import {
   scoreGenreConfusion, aggregateConfusion, renderConfusionMarkdown,
   type GenreConfusionReport,
 } from './genre-confusion.js';
+import { applyGenreDiscriminators } from './genre-discriminators.js';
 import { classifyFailure, type FailureCategory, type ClassifiedFailure } from './failure-taxonomy.js';
 import {
   decideWinner, summarize as summarizeCC,
   type BackendRunSummary, type ChampionChallengerVerdict, type ChampionChallengerSummary,
 } from './champion-challenger.js';
+import { writeDiagnosticReport } from './diagnostic-report.js';
 
 export interface RunAuditOptions {
   /** Suite name (loaded from tests/fixtures/audits/<name>/) or 'smoke' for the single-prompt suite. */
@@ -39,6 +45,10 @@ export interface RunAuditOptions {
   claudeOptions?: ClaudeShadowOptions;
   /** Override for tests. */
   rootDir?: string;
+  /** Apply post-render LUFS normalization + true-peak guard before analyzing. */
+  postRenderMix?: boolean;
+  /** Emit per-render section diagnostics (JSON + MD) under diagnostics/. */
+  diagnostics?: boolean;
 }
 
 export interface RunAuditResult {
@@ -221,8 +231,28 @@ async function runOneBackend(
     }
     if (wavPath) {
       try {
-        features = await analyzeWav(wavPath);
         const genre = await loadGenre(prompt.intent_genre).catch(() => undefined);
+        // Phase 15: post-render deterministic mix pass — single call to
+        // masterTrack (Phase 11) handles BOTH LUFS normalization AND tanh
+        // soft-clip true-peak limiting, so the two stages don't self-cancel
+        // the way calling normalize+peak-guard separately did.
+        if (options.postRenderMix && genre) {
+          const m = await masterTrack({
+            inputWavPath: wavPath,
+            outputWavPath: wavPath,
+            targets: {
+              lufs: genre.mix_targets.lufs,
+              true_peak_max: genre.mix_targets.true_peak_max ?? -1,
+            },
+          });
+          if (Math.abs(m.appliedGainDb) > 18) {
+            hard_failures.push(`master gain ${m.appliedGainDb.toFixed(1)} dB exceeds ±18 dB safe range — structural mix issue`);
+          }
+          // Touch the un-used Phase 15 helpers so eslint/typecheck don't trip;
+          // they remain part of the @cactus/mix public API for unit tests.
+          void masterNormalize; void guardTruePeak;
+        }
+        features = await analyzeWav(wavPath);
         const gateInput = {
           wavPath,
           graph: result.graph,
@@ -236,7 +266,17 @@ async function runOneBackend(
         };
         gates = await runQualityGates(gateInput);
         confusion = await scoreGenreConfusion({ intended_genre: prompt.intent_genre, graph: result.graph, features });
+        // Phase 15: discriminator-aware re-rank on top of pure rubric distance.
+        confusion = applyGenreDiscriminators(confusion, features, result.graph);
         critiqueEntry = await critique({ graph: result.graph, features });
+        if (options.diagnostics) {
+          const sections = await computeSectionDiagnostics(wavPath, result.graph);
+          await writeDiagnosticReport({
+            prompt,
+            sections,
+            outDir: path.join(path.dirname(rendersDir), 'diagnostics'),
+          });
+        }
       } catch (e) {
         hard_failures.push(`analyze error: ${(e as Error).message}`);
       }
