@@ -77,42 +77,91 @@ Net production change: **-1 LOC + role-default fallback that already existed**.
 | dnb | hard_fail_count | 0 | **2** | **0** |
 | ambient | gate_pass | ✓ | ✓ | ✓ |
 | idm | gate_pass | ✗ | ✗ | ✗ (pre-existing, unrelated) |
-| dub_techno | rendered | — | — | — (pre-existing render bug) |
+| dub_techno | gate_pass | — | — | ✗ (pre-existing fail; same in both modes) |
 
-Per-genre verdicts (post-fix):
+**External-audit closeout note (2026-05-10)**: the original line for
+dub_techno read "render failed in both modes". External audit
+(Claude Opus, audit of bundle v1) verified that dub_techno was
+**silently dropped from the suite** by parseBrief — the smoke brief
+used `dub_techno` (underscore) but parseBrief matches `\bdub[\s-]+techno\b`
+(space or hyphen). The fix was to change the brief to `dub techno`;
+after the fix, dub_techno actually runs and **fails gates in both
+modes** (1 hard_fail in each at seed=7), which is the correct
+honest finding. The pre-fix bundle is preserved as historical
+evidence; v2 of the report uses the post-fix data.
+
+Per-genre verdicts (multi-seed, post-fix):
 
 ```
-audit:cookbook-impact --suite smoke-real --seeds 1               cookbook_neutral_preserves_diversity
-audit:cookbook-impact --suite smoke-real --seeds 1 --genres dnb  cookbook_neutral_preserves_diversity
-audit:cookbook-impact --suite smoke-real --seeds 1 --genres techno  cookbook_positive
+audit:cookbook-impact --suite smoke-real --seeds 3
+   full (5 genres × 3 seeds × 2 modes = 30 renders, 0 dropped)
+   → cookbook_neutral_preserves_diversity
+   → gate pass rate: minimal=0.73 enabled=0.73 (11/15 = 11/15, identical)
+   → critic_issues_per_prompt: minimal=2.60 enabled=2.73 (delta=+0.13, within neutral)
+
+audit:cookbook-impact --suite smoke-real --seeds 3 --genres techno
+   techno × 3 seeds × 2 modes = 6 renders
+   → cookbook_positive (verdict upgraded)
+   → critic_issues_per_prompt: minimal=4.00 enabled=3.00 (delta=−1.00 stable across all 3 seeds)
+   → gate pass: 3/3 in both modes
+
+audit:cookbook-impact --suite smoke-real --seeds 3 --genres dnb
+   dnb × 3 seeds × 2 modes (G9C fix verification)
+   → cookbook_neutral_preserves_diversity
+   → gate pass: 3/3 in both modes — silence regression does NOT recur on any seed
 ```
+
+Per-brief / per-seed gate-pass table (multi-seed, post-fix):
+
+| genre | minimal pass | enabled pass | note |
+|---|---|---|---|
+| techno | 3/3 | 3/3 | enabled improves critic by -1.00 stable across all 3 seeds |
+| dub_techno | 2/3 | 2/3 | both fail same seed; cookbook policy-disabled for dub_techno |
+| dnb | 3/3 | 3/3 | G9C fix holds 100% across seeds |
+| idm | 0/3 | 0/3 | pre-existing failure; cookbook policy-disabled |
+| ambient | 3/3 | 3/3 | both pass; enabled adds severe_warnings (gated) |
 
 ## Cookbook trace + blame example
 
-```bash
-$ CACTUS_COOKBOOK_MODE=enabled pnpm cactus produce \
-    -b 'dnb 174 BPM, 16 bars, rolling reese sub' --no-render --seed 7
-$ jq '.picks[] | select(.layer_role == "pad")' <session>/cookbook-trace.json
-```
+The `blame` field is populated by `buildPatternBank` after each pattern
+assignment. Captured fixture:
+`tests/fixtures/cookbook-impact/dnb-enabled-silence-regression/post-fix-enabled/cookbook-trace.json`,
+re-captured 2026-05-10 with current code.
 
-Pre-fix excerpt (preserved as fixture):
+Post-fix pad-layer pick (verbatim from the captured trace):
 
 ```json
 {
   "layer_role": "pad",
-  "section_function": "drop",
+  "section_function": "intro",
   "cookbook_role": "pad_atmo",
   "candidates_total": 0,
   "selected_id": null,
-  "fallback_reason": "no-cookbook-match",
+  "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
   "blame": {
-    "graph_path": "/pattern_bank/patterns/pad/<sec>",
-    "post_value": "bd ~ ~ ~ ~ ~ bd ~ ~ ~ ~ ~ bd ~ ~ ~",
+    "graph_path": "/pattern_bank/patterns/pad/00fb8673-8b42-4c83-8548-4f3e32248c1e",
+    "pre_value": null,
+    "post_value": "a3",
     "contributes_to_orbit": 4,
-    "suspected_in_hard_failure": true
+    "suspected_in_hard_failure": false
   }
 }
 ```
+
+Pre-fix counterpart (still preserved at
+`tests/fixtures/.../pre-fix-enabled/cookbook-trace.json`) lacks the
+`blame` field — that fixture predates G9C's blame-attribution wiring.
+The pre-fix `compiled.strudel.js` shows the silence trigger directly:
+`note("bd ~ ~ ~ bd ~ ~ ~").s("fm")` on the pad layer (verifiable via
+`grep -n 'note("[^"]*bd' fixture-path`).
+
+External audit verified `suspected_in_hard_failure` is currently always
+written `false` — automatic correlation between a hard failure and a
+specific pick is not yet wired; the field is reserved for that
+correlation and a downstream tool (or operator) sets it. Reading it as
+"the file says the producer is suspecting this pick" today would be
+wrong; reading it as "this slot is reserved for the correlation pass to
+write" is correct.
 
 Post-fix excerpt:
 

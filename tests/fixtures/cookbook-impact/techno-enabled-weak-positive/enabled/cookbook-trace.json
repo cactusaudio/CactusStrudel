@@ -37,7 +37,14 @@
       ],
       "selected_id": "tk-kick-001",
       "selection_reason": "section:intro compatible (+3); energy:mid (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/00fb8673-8b42-4c83-8548-4f3e32248c1e",
+        "pre_value": null,
+        "post_value": "bd ~ ~ ~ bd ~ ~ ~",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "kick",
@@ -74,7 +81,14 @@
       ],
       "selected_id": "tk-kick-005",
       "selection_reason": "section:build compatible (+3); energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "bd ~ bd ~ ~ bd ~ ~",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "kick",
@@ -110,7 +124,14 @@
       ],
       "selected_id": "tk-kick-002",
       "selection_reason": "section:drop compatible (+3); energy:peak (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+        "pre_value": null,
+        "post_value": "bd*4",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "kick",
@@ -147,7 +168,14 @@
       ],
       "selected_id": "tk-kick-004",
       "selection_reason": "energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/9bf739cd-3878-4247-8720-201ef0267b55",
+        "pre_value": null,
+        "post_value": "bd bd ~ ~ bd ~ bd ~",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "kick",
@@ -183,7 +211,14 @@
       ],
       "selected_id": "tk-kick-003",
       "selection_reason": "",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/cbc8c694-8c14-4ddc-865e-457d6f86584e",
+        "pre_value": null,
+        "post_value": "[bd ~ ~ ~]*2",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "kick",
@@ -220,7 +255,14 @@
       ],
       "selected_id": "tk-kick-006",
       "selection_reason": "",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/9fd76be8-a2b6-49d6-841a-bf541becdf3f",
+        "pre_value": null,
+        "post_value": "bd ~ ~ ~ ~ ~ ~ ~",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -255,7 +297,14 @@
       ],
       "selected_id": "tk-hat-002",
       "selection_reason": "section:build compatible (+3); energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "[hh hh]*4",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -290,7 +339,14 @@
       ],
       "selected_id": "tk-hat-003",
       "selection_reason": "section:drop compatible (+3); energy:peak (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+        "pre_value": null,
+        "post_value": "hh*8",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -325,7 +381,14 @@
       ],
       "selected_id": "tk-hat-001",
       "selection_reason": "section:breakdown compatible (+3); energy:mid (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+        "pre_value": null,
+        "post_value": "[~ hh]*4",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -360,7 +423,14 @@
       ],
       "selected_id": "tk-hat-004",
       "selection_reason": "energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/9bf739cd-3878-4247-8720-201ef0267b55",
+        "pre_value": null,
+        "post_value": "[~ hh ~ hh hh ~ hh hh]",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -395,7 +465,14 @@
       ],
       "selected_id": "tk-hat-003",
       "selection_reason": "section:drop compatible (+3); energy:peak (+2); already-seen (-10)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/cbc8c694-8c14-4ddc-865e-457d6f86584e",
+        "pre_value": null,
+        "post_value": "hh*8",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "bass",
@@ -429,7 +506,14 @@
       ],
       "selected_id": "tk-bass-002",
       "selection_reason": "energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/bass/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "a1 a1 c2 a1",
+        "contributes_to_orbit": 2,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "bass",
@@ -463,7 +547,14 @@
       ],
       "selected_id": "tk-bass-004",
       "selection_reason": "section:drop compatible (+3)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/bass/ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+        "pre_value": null,
+        "post_value": "<a1 c2 e2 g1>",
+        "contributes_to_orbit": 2,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "bass",
@@ -497,7 +588,14 @@
       ],
       "selected_id": "tk-bass-001",
       "selection_reason": "",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/bass/9bf739cd-3878-4247-8720-201ef0267b55",
+        "pre_value": null,
+        "post_value": "a1 ~ a1 ~",
+        "contributes_to_orbit": 2,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "bass",
@@ -531,7 +629,14 @@
       ],
       "selected_id": "tk-bass-003",
       "selection_reason": "",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/bass/cbc8c694-8c14-4ddc-865e-457d6f86584e",
+        "pre_value": null,
+        "post_value": "a1 ~ ~ a1 ~ ~ c2 ~",
+        "contributes_to_orbit": 2,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "stab",
@@ -556,7 +661,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/stab/ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+        "pre_value": null,
+        "post_value": "<a3 c4 e4>",
+        "contributes_to_orbit": 3,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "stab",
@@ -581,7 +693,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/stab/4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+        "pre_value": null,
+        "post_value": "<a3 c4 e4>",
+        "contributes_to_orbit": 3,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "stab",
@@ -606,7 +725,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/stab/cbc8c694-8c14-4ddc-865e-457d6f86584e",
+        "pre_value": null,
+        "post_value": "<a3 c4 e4>",
+        "contributes_to_orbit": 3,
+        "suspected_in_hard_failure": false
+      }
     }
   ]
 }

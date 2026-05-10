@@ -58,15 +58,34 @@ export interface RealImpactResult {
       arrangement_arc_ok: boolean | null;
       critic_issue_count: number;
       mini_notation_token_overlap_vs_minimal: number | null;
+      seed: number;
     }>;
   }>;
+  /**
+   * G11A audit closeout: briefs that parseBrief failed to recognize. The
+   * pre-fix smoke-real silently dropped underscore-spelled dub_techno; we
+   * report dropouts now instead of silently down-counting prompts.
+   */
+  dropped_briefs: Array<{ brief: string; reason: string }>;
+  /**
+   * Number of distinct seeds used per (brief × mode). When > 1, the
+   * verdict aggregates across seeds.
+   */
+  seeds_per_prompt: number;
   verdict: 'cookbook_positive' | 'cookbook_neutral_preserves_diversity' | 'cookbook_negative_regression' | 'cookbook_inconclusive_insufficient_signal';
   notes: string[];
 }
 
+// G9C+ note (verified 2026-05-10): brief-parser matches `\bdub[\s-]+techno\b`,
+// so dub_techno briefs MUST use space or hyphen, not underscore. Pre-fix
+// versions of these strings used "dub_techno", which silently
+// dropped out of the audit (parseBrief returned primary_genre=undefined),
+// down-counting smoke-real from 5 prompts to 4 without saying so.
+// External audit caught this; the entry below uses "dub techno" so the
+// genre is actually exercised.
 const SMOKE_BRIEFS: Array<{ brief: string; genre: string }> = [
   { brief: 'peak time techno 132 BPM, 16 bars, hypnotic', genre: 'techno' },
-  { brief: 'dub_techno 122 BPM, 16 bars, restrained chord stab', genre: 'dub_techno' },
+  { brief: 'dub techno 122 BPM, 16 bars, restrained chord stab', genre: 'dub_techno' },
   { brief: 'dnb 174 BPM, 16 bars, rolling reese sub', genre: 'dnb' },
   { brief: 'idm 120 BPM, 16 bars, asymmetric mutation', genre: 'idm' },
   { brief: 'ambient 80 BPM, 16 bars, sustained warm pad', genre: 'ambient' },
@@ -74,7 +93,7 @@ const SMOKE_BRIEFS: Array<{ brief: string; genre: string }> = [
 
 const MICRO_BRIEFS: Array<{ brief: string; genre: string }> = [
   { brief: 'peak time techno 132 BPM, 16 bars, warehouse', genre: 'techno' },
-  { brief: 'dub_techno 122 BPM, 16 bars, dub chord stab cold', genre: 'dub_techno' },
+  { brief: 'dub techno 122 BPM, 16 bars, dub chord stab cold', genre: 'dub_techno' },
 ];
 
 const CORE_GENRES = new Set(['techno', 'dub_techno', 'dnb', 'idm', 'ambient']);
@@ -113,12 +132,27 @@ export async function runRealRenderImpactAudit(opts: RealImpactOptions): Promise
   const codePerMode = new Map<CookbookMode, string[]>();
   for (const m of modes) codePerMode.set(m, []);
 
+  // G11A audit closeout: --seeds N now iterates N distinct seeds per
+  // (brief × mode), not "use N as the seed value". The seed list is
+  // [1, 2, ..., N]; each (brief × seed) is treated as an independent prompt
+  // for verdict purposes.
+  const seedCount = Math.max(1, Math.floor(opts.seeds ?? 1));
+  const seedList = Array.from({ length: seedCount }, (_, i) => i + 1);
+
+  // Track parseBrief drop-outs so the report can name them. Pre-G11A this
+  // was silently down-counting prompts (the Opus audit caught it).
+  const droppedBriefs: Array<{ brief: string; reason: string }> = [];
+
   try {
     for (const item of briefs) {
       const brief = parseBrief(item.brief);
-      if (!brief.primary_genre) continue;
+      if (!brief.primary_genre) {
+        droppedBriefs.push({ brief: item.brief, reason: 'parseBrief returned no primary_genre' });
+        continue;
+      }
       const briefGenre = brief.primary_genre;
       const briefRows: RealImpactResult['per_brief'][number]['rows'] = [];
+      for (const seed of seedList) {
       const minimalCode = { code: '' };
       for (const m of modes) {
         // Reset cookbook cache so the new mode's loadCookbookEntries() re-reads.
@@ -140,14 +174,14 @@ export async function runRealRenderImpactAudit(opts: RealImpactOptions): Promise
         let renderOk = false;
         let analyzeOk = false;
         try {
-          const graph = await buildSessionGraphFromBrief(brief, { seed: opts.seeds ?? 7 });
+          const graph = await buildSessionGraphFromBrief(brief, { seed });
           const compiled = compileSessionGraph(graph);
           const v = validateStrudelCode(compiled.code);
           validatorIssues = v.issues.length;
           if (m === 'minimal') minimalCode.code = compiled.code;
           codePerMode.get(m)!.push(compiled.code);
 
-          const wavPath = path.join(outDir, `${item.genre}__${m}.wav`);
+          const wavPath = path.join(outDir, `${item.genre}__seed${seed}__${m}.wav`);
           const cps = (graph.brief.bpm ?? 120) / 240;
           const cycles = Math.min(graph.song.total_bars, 16);
           await render({ code: compiled.code, durationCycles: cycles, cps, outputPath: wavPath });
@@ -230,8 +264,10 @@ export async function runRealRenderImpactAudit(opts: RealImpactOptions): Promise
           arrangement_arc_ok: arcOk,
           critic_issue_count: criticIssues,
           mini_notation_token_overlap_vs_minimal: overlap,
+          seed,
         });
       }
+      } // end seedList
       perBrief.push({ brief: item.brief, ...(brief.bpm !== undefined ? { bpm: brief.bpm } : {}), genre: brief.primary_genre, rows: briefRows });
     }
   } finally {
@@ -305,9 +341,16 @@ export async function runRealRenderImpactAudit(opts: RealImpactOptions): Promise
     }
   }
 
+  if (droppedBriefs.length > 0) {
+    notes.push(`dropped ${droppedBriefs.length} brief(s) — parseBrief returned no primary_genre: ${droppedBriefs.map((d) => `"${d.brief.slice(0, 40)}…"`).join(', ')}`);
+  }
+  notes.push(`seeds per prompt: ${seedCount} (${seedList.join(',')})`);
+
   const result: RealImpactResult = {
     ok: true, ts, suite: opts.suite, out_dir: outDir, modes,
     per_mode: summaries, per_brief: perBrief,
+    dropped_briefs: droppedBriefs,
+    seeds_per_prompt: seedCount,
     verdict, notes,
   };
   await fs.writeFile(path.join(outDir, 'cookbook-impact-real-report.json'), JSON.stringify(result, null, 2));

@@ -31,7 +31,14 @@
       ],
       "selected_id": "dnb-kick-001",
       "selection_reason": "section:drop compatible (+3); energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "bd ~ ~ ~ ~ ~ bd ~ ~ ~ ~ ~ bd ~ ~ ~",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "kick",
@@ -61,7 +68,14 @@
       ],
       "selected_id": "dnb-kick-002",
       "selection_reason": "",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/kick/4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+        "pre_value": null,
+        "post_value": "bd ~ ~ ~ bd ~ ~ ~",
+        "contributes_to_orbit": 0,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -86,7 +100,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/00fb8673-8b42-4c83-8548-4f3e32248c1e",
+        "pre_value": null,
+        "post_value": "[~ hh]*4",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -111,7 +132,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "[~ hh]*4",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -136,7 +164,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+        "pre_value": null,
+        "post_value": "[~ hh]*4",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "hat",
@@ -161,7 +196,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/hat/9bf739cd-3878-4247-8720-201ef0267b55",
+        "pre_value": null,
+        "post_value": "[~ hh]*4",
+        "contributes_to_orbit": 1,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "snare",
@@ -191,7 +233,14 @@
       ],
       "selected_id": "dnb-snare-001",
       "selection_reason": "section:drop compatible (+3); energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/snare/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "~ ~ ~ ~ sd ~ ~ ~",
+        "contributes_to_orbit": 2,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "snare",
@@ -221,7 +270,14 @@
       ],
       "selected_id": "dnb-snare-002",
       "selection_reason": "section:drop compatible (+3)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/snare/4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+        "pre_value": null,
+        "post_value": "~ ~ ~ sd ~ ~ ~ ~",
+        "contributes_to_orbit": 2,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "bass",
@@ -251,7 +307,14 @@
       ],
       "selected_id": "dnb-bass-001",
       "selection_reason": "section:drop compatible (+3); energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/bass/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "a1 ~ a1 ~",
+        "contributes_to_orbit": 3,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "bass",
@@ -281,7 +344,14 @@
       ],
       "selected_id": "dnb-bass-002",
       "selection_reason": "energy:high (+2)",
-      "mutation_applied": null
+      "mutation_applied": null,
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/bass/4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+        "pre_value": null,
+        "post_value": "<a1 a1 c2 a1>",
+        "contributes_to_orbit": 3,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "pad",
@@ -306,7 +376,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/pad/00fb8673-8b42-4c83-8548-4f3e32248c1e",
+        "pre_value": null,
+        "post_value": "a3",
+        "contributes_to_orbit": 4,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "pad",
@@ -331,7 +408,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/pad/89af9ed0-2560-41c5-867f-bb5522e53a50",
+        "pre_value": null,
+        "post_value": "a3",
+        "contributes_to_orbit": 4,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "pad",
@@ -356,7 +440,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/pad/ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+        "pre_value": null,
+        "post_value": "a3",
+        "contributes_to_orbit": 4,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "pad",
@@ -381,7 +472,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/pad/4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+        "pre_value": null,
+        "post_value": "a3",
+        "contributes_to_orbit": 4,
+        "suspected_in_hard_failure": false
+      }
     },
     {
       "layer_id": "pad",
@@ -406,7 +504,14 @@
       "selected_id": null,
       "selection_reason": null,
       "mutation_applied": null,
-      "fallback_reason": "no-cookbook-match"
+      "fallback_reason": "policy-disabled: no smoke-real evidence yet; producer falls back to defaultPatternForRole",
+      "blame": {
+        "graph_path": "/pattern_bank/patterns/pad/9bf739cd-3878-4247-8720-201ef0267b55",
+        "pre_value": null,
+        "post_value": "a3",
+        "contributes_to_orbit": 4,
+        "suspected_in_hard_failure": false
+      }
     }
   ]
 }
