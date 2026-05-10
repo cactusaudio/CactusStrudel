@@ -388,9 +388,20 @@ async function buildPatternBank(
       }
 
       if (!chosenPattern) {
-        // Last-resort fallback to legacy snippet so the producer never silently
-        // produces an empty pattern when enabled mode finds nothing.
-        const pick = legacySnippets.length > 0 ? pickSnippet(legacySnippets, bpm, rng) : undefined;
+        // G11A iteration-4 fix: when activation policy says minimal_only for
+        // this (genre, role), the legacy pickSnippet fallback would BYPASS
+        // the policy by picking from the role's full JSONL. dub_techno
+        // enabled at seed=2 hit this exact path: policy minimal_only,
+        // typed retrieval returned null, legacy pickSnippet picked a
+        // dub_techno chord_stab that produced non_silent_ratio=0.315
+        // while minimal mode (which doesn't load legacy snippets in
+        // enabled-mode-but-policy-disabled territory) used the role
+        // default and stayed at nsr=0.655. The policy now covers BOTH the
+        // typed path and the legacy fallback: a policy-disabled pick goes
+        // straight to defaultPatternForRole.
+        const policyDisabled = (trace.fallback_reason ?? '').startsWith('policy-disabled');
+        const pick = (!policyDisabled && legacySnippets.length > 0)
+          ? pickSnippet(legacySnippets, bpm, rng) : undefined;
         if (pick?.mini_notation) {
           chosenPattern = { mini_notation: pick.mini_notation };
           trace = { ...trace, fallback_reason: trace.fallback_reason ?? 'legacy-pickSnippet' };
