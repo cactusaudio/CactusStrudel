@@ -8,6 +8,8 @@ import type {
 } from '@cactus/ir';
 import { loadGenre, type GenreSpec } from '@cactus/genres';
 
+export { checkCriticSelfConsistency, type SelfConsistencyReport } from './self-consistency.js';
+
 export interface CritiqueInput {
   graph: SessionGraph;
   features: AnalyzerFeatures;

@@ -1,0 +1,23 @@
+{
+  "name": "@cactus/orchestrator",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cactus/ir": "workspace:*",
+    "@cactus/agent-runtime": "workspace:*",
+    "@cactus/strudel-compiler": "workspace:*",
+    "@cactus/strudel-validator": "workspace:*",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0"
+  }
+}

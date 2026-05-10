@@ -17,6 +17,9 @@
     { "path": "./packages/agent-runtime" },
     { "path": "./packages/preference" },
     { "path": "./packages/mastering" },
+    { "path": "./packages/revision" },
+    { "path": "./packages/orchestrator" },
+    { "path": "./packages/audit" },
     { "path": "./apps/cli" }
   ]
 }

@@ -1,0 +1,62 @@
+genre: ambient
+prompts:
+  - id: ambient-canonical-001
+    text: "ambient drone 60 BPM, fm textures, weightless"
+    intent_genre: ambient
+    bpm_target: 60
+    expected_modifiers: [drone, fm-textures]
+    intent_class: canonical
+  - id: ambient-canonical-002
+    text: "cinematic ambient 50 BPM, slow swell, in D dorian"
+    intent_genre: ambient
+    bpm_target: 50
+    expected_modifiers: []
+    intent_class: canonical
+  - id: ambient-canonical-003-cn
+    text: "漂移氛围 60BPM, 失重, fm 纹理"
+    intent_genre: ambient
+    bpm_target: 60
+    expected_modifiers: [drone, fm-textures]
+    intent_class: canonical
+  - id: ambient-hybrid-001
+    text: "ambient × dub techno, 90 BPM, rare kick events, long reverb tails"
+    intent_genre: ambient
+    bpm_target: 90
+    expected_modifiers: []
+    intent_class: hybrid
+  - id: ambient-hybrid-002-mixed
+    text: "环境 ambient blended with idm-style sparse percussion, 70 BPM"
+    intent_genre: ambient
+    bpm_target: 70
+    expected_modifiers: []
+    intent_class: hybrid
+  - id: ambient-negative-001
+    text: "ambient drone 60 BPM, no rhythm at all, no percussion"
+    intent_genre: ambient
+    bpm_target: 60
+    expected_modifiers: [drone]
+    intent_class: negative-constraint
+  - id: ambient-negative-002-cn
+    text: "环境氛围 60BPM 不要节奏"
+    intent_genre: ambient
+    bpm_target: 60
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: ambient-mix-intent-001
+    text: "ambient drone 50 BPM, master loudness around -16 LUFS, wide stereo"
+    intent_genre: ambient
+    bpm_target: 50
+    expected_modifiers: [drone]
+    intent_class: mix-intent
+  - id: ambient-arrangement-001
+    text: "ambient 60 BPM, 8-bar emerge, 16-bar swell, 8-bar dissolve, follow that energy arc exactly"
+    intent_genre: ambient
+    bpm_target: 60
+    expected_modifiers: []
+    intent_class: arrangement-intent
+  - id: ambient-revision-001
+    text: "rework as darker ambient 50 BPM with deeper sub drones"
+    intent_genre: ambient
+    bpm_target: 50
+    expected_modifiers: []
+    intent_class: revision

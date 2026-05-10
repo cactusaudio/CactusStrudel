@@ -1,5 +1,5 @@
 import type { AnalyzerFeatures } from '@cactus/ir';
-import { readWav, mixToMono, resample } from './wav-io.js';
+import { readWav, mixToMono } from './wav-io.js';
 import { computeSpectralFeatures } from './spectral.js';
 import { computeRhythmFeatures } from './rhythm.js';
 import { computeStereoFeatures } from './stereo.js';
@@ -11,7 +11,7 @@ export interface AnalyzeOptions {
 
 export async function analyzeWav(
   wavPath: string,
-  options: AnalyzeOptions = {},
+  _options: AnalyzeOptions = {},
 ): Promise<AnalyzerFeatures> {
   const decoded = await readWav(wavPath);
   const mono = mixToMono(decoded.channels);
@@ -39,3 +39,14 @@ export async function analyzeWav(
 export { computeSpectralFeatures, computeRhythmFeatures, computeStereoFeatures, computeLoudness };
 export { generateSpectrogram } from './spectrogram.js';
 export { readWav, mixToMono, resample } from './wav-io.js';
+export {
+  computeSectionFeatures,
+  type SectionAnalysis,
+  type SectionFeatures,
+} from './section-features.js';
+export {
+  runQualityGates,
+  type QualityGateResult,
+  type QualityGatesReport,
+  type QualityGatesInput,
+} from './quality-gates.js';

@@ -1,0 +1,62 @@
+genre: dnb
+prompts:
+  - id: dnb-canonical-001
+    text: "rolling neurofunk dnb 174 BPM, dark, reece bass"
+    intent_genre: dnb
+    bpm_target: 174
+    expected_modifiers: [neurofunk, reece-bass]
+    intent_class: canonical
+  - id: dnb-canonical-002
+    text: "liquid dnb 172 BPM, warm pads, rolling drums"
+    intent_genre: dnb
+    bpm_target: 172
+    expected_modifiers: [liquid]
+    intent_class: canonical
+  - id: dnb-canonical-003-cn
+    text: "翻滚的神经放克鼓贝斯 174BPM 黑暗"
+    intent_genre: dnb
+    bpm_target: 174
+    expected_modifiers: [neurofunk]
+    intent_class: canonical
+  - id: dnb-hybrid-001
+    text: "jungle × neurofunk 168 BPM, breakbeat, distorted reece"
+    intent_genre: dnb
+    bpm_target: 168
+    expected_modifiers: [jungle, neurofunk, breakbeat]
+    intent_class: hybrid
+  - id: dnb-hybrid-002-mixed
+    text: "dnb fused with idm, 170 BPM, polyrhythmic stuttery percussion"
+    intent_genre: dnb
+    bpm_target: 170
+    expected_modifiers: [polyrhythm]
+    intent_class: hybrid
+  - id: dnb-negative-001
+    text: "dnb 174 BPM, no snare on backbeat, only ghost snare"
+    intent_genre: dnb
+    bpm_target: 174
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: dnb-negative-002
+    text: "dnb 172 BPM, no atmosphere pad, dry mix"
+    intent_genre: dnb
+    bpm_target: 172
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: dnb-mix-intent-001
+    text: "dnb 174 BPM, sidechain depth ≥ 0.55 on reece, true peak ≤ -1 dBTP"
+    intent_genre: dnb
+    bpm_target: 174
+    expected_modifiers: []
+    intent_class: mix-intent
+  - id: dnb-arrangement-001
+    text: "dnb 174 BPM, 16-bar atmospheric intro then immediate full drop, no slow build"
+    intent_genre: dnb
+    bpm_target: 174
+    expected_modifiers: []
+    intent_class: arrangement-intent
+  - id: dnb-revision-001
+    text: "rework as half-time dnb 87 BPM with sub bass focus"
+    intent_genre: dnb
+    bpm_target: 87
+    expected_modifiers: []
+    intent_class: revision

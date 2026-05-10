@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../ir" },
+    { "path": "../agent-runtime" },
+    { "path": "../strudel-compiler" },
+    { "path": "../strudel-validator" },
+    { "path": "../renderer" },
+    { "path": "../analyzer" },
+    { "path": "../critic" },
+    { "path": "../genres" },
+    { "path": "../orchestrator" },
+    { "path": "../revision" }
+  ]
+}

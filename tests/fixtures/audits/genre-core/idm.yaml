@@ -1,0 +1,62 @@
+genre: idm
+prompts:
+  - id: idm-canonical-001
+    text: "fractured idm 138 BPM, polyrhythmic, granular textures"
+    intent_genre: idm
+    bpm_target: 138
+    expected_modifiers: [polyrhythm, granular]
+    intent_class: canonical
+  - id: idm-canonical-002
+    text: "Aphex Twin-style idm 142 BPM, alien melodic fragments"
+    intent_genre: idm
+    bpm_target: 142
+    expected_modifiers: []
+    intent_class: canonical
+  - id: idm-canonical-003-cn
+    text: "破碎的智能舞曲 138BPM 复节奏 颗粒合成"
+    intent_genre: idm
+    bpm_target: 138
+    expected_modifiers: [polyrhythm, granular]
+    intent_class: canonical
+  - id: idm-hybrid-001
+    text: "idm × ambient, 130 BPM, slow-evolving textures with euclidean kick"
+    intent_genre: idm
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: hybrid
+  - id: idm-hybrid-002-mixed
+    text: "idm fused with breakcore, 160 BPM, chopped amen breaks"
+    intent_genre: idm
+    bpm_target: 160
+    expected_modifiers: [breakbeat]
+    intent_class: hybrid
+  - id: idm-negative-001
+    text: "idm 140 BPM, no straight 4-on-the-floor, only odd-meter kick patterns"
+    intent_genre: idm
+    bpm_target: 140
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: idm-negative-002-cn
+    text: "智能舞曲 138BPM 不要四四拍"
+    intent_genre: idm
+    bpm_target: 138
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: idm-mix-intent-001
+    text: "idm 142 BPM, allow extreme stereo width on percussion, mono kick only"
+    intent_genre: idm
+    bpm_target: 142
+    expected_modifiers: []
+    intent_class: mix-intent
+  - id: idm-arrangement-001
+    text: "idm 138 BPM, 8-bar intro, 32-bar develop section with steadily increasing pattern variation"
+    intent_genre: idm
+    bpm_target: 138
+    expected_modifiers: []
+    intent_class: arrangement-intent
+  - id: idm-revision-001
+    text: "rework as slower idm 110 BPM with longer breath between events"
+    intent_genre: idm
+    bpm_target: 110
+    expected_modifiers: []
+    intent_class: revision

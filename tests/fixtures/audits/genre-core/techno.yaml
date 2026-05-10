@@ -1,0 +1,63 @@
+genre: techno
+prompts:
+  - id: techno-canonical-001
+    text: "peak time techno 132 BPM, driving"
+    intent_genre: techno
+    bpm_target: 132
+    expected_modifiers: [peak_time]
+    intent_class: canonical
+  - id: techno-canonical-002
+    text: "minimal techno 128 BPM, hypnotic"
+    intent_genre: techno
+    bpm_target: 128
+    expected_modifiers: []
+    intent_class: canonical
+  - id: techno-canonical-003-cn
+    text: "巅峰科技舞 134 BPM, 黑暗强劲"
+    intent_genre: techno
+    bpm_target: 134
+    expected_modifiers: [peak_time]
+    intent_class: canonical
+  - id: techno-hybrid-001
+    text: "techno x dnb fusion, 140 BPM, dark"
+    intent_genre: techno
+    bpm_target: 140
+    expected_modifiers: []
+    intent_class: hybrid
+  - id: techno-hybrid-002-mixed
+    text: "迷雾 dub techno × peak time techno crossover, 130 BPM"
+    intent_genre: techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: hybrid
+  - id: techno-negative-001
+    text: "techno 130 BPM, no 4-on-the-floor, broken kick pattern"
+    intent_genre: techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: negative-constraint
+    forbidden_modifiers: ["four_on_the_floor"]
+  - id: techno-negative-002-cn
+    text: "科技舞 130BPM, 不要四四拍"
+    intent_genre: techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: techno-mix-intent-001
+    text: "techno 130 BPM, mono low end, kick must dominate sub band"
+    intent_genre: techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: mix-intent
+  - id: techno-arrangement-001
+    text: "techno 132 BPM with very long 32-bar intro, then a single sustained drop"
+    intent_genre: techno
+    bpm_target: 132
+    expected_modifiers: []
+    intent_class: arrangement-intent
+  - id: techno-revision-001
+    text: "rework as harder, faster techno 138 BPM with industrial percussion"
+    intent_genre: techno
+    bpm_target: 138
+    expected_modifiers: []
+    intent_class: revision

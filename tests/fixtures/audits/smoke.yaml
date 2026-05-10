@@ -1,0 +1,8 @@
+genre: smoke
+prompts:
+  - id: smoke-001
+    text: "peak time techno 130 BPM, 10 seconds"
+    intent_genre: techno
+    bpm_target: 130
+    expected_modifiers: [peak_time]
+    intent_class: canonical

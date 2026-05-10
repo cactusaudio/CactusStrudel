@@ -13,6 +13,8 @@ import { SessionGraphSchema } from '@cactus/ir';
 import { compileSessionGraph } from '@cactus/strudel-compiler';
 import { critique } from '@cactus/critic';
 import { parseFeedback, applyFeedback, recordDecision } from '@cactus/preference';
+import { runAudit } from '@cactus/audit';
+import { createBackend, type BackendName } from '@cactus/orchestrator';
 
 const program = new Command();
 program
@@ -48,23 +50,72 @@ program
   .requiredOption('-b, --brief <text>', 'free-text brief')
   .option('--no-render', 'skip rendering audio (graph + code only)')
   .option('--seed <n>', 'PRNG seed for deterministic graph generation')
-  .action(async (opts: { brief: string; render: boolean; seed?: string }) => {
+  .option('--backend <name>', 'rules | claude-shadow | hybrid (default: rules)', 'rules')
+  .action(async (opts: { brief: string; render: boolean; seed?: string; backend: string }) => {
     const seed = opts.seed !== undefined ? parseInt(opts.seed, 10) : undefined;
-    const r = await produce(opts.brief, {
+    const backend = (opts.backend as BackendName) ?? 'rules';
+    if (backend === 'rules') {
+      const r = await produce(opts.brief, {
+        skipRender: !opts.render,
+        ...(seed !== undefined ? { seed } : {}),
+      });
+      console.log(JSON.stringify({
+        ok: true, mode: 'produce', backend: 'rules',
+        session: r.graph.session_id, sessionDir: r.sessionDir,
+        wavPath: r.wavPath, featuresPath: r.featuresPath, reportPath: r.reportPath,
+        validatorIssues: r.validatorIssues,
+      }, null, 2));
+      return;
+    }
+    // Non-rules backend: execute via the backend abstraction; no session bundle yet.
+    const b = createBackend(backend);
+    const result = await b.produce({ brief: opts.brief, ...(seed !== undefined ? { seed } : {}) });
+    console.log(JSON.stringify({
+      ok: true, mode: 'produce', backend,
+      session: result.graph.session_id,
+      validator_issues: result.validator_issues,
+      warnings: result.warnings,
+      compiled_code_length: result.code.length,
+      note: 'Non-rules backend output is not (yet) bundled; promote via audit comparison.',
+    }, null, 2));
+  });
+
+program
+  .command('audit')
+  .description('Run an adversarial audit suite against the deterministic champion (and optional challengers)')
+  .requiredOption('--suite <name>', "suite name: 'smoke', 'genre-core', or any directory under tests/fixtures/audits/")
+  .option('--seeds <n>', 'seeds per prompt', '3')
+  .option('--out <dir>', 'output directory (default: sessions/audits/<timestamp>)')
+  .option('--no-render', 'skip rendering (analyzer-only static path)')
+  .option('--challenger <name>', 'add challenger backend (claude-shadow | hybrid)', collect, [])
+  .action(async (opts: { suite: string; seeds: string; out?: string; render: boolean; challenger: string[] }) => {
+    const seeds = Math.max(1, parseInt(opts.seeds, 10) || 1);
+    const outDir = opts.out ?? path.resolve('sessions', 'audits', new Date().toISOString().replace(/[:.]/g, '-'));
+    const r = await runAudit({
+      suite: opts.suite,
+      seeds,
+      outDir,
       skipRender: !opts.render,
-      ...(seed !== undefined ? { seed } : {}),
+      challengers: (opts.challenger as BackendName[]) ?? [],
     });
     console.log(JSON.stringify({
       ok: true,
-      mode: 'produce',
-      session: r.graph.session_id,
-      sessionDir: r.sessionDir,
-      wavPath: r.wavPath,
-      featuresPath: r.featuresPath,
-      reportPath: r.reportPath,
-      validatorIssues: r.validatorIssues,
+      mode: 'audit',
+      suite: opts.suite,
+      seeds,
+      outDir: r.outDir,
+      prompts_total: r.prompts_total,
+      champion_pass: r.champion_pass,
+      champion_fail: r.champion_fail,
+      champion_failures_by_category: r.champion_failures_by_category,
+      report: path.join(r.outDir, 'audit-report.md'),
+      summary: path.join(r.outDir, 'audit-summary.json'),
     }, null, 2));
   });
+
+function collect(value: string, prev: string[]): string[] {
+  return [...prev, value];
+}
 
 program
   .command('revise')

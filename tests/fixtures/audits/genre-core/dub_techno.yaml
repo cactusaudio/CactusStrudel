@@ -1,0 +1,62 @@
+genre: dub_techno
+prompts:
+  - id: dub_techno-canonical-001
+    text: "dark spacious dub techno 130 BPM, haunted, evolving chords"
+    intent_genre: dub_techno
+    bpm_target: 130
+    expected_modifiers: [evolving-chords]
+    intent_class: canonical
+  - id: dub_techno-canonical-002
+    text: "Burial-style rainy dub techno 127 BPM, 909 core"
+    intent_genre: dub_techno
+    bpm_target: 127
+    expected_modifiers: [rain-texture, 909-core]
+    intent_class: canonical
+  - id: dub_techno-canonical-003-cn
+    text: "迷雾科技舞 132BPM 鬼魅 909核心 雨声纹理"
+    intent_genre: dub_techno
+    bpm_target: 132
+    expected_modifiers: [909-core, rain-texture]
+    intent_class: canonical
+  - id: dub_techno-hybrid-001
+    text: "dub techno × ambient, 124 BPM, weightless"
+    intent_genre: dub_techno
+    bpm_target: 124
+    expected_modifiers: []
+    intent_class: hybrid
+  - id: dub_techno-hybrid-002-mixed
+    text: "深邃 dub techno crossing into deep house, 124 BPM, rolling"
+    intent_genre: dub_techno
+    bpm_target: 124
+    expected_modifiers: []
+    intent_class: hybrid
+  - id: dub_techno-negative-001
+    text: "dub techno 130 BPM, no kick on intro 16 bars, then heavy kick"
+    intent_genre: dub_techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: dub_techno-negative-002
+    text: "dub techno 128 BPM, no reverb on the kick"
+    intent_genre: dub_techno
+    bpm_target: 128
+    expected_modifiers: []
+    intent_class: negative-constraint
+  - id: dub_techno-mix-intent-001
+    text: "dub techno 130 BPM, chord stab needs >0.5 reverb send, mono low"
+    intent_genre: dub_techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: mix-intent
+  - id: dub_techno-arrangement-001
+    text: "dub techno 130 BPM, 24-bar intro, 32-bar main drop, 16-bar breakdown, 32-bar second drop"
+    intent_genre: dub_techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: arrangement-intent
+  - id: dub_techno-revision-001-cn
+    text: "把这个改成更紧致的 dub techno，130 BPM，紧凑短回响"
+    intent_genre: dub_techno
+    bpm_target: 130
+    expected_modifiers: []
+    intent_class: revision
