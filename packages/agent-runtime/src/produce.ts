@@ -6,17 +6,34 @@ import type { SessionGraph } from '@cactus/ir';
 import { parseBrief } from './brief-parser.js';
 import { buildSessionGraphFromBrief } from './build-graph.js';
 
+/**
+ * Single-pass draft producer. After G2 this is the implementation for
+ * `cactus produce --mode draft`; the default `--mode closed-loop` lives in
+ * apps/cli/src/produce-closed-loop.ts and orchestrates this plus quality
+ * gates / critic / revision / mastering.
+ *
+ * Failure policy:
+ * - validator failures throw unconditionally (clean Strudel is non-negotiable).
+ * - render/analyze failures throw by default. Set `bestEffort: true` to make
+ *   them non-fatal (the prior silent-swallow behavior, now opt-in).
+ */
 export interface ProduceOptions {
   /** Where to write the session bundle. Defaults to ./sessions/<session_id>/. */
   sessionsRoot?: string;
-  /** Skip rendering even if available (faster CI). */
+  /** If true, skip render entirely (no WAV, no features). */
   skipRender?: boolean;
-  /** Skip analysis even if WAV available. */
+  /** If true, skip analysis even when WAV exists. */
   skipAnalyze?: boolean;
-  /** Render duration in cycles (overrides brief duration). */
+  /** Render duration in cycles (overrides graph.song.total_bars). */
   durationCyclesOverride?: number;
   /** Optional PRNG seed for deterministic graph generation. */
   seed?: number;
+  /**
+   * G2 failure policy: when true, render and analyze errors are caught + logged
+   * but produce returns normally. When false (default), those errors throw.
+   * The CLI exposes this as `--best-effort`.
+   */
+  bestEffort?: boolean;
 }
 
 export interface ProduceResult {
@@ -27,6 +44,8 @@ export interface ProduceResult {
   wavPath?: string;
   featuresPath?: string;
   reportPath: string;
+  /** G2: explicit list of failures encountered (empty when fully clean). */
+  failures: string[];
 }
 
 export async function produce(briefText: string, options: ProduceOptions = {}): Promise<ProduceResult> {
@@ -39,11 +58,20 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
   }
 
   // 2. Build SessionGraph from genre + cookbook.
-  const graph = await buildSessionGraphFromBrief(brief, options.seed !== undefined ? { seed: options.seed } : {});
+  const graph = await buildSessionGraphFromBrief(
+    brief,
+    options.seed !== undefined ? { seed: options.seed } : {},
+  );
 
-  // 3. Compile.
+  // 3. Compile + validate (validator failures always throw — clean Strudel
+  // is a precondition of any downstream work).
   const compiled = compileSessionGraph(graph);
   const validation = validateStrudelCode(compiled.code);
+  if (validation.issues.length > 0) {
+    throw new Error(
+      `produce: compiled Strudel has ${validation.issues.length} validator issue(s). First: [${validation.issues[0]!.code}] ${validation.issues[0]!.message}`,
+    );
+  }
 
   // 4. Set up session dir.
   const sessionsRoot = options.sessionsRoot ?? path.resolve(process.cwd(), 'sessions');
@@ -57,7 +85,9 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
   await fs.writeFile(graphPath, JSON.stringify(graph, null, 2));
   await fs.writeFile(codePath, compiled.code);
 
-  // 6. Optionally render.
+  const failures: string[] = [];
+
+  // 6. Render (fatal by default; bestEffort makes it informational).
   let wavPath: string | undefined;
   if (!options.skipRender) {
     try {
@@ -66,24 +96,17 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
       const cps = (graph.brief.bpm ?? 120) / 240;
       const totalBars = graph.song.total_bars;
       const durationCycles = options.durationCyclesOverride ?? totalBars;
-      await render({
-        code: compiled.code,
-        durationCycles,
-        cps,
-        outputPath: wavPath,
-      });
+      await render({ code: compiled.code, durationCycles, cps, outputPath: wavPath });
     } catch (e) {
-      // Renderer requires Playwright + browser + vite server. Skip silently
-      // if unavailable (e.g., CI without CACTUS_RENDER_E2E).
-      const msg = e instanceof Error ? e.message : String(e);
-      if (process.env.CACTUS_RENDER_VERBOSE) {
-        console.error(`[produce] render skipped: ${msg}`);
-      }
+      const msg = `render failed: ${e instanceof Error ? e.message : String(e)}`;
+      failures.push(msg);
       wavPath = undefined;
+      if (!options.bestEffort) throw new Error(`produce: ${msg}. Pass bestEffort=true to make render failures non-fatal.`);
+      if (process.env.CACTUS_RENDER_VERBOSE) console.error(`[produce] ${msg}`);
     }
   }
 
-  // 7. Optionally analyze.
+  // 7. Analyze (fatal by default when WAV exists; bestEffort makes it informational).
   let featuresPath: string | undefined;
   if (wavPath && !options.skipAnalyze) {
     try {
@@ -91,7 +114,6 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
       const features = await analyzeWav(wavPath);
       featuresPath = path.join(sessionDir, 'iter_0000.features.json');
       await fs.writeFile(featuresPath, JSON.stringify(features, null, 2));
-      // Update graph with render artifact.
       graph.render_graph.push({
         iteration: 0,
         artifacts: { wav_path: wavPath, stems_paths: {}, spectrogram_paths: [], compiled_code_path: codePath },
@@ -105,28 +127,26 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
         },
         features,
       });
-      // Re-write graph with render artifact.
       await fs.writeFile(graphPath, JSON.stringify(graph, null, 2));
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (process.env.CACTUS_RENDER_VERBOSE) {
-        console.error(`[produce] analyze skipped: ${msg}`);
-      }
+      const msg = `analyze failed: ${e instanceof Error ? e.message : String(e)}`;
+      failures.push(msg);
+      if (!options.bestEffort) throw new Error(`produce: ${msg}. Pass bestEffort=true to make analyze failures non-fatal.`);
+      if (process.env.CACTUS_RENDER_VERBOSE) console.error(`[produce] ${msg}`);
     }
   }
 
   // 8. Write report.
-  const report = renderReport(graph, compiled, validation, wavPath, featuresPath);
+  const report = renderReport(graph, compiled, validation, wavPath, featuresPath, failures);
   await fs.writeFile(reportPath, report);
 
   return {
-    graph,
-    sessionDir,
+    graph, sessionDir,
     compiledCode: compiled.code,
     validatorIssues: validation.issues.length,
-    wavPath,
-    featuresPath,
-    reportPath,
+    ...(wavPath !== undefined ? { wavPath } : {}),
+    ...(featuresPath !== undefined ? { featuresPath } : {}),
+    reportPath, failures,
   };
 }
 
@@ -136,6 +156,7 @@ function renderReport(
   validation: { ok: boolean; issues: Array<{ code: string; message: string }> },
   wavPath: string | undefined,
   featuresPath: string | undefined,
+  failures: string[],
 ): string {
   const lines: string[] = [];
   lines.push(`# session ${graph.session_id}`);
@@ -170,6 +191,11 @@ function renderReport(
   }
   if (validation.issues.length > 10) {
     lines.push(`  - ... ${validation.issues.length - 10} more`);
+  }
+  if (failures.length > 0) {
+    lines.push('');
+    lines.push('## non-fatal failures (best-effort mode)');
+    for (const f of failures) lines.push(`- ${f}`);
   }
   lines.push('');
   lines.push('## artifacts');

@@ -46,24 +46,69 @@ program
 
 program
   .command('produce')
-  .description('Generate a full track from a brief')
+  .description('Generate a track from a brief. Default mode is closed-loop (gated, mixed, revised).')
   .requiredOption('-b, --brief <text>', 'free-text brief')
-  .option('--no-render', 'skip rendering audio (graph + code only)')
+  .option('--mode <name>', 'draft | closed-loop | audit (default: closed-loop)', 'closed-loop')
+  .option('--no-render', 'skip rendering audio (graph + code only) — implies --mode draft + --best-effort')
+  .option('--best-effort', 'do not throw on render/analyze failures (still reports them)')
+  .option('--max-iterations <n>', 'closed-loop revision cap', '4')
+  .option('--severity-floor <f>', 'closed-loop severity floor for accept', '0.5')
   .option('--seed <n>', 'PRNG seed for deterministic graph generation')
   .option('--backend <name>', 'rules | claude-shadow | hybrid (default: rules)', 'rules')
-  .action(async (opts: { brief: string; render: boolean; seed?: string; backend: string }) => {
+  .action(async (opts: { brief: string; mode: string; render: boolean; bestEffort?: boolean; maxIterations: string; severityFloor: string; seed?: string; backend: string }) => {
     const seed = opts.seed !== undefined ? parseInt(opts.seed, 10) : undefined;
     const backend = (opts.backend as BackendName) ?? 'rules';
-    if (backend === 'rules') {
-      const r = await produce(opts.brief, {
-        skipRender: !opts.render,
+    const mode = opts.render === false ? 'draft' : (opts.mode ?? 'closed-loop');
+    const bestEffort = opts.bestEffort === true || opts.render === false;
+
+    if (backend === 'rules' && mode === 'closed-loop') {
+      const { produceClosedLoop } = await import('./produce-closed-loop.js');
+      const r = await produceClosedLoop({
+        brief: opts.brief,
         ...(seed !== undefined ? { seed } : {}),
+        maxIterations: Math.max(0, parseInt(opts.maxIterations, 10) || 4),
+        severityFloor: parseFloat(opts.severityFloor) || 0.5,
+        bestEffort,
+        emitAuditFailures: false,
       });
       console.log(JSON.stringify({
-        ok: true, mode: 'produce', backend: 'rules',
+        ok: r.ok, mode: 'produce', sub_mode: 'closed-loop', backend: 'rules',
+        sessionDir: r.sessionDir, iterations: r.iterations, stoppedReason: r.stoppedReason,
+        finalWavPath: r.finalWavPath, reportPath: r.reportPath,
+        hardFailures: r.hardFailures, failureCategories: r.failureCategories,
+      }, null, 2));
+      return;
+    }
+    if (backend === 'rules' && mode === 'audit') {
+      const { produceClosedLoop } = await import('./produce-closed-loop.js');
+      const r = await produceClosedLoop({
+        brief: opts.brief,
+        ...(seed !== undefined ? { seed } : {}),
+        maxIterations: Math.max(0, parseInt(opts.maxIterations, 10) || 4),
+        severityFloor: parseFloat(opts.severityFloor) || 0.5,
+        bestEffort,
+        emitAuditFailures: true,
+      });
+      console.log(JSON.stringify({
+        ok: r.ok, mode: 'produce', sub_mode: 'audit', backend: 'rules',
+        sessionDir: r.sessionDir, iterations: r.iterations, stoppedReason: r.stoppedReason,
+        finalWavPath: r.finalWavPath, reportPath: r.reportPath,
+        hardFailures: r.hardFailures, failureCategories: r.failureCategories,
+      }, null, 2));
+      return;
+    }
+    if (backend === 'rules') {
+      // mode === 'draft'
+      const r = await produce(opts.brief, {
+        skipRender: opts.render === false,
+        ...(seed !== undefined ? { seed } : {}),
+        bestEffort,
+      });
+      console.log(JSON.stringify({
+        ok: r.failures.length === 0, mode: 'produce', sub_mode: 'draft', backend: 'rules',
         session: r.graph.session_id, sessionDir: r.sessionDir,
         wavPath: r.wavPath, featuresPath: r.featuresPath, reportPath: r.reportPath,
-        validatorIssues: r.validatorIssues,
+        validatorIssues: r.validatorIssues, failures: r.failures,
       }, null, 2));
       return;
     }

@@ -26,12 +26,18 @@ importers:
       '@cactus/agent-runtime':
         specifier: workspace:*
         version: link:../../packages/agent-runtime
+      '@cactus/analyzer':
+        specifier: workspace:*
+        version: link:../../packages/analyzer
       '@cactus/audit':
         specifier: workspace:*
         version: link:../../packages/audit
       '@cactus/critic':
         specifier: workspace:*
         version: link:../../packages/critic
+      '@cactus/genres':
+        specifier: workspace:*
+        version: link:../../packages/genres
       '@cactus/ir':
         specifier: workspace:*
         version: link:../../packages/ir
@@ -47,12 +53,18 @@ importers:
       '@cactus/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
+      '@cactus/revision':
+        specifier: workspace:*
+        version: link:../../packages/revision
       '@cactus/session-store':
         specifier: workspace:*
         version: link:../../packages/session-store
       '@cactus/strudel-compiler':
         specifier: workspace:*
         version: link:../../packages/strudel-compiler
+      '@cactus/strudel-validator':
+        specifier: workspace:*
+        version: link:../../packages/strudel-validator
       commander:
         specifier: ^12.1.0
         version: 12.1.0
