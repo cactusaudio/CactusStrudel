@@ -73,9 +73,11 @@ describe('ClaudeShadowBackend', () => {
 });
 
 describe('HybridBackend', () => {
-  it('falls back to rules when no dispatcher configured', async () => {
+  it('falls back to rules when no dispatcher configured (G8: label as "rules", not "hybrid")', async () => {
     const r = await new HybridBackend({}).produce({ brief: 'techno 130 BPM' });
-    expect(r.backend).toBe('hybrid');
+    // G8 no-masquerade: when hybrid actually returns rules output, label
+    // says rules (the truth), not hybrid (the request).
+    expect(r.backend).toBe('rules');
     expect(r.warnings.some((w) => /no Claude dispatcher/.test(w))).toBe(true);
     expect(r.validator_issues).toBe(0);
   });

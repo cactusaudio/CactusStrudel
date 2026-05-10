@@ -91,7 +91,11 @@ export type ClaudeDispatcher = (args: {
 export interface ClaudeShadowOptions {
   /** Dispatcher to call Claude. Required for any non-rules behavior. */
   dispatcher?: ClaudeDispatcher;
-  /** If true (default), validate Claude's output and reject anything that fails. */
+  /**
+   * If true (default for claude-shadow), validate Claude's output and reject
+   * anything that fails. For hybrid, `strict: true` makes a missing
+   * dispatcher throw instead of silently returning the rules baseline.
+   */
   strict?: boolean;
 }
 
@@ -154,10 +158,17 @@ export class HybridBackend implements ProducerBackend {
   async produce(input: ProducerBackendInput): Promise<ProducerBackendResult> {
     const baseline = await new RulesBackend().produce(input);
     if (!this.opts.dispatcher) {
-      // Hybrid without dispatcher = rules baseline.
-      return { ...baseline, backend: 'hybrid', warnings: [
+      if (this.opts.strict) {
+        throw new ClaudeBackendNotConfigured(
+          'hybrid backend: strict mode enabled but no dispatcher configured. ' +
+          'Wire one via createBackend({dispatcher:...}) or set CACTUS_CLAUDE_DISPATCHER.',
+        );
+      }
+      // G8: no masquerade — when hybrid falls back, the result reports
+      // backend='rules' (the truth), not 'hybrid' (the request).
+      return { ...baseline, backend: 'rules', warnings: [
         ...baseline.warnings,
-        'hybrid: no Claude dispatcher configured; returning rules baseline unchanged.',
+        'hybrid requested but no Claude dispatcher configured; returning rules baseline labeled as rules (no masquerade).',
       ]};
     }
     const dispatched = await this.opts.dispatcher({
@@ -167,10 +178,11 @@ export class HybridBackend implements ProducerBackend {
     });
     const validated = validateClaudeOutput(dispatched, baseline.graph);
     if (validated.kind !== 'patches') {
-      // Hybrid only accepts patches; full-graph replacement here is rejected.
-      return { ...baseline, backend: 'hybrid', warnings: [
+      // G8: rejected outputs also revert label to 'rules' — the result is
+      // rules-baseline, not Claude-modified.
+      return { ...baseline, backend: 'rules', warnings: [
         ...baseline.warnings,
-        'hybrid: rejected Claude full-graph replacement (hybrid is patch-only); returning rules baseline.',
+        'hybrid rejected Claude full-graph replacement (hybrid is patch-only); returning rules baseline labeled as rules.',
       ]};
     }
     let next = baseline.graph;
@@ -184,13 +196,20 @@ export class HybridBackend implements ProducerBackend {
     }
     const compiled = compileSessionGraph(next);
     const validation = validateStrudelCode(compiled.code);
+    // G8: if zero Claude patches actually applied, label as 'rules' — the
+    // graph IS the rules baseline. Only when ≥1 patch landed do we keep the
+    // 'hybrid' label.
+    const honestLabel: BackendName = applied > 0 ? 'hybrid' : 'rules';
     return {
-      backend: 'hybrid',
+      backend: honestLabel,
       graph: next,
       code: compiled.code,
       validator_issues: validation.issues.length,
       warnings: [
         `hybrid: applied ${applied}/${validated.patches.length} Claude patches (${skipped} skipped).`,
+        ...(honestLabel === 'rules'
+          ? ['hybrid result was 100% rules (no Claude patches applied); label downgraded to rules to avoid masquerade.']
+          : []),
       ],
     };
   }
@@ -207,6 +226,36 @@ export function createBackend(name: BackendName, opts: BackendFactoryOptions = {
     case 'hybrid': return new HybridBackend(opts);
     default: throw new Error(`unknown backend: ${name}`);
   }
+}
+
+/**
+ * G8: load a Claude dispatcher from CACTUS_CLAUDE_DISPATCHER (a module path).
+ * The module must export a default function matching the ClaudeDispatcher
+ * signature. Returns undefined if the env var is unset; throws if it's set
+ * but the import / shape check fails (no silent masquerade — if you ask for
+ * Claude, you must get Claude or a clear error).
+ */
+export async function loadDispatcherFromEnv(): Promise<ClaudeDispatcher | undefined> {
+  const modulePath = process.env.CACTUS_CLAUDE_DISPATCHER;
+  if (!modulePath) return undefined;
+  let imported: unknown;
+  try {
+    imported = await import(modulePath);
+  } catch (e) {
+    throw new ClaudeBackendNotConfigured(
+      `CACTUS_CLAUDE_DISPATCHER set to "${modulePath}" but import failed: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  const dispatcher =
+    (imported as { default?: unknown }).default ??
+    (imported as { dispatcher?: unknown }).dispatcher ??
+    imported;
+  if (typeof dispatcher !== 'function') {
+    throw new ClaudeBackendNotConfigured(
+      `CACTUS_CLAUDE_DISPATCHER module "${modulePath}" did not export a function (got ${typeof dispatcher})`,
+    );
+  }
+  return dispatcher as ClaudeDispatcher;
 }
 
 export class ClaudeBackendNotConfigured extends Error {
