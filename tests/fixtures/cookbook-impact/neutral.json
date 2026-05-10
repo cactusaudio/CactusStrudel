@@ -1,0 +1,16 @@
+{
+  "name": "neutral",
+  "description": "A brief where cookbook should be neutral — ambient where the legacy fallback already produces a sustained pad and the cookbook adds depth in candidate variety but not in gate pass-rate.",
+  "brief": "ambient 80 BPM, 16 bars, sustained warm pad",
+  "seed": 11,
+  "modes": ["minimal", "enabled"],
+  "expected_influence": {
+    "trace_picks_total_min": 0,
+    "trace_picks_total_max": 32
+  },
+  "expected_pass_fail": {
+    "minimal": "pass",
+    "enabled": "pass",
+    "delta": "no_change_required"
+  }
+}

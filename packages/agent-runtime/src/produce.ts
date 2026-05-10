@@ -57,10 +57,15 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
     );
   }
 
-  // 2. Build SessionGraph from genre + cookbook.
+  // 2. Build SessionGraph from genre + cookbook. G9B: capture cookbook trace
+  // so we can write sessions/<id>/cookbook-trace.json below.
+  const cookbookTraces: Array<import('./cookbook-prior.js').CookbookTrace> = [];
   const graph = await buildSessionGraphFromBrief(
     brief,
-    options.seed !== undefined ? { seed: options.seed } : {},
+    {
+      ...(options.seed !== undefined ? { seed: options.seed } : {}),
+      traceOut: cookbookTraces,
+    },
   );
 
   // 3a. G5: cross-field semantic invariants (section coverage, energy curve
@@ -88,9 +93,15 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
   const graphPath = path.join(sessionDir, 'iter_0000.json');
   const reportPath = path.join(sessionDir, 'iter_0000.report.md');
 
-  // 5. Write graph + code.
+  // 5. Write graph + code + cookbook trace (G9B).
   await fs.writeFile(graphPath, JSON.stringify(graph, null, 2));
   await fs.writeFile(codePath, compiled.code);
+  if (cookbookTraces.length > 0) {
+    await fs.writeFile(
+      path.join(sessionDir, 'cookbook-trace.json'),
+      JSON.stringify(cookbookTraces[0], null, 2),
+    );
+  }
 
   const failures: string[] = [];
 

@@ -18,8 +18,14 @@ export interface ProducerAgent {
 export const REGISTRY: Map<string, ProducerAgent> = new Map();
 
 export { parseBrief } from './brief-parser.js';
-export { buildSessionGraphFromBrief } from './build-graph.js';
+export { buildSessionGraphFromBrief, type BuildGraphOptions } from './build-graph.js';
 export { produce, type ProduceOptions, type ProduceResult } from './produce.js';
+export {
+  selectPrior, getCookbookMode, mapIrRoleToCookbookRole,
+  energyToBand, loadCookbookOnce, _resetCookbookCacheForTests,
+  type CookbookMode, type CookbookTrace, type CookbookTracePick,
+  type SelectPriorInput, type SelectPriorResult,
+} from './cookbook-prior.js';
 export { createRng, hashStringToSeed } from './seed-rng.js';
 export {
   planRevisions,

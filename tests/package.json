@@ -11,6 +11,7 @@
     "@cactus/strudel-validator": "workspace:*",
     "@cactus/critic": "workspace:*",
     "@cactus/preference": "workspace:*",
-    "@cactus/renderer": "workspace:*"
+    "@cactus/renderer": "workspace:*",
+    "@cactus/cookbook": "workspace:*"
   }
 }

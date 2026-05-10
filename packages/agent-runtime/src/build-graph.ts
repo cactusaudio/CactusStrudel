@@ -20,11 +20,22 @@ import {
   type GenreSpec,
 } from '@cactus/genres';
 import { applyGainStaging, applyBandBalance } from '@cactus/mix';
+import { tryMutate } from '@cactus/cookbook';
 import { createRng, hashStringToSeed } from './seed-rng.js';
+import {
+  selectPrior, getCookbookMode,
+  type CookbookTrace, type CookbookTracePick,
+} from './cookbook-prior.js';
 
 export interface BuildGraphOptions {
   /** PRNG seed; defaults to hash of brief.text. */
   seed?: number;
+  /**
+   * G9B: out-param. When supplied, build-graph appends a CookbookTrace
+   * describing every cookbook pick. Producer writes this to
+   * sessions/<id>/cookbook-trace.json.
+   */
+  traceOut?: CookbookTrace[];
 }
 
 export async function buildSessionGraphFromBrief(
@@ -58,7 +69,22 @@ export async function buildSessionGraphFromBrief(
   } as unknown as SessionGraph;
   applyArrangementCoverage(stub);
 
-  const patternBank = await buildPatternBank(genre, briefFinal, layers, song, rng);
+  const cookbookMode = getCookbookMode();
+  const tracePicks: CookbookTracePick[] = [];
+  const patternBank = await buildPatternBank(
+    genre, briefFinal, layers, song, rng,
+    cookbookMode, tracePicks,
+  );
+
+  if (options.traceOut) {
+    options.traceOut.push({
+      mode: cookbookMode,
+      genre: genre.slug,
+      bpm,
+      picks: tracePicks,
+      ...(cookbookMode === 'minimal' ? { baseline_only: true } : {}),
+    });
+  }
   const soundPalette = buildSoundPalette(genre, layers, briefFinal);
   const mixGraph = buildMixGraph(genre, layers, briefFinal);
 
@@ -286,34 +312,89 @@ async function buildPatternBank(
   layers: LayerGraph[],
   song: SongGraph,
   rng: () => number,
+  cookbookMode: 'minimal' | 'enabled' | 'enabled_mutating' = 'minimal',
+  tracePicks: CookbookTracePick[] = [],
 ): Promise<PatternBank> {
   const bpm = brief.bpm ?? 120;
   const patterns: PatternBank['patterns'] = {};
+
+  // G9B: in enabled / enabled_mutating modes, route through the typed
+  // retrieval API + trace. minimal mode preserves the legacy pickSnippet
+  // path verbatim so the existing baseline tests stay stable.
   for (const layer of layers) {
     patterns[layer.id] = {};
-    const role = roleToCookbookKey(layer.role);
-    let snippets = await loadCookbookSnippets(genre.slug, role);
-    if (snippets.length === 0) {
-      // fallback: any role under genre
-      snippets = await loadCookbookSnippets(genre.slug);
-    }
+    const seenIds: string[] = [];
+
+    // Pre-load legacy snippets only once per layer; used for minimal mode + as
+    // a final fallback when typed retrieval returns nothing in enabled mode.
+    const legacyRole = roleToCookbookKey(layer.role);
+    let legacySnippets = await loadCookbookSnippets(genre.slug, legacyRole);
+    if (legacySnippets.length === 0) legacySnippets = await loadCookbookSnippets(genre.slug);
+
     for (const sec of song.sections) {
-      // Only generate a pattern if active in that section.
       const active = song.layer_activation[layer.id]?.sections[sec.id] ?? false;
       if (!active) continue;
-      if (snippets.length === 0) {
-        // Fallback default for any role with no cookbook snippet.
-        patterns[layer.id]![sec.id] = { mini_notation: defaultPatternForRole(layer.role) };
+
+      if (cookbookMode === 'minimal') {
+        // Legacy path — unchanged.
+        const pick = legacySnippets.length > 0 ? pickSnippet(legacySnippets, bpm, rng) : undefined;
+        if (pick?.mini_notation) patterns[layer.id]![sec.id] = { mini_notation: pick.mini_notation };
+        else if (pick?.raw) patterns[layer.id]![sec.id] = { raw: pick.raw };
+        else patterns[layer.id]![sec.id] = { mini_notation: defaultPatternForRole(layer.role) };
         continue;
       }
-      const pick = pickSnippet(snippets, bpm, rng);
-      if (pick?.mini_notation) {
-        patterns[layer.id]![sec.id] = { mini_notation: pick.mini_notation };
-      } else if (pick?.raw) {
-        patterns[layer.id]![sec.id] = { raw: pick.raw };
-      } else {
-        patterns[layer.id]![sec.id] = { mini_notation: defaultPatternForRole(layer.role) };
+
+      // enabled / enabled_mutating: typed retrieval.
+      const result = await selectPrior({
+        genre: genre.slug,
+        layer,
+        section: { id: sec.id, function: sec.function, energy: sec.energy },
+        bpm,
+        seen_ids: seenIds,
+      });
+      let trace = result.trace;
+
+      let chosenPattern: { mini_notation?: string; raw?: string } | undefined;
+      if (result.entry) {
+        let entry = result.entry;
+        // enabled_mutating: try density-down for sparse sections, density-up
+        // for dense ones. The first applicable operator wins; trace records
+        // it. Mutation always validates the result against the schema.
+        if (cookbookMode === 'enabled_mutating') {
+          const wantsDense = sec.energy >= 0.6 && (sec.function === 'main' || sec.function === 'drop');
+          const ops = wantsDense ? ['density_up', 'rest_insert'] as const : ['density_down', 'reverb_up'] as const;
+          const mut = tryMutate(entry, [...ops]);
+          if (mut) {
+            entry = mut.after;
+            trace = {
+              ...trace,
+              mutation_applied: { operator: mut.operator, before: mut.before.id, after: mut.after.id },
+            };
+          }
+        }
+        if (entry.mini_notation) chosenPattern = { mini_notation: entry.mini_notation };
+        else if (entry.raw) chosenPattern = { raw: entry.raw };
+        seenIds.push(result.entry.id);
       }
+
+      if (!chosenPattern) {
+        // Last-resort fallback to legacy snippet so the producer never silently
+        // produces an empty pattern when enabled mode finds nothing.
+        const pick = legacySnippets.length > 0 ? pickSnippet(legacySnippets, bpm, rng) : undefined;
+        if (pick?.mini_notation) {
+          chosenPattern = { mini_notation: pick.mini_notation };
+          trace = { ...trace, fallback_reason: trace.fallback_reason ?? 'legacy-pickSnippet' };
+        } else if (pick?.raw) {
+          chosenPattern = { raw: pick.raw };
+          trace = { ...trace, fallback_reason: trace.fallback_reason ?? 'legacy-pickSnippet-raw' };
+        } else {
+          chosenPattern = { mini_notation: defaultPatternForRole(layer.role) };
+          trace = { ...trace, fallback_reason: trace.fallback_reason ?? 'role-default' };
+        }
+      }
+
+      patterns[layer.id]![sec.id] = chosenPattern;
+      tracePicks.push(trace);
     }
   }
   return { patterns };

@@ -74,12 +74,23 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
   if (!brief.primary_genre) {
     throw new Error(`closed-loop produce: parseBrief could not infer primary_genre. Add a genre keyword.`);
   }
+  // G9B: capture cookbook trace and write it to the session dir below.
+  const cookbookTraces: import('@cactus/agent-runtime').CookbookTrace[] = [];
   let graph = await buildSessionGraphFromBrief(
     brief,
-    input.seed !== undefined ? { seed: input.seed } : {},
+    {
+      ...(input.seed !== undefined ? { seed: input.seed } : {}),
+      traceOut: cookbookTraces,
+    },
   );
   const sessionDir = input.outDir ?? path.resolve(process.cwd(), 'sessions', graph.session_id);
   await fs.mkdir(sessionDir, { recursive: true });
+  if (cookbookTraces.length > 0) {
+    await fs.writeFile(
+      path.join(sessionDir, 'cookbook-trace.json'),
+      JSON.stringify(cookbookTraces[0], null, 2),
+    );
+  }
   const failuresDir = path.join(sessionDir, 'failures');
   if (input.emitAuditFailures) await fs.mkdir(failuresDir, { recursive: true });
 

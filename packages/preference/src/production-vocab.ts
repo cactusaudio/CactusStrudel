@@ -113,7 +113,7 @@ export const PRODUCTION_VOCAB: ProductionVocabEntry[] = [
   },
   {
     id: 'less-pretty-chord',
-    surface_forms: ['别太甜', '和弦冷一点', '别这么甜', "chord less pretty", 'colder chord'],
+    surface_forms: ['别太甜', '和弦冷一点', '别这么甜', 'chord less pretty', 'colder chord', '少一点漂亮', '少点漂亮', 'chord 少'],
     primary_language: 'zh',
     prefer_tags: ['cold', 'restrained', 'dub'],
     forbid_tags: ['sweet', 'pretty', 'cinematic'],
@@ -195,7 +195,7 @@ export const PRODUCTION_VOCAB: ProductionVocabEntry[] = [
   },
   {
     id: 'more-stable',
-    surface_forms: ['更稳', '低频要稳', 'more stable', 'tighter low-end'],
+    surface_forms: ['更稳', '低频要稳', 'groove 要稳', 'groove要稳', 'groove 稳', '要稳定', 'more stable', 'tighter low-end'],
     primary_language: 'zh',
     prefer_tags: ['static', 'tight', 'restrained'],
     forbid_tags: ['arrhythmic', 'broken'],

@@ -19,7 +19,7 @@
 // without reducing diversity. The output is honest — variants that don't help
 // are reported as such, not silently weighted.
 
-export type CookbookMode = 'minimal' | 'enabled' | 'mutated' | 'hybrid';
+export type CookbookMode = 'minimal' | 'enabled' | 'enabled_mutating' | 'mutated' | 'hybrid';
 
 export interface CookbookImpactRunSummary {
   mode: CookbookMode;

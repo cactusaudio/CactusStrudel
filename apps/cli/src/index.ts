@@ -407,11 +407,23 @@ cookbook
 // across the existing prompt-suite plumbing and emits a verdict.
 program
   .command('audit:cookbook-impact')
-  .description('G9 §8: A/B compare cookbook variants — minimal vs enabled vs (optional) hybrid')
-  .option('--suite <name>', 'prompt suite to use (smoke | genre-core)', 'smoke')
+  .description('G9/G9B: A/B compare cookbook modes. Suites: smoke (skipRender) | smoke-real | micro-real')
+  .option('--suite <name>', 'prompt suite (smoke | smoke-real | micro-real)', 'smoke')
   .option('--seeds <n>', 'seeds per prompt', '1')
+  .option('--genres <list>', 'comma-separated genre filter (smoke-real / micro-real only)')
   .option('--out <dir>', 'output dir', './audits/cookbook-impact')
-  .action(async (opts: { suite: string; seeds: string; out: string }) => {
+  .action(async (opts: { suite: string; seeds: string; out: string; genres?: string }) => {
+    if (opts.suite === 'smoke-real' || opts.suite === 'micro-real') {
+      const { runRealRenderImpactAudit } = await import('./cookbook-impact-real.js');
+      const r = await runRealRenderImpactAudit({
+        suite: opts.suite,
+        seeds: parseInt(opts.seeds, 10),
+        ...(opts.genres ? { genres: opts.genres.split(',').map((s) => s.trim()) } : {}),
+      });
+      console.log(JSON.stringify(r, null, 2));
+      return;
+    }
+
     const { runAudit, decideVerdict } = await import('@cactus/audit');
     const { loadCookbookEntries, diversityReport } = await import('@cactus/cookbook');
     const fs = await import('node:fs/promises');
@@ -497,6 +509,82 @@ program
     };
     await fs.writeFile(path.join(outDir, 'cookbook-impact-report.json'), JSON.stringify(report, null, 2));
     console.log(JSON.stringify(report, null, 2));
+  });
+
+cookbook
+  .command('render-audit')
+  .description('G9B §2: render every audible cookbook entry, analyze, classify')
+  .option('--genre <slug>')
+  .option('--role <name>')
+  .option('--changed', 'only audit entries with status unvalidated/diagnostic/experimental')
+  .option('--out <dir>')
+  .option('--dry-run', 'classify by schema/syntax only, do not boot renderer')
+  .action(async (opts: { genre?: string; role?: string; changed?: boolean; out?: string; dryRun?: boolean }) => {
+    const { runCookbookRenderAudit, writeCookbookRenderAuditReport } = await import('./cookbook-render-audit.js');
+    const r = await runCookbookRenderAudit({
+      ...(opts.genre ? { genre: opts.genre } : {}),
+      ...(opts.role ? { role: opts.role } : {}),
+      ...(opts.changed ? { changedOnly: true } : {}),
+      ...(opts.out ? { outDir: opts.out } : {}),
+      ...(opts.dryRun ? { dryRun: true } : {}),
+    });
+    await writeCookbookRenderAuditReport(r);
+    console.log(JSON.stringify({
+      ok: r.by_classification.rejected_silent === 0
+          && r.by_classification.rejected_render_error === 0
+          && r.by_classification.rejected_validation_error === 0,
+      mode: 'cookbook-render-audit',
+      out_dir: r.out_dir,
+      total: r.total,
+      by_classification: r.by_classification,
+    }, null, 2));
+  });
+
+cookbook
+  .command('ledger-check')
+  .description('G9B §8: validate every promoted prior in learning_ledger/cookbook/promoted_priors/ has full evidence')
+  .option('--root <dir>', 'repo root (where learning_ledger/ lives); defaults to walking up from cwd')
+  .action(async (opts: { root?: string }) => {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    let root = opts.root ?? process.cwd();
+    if (!opts.root) {
+      // Walk up from cwd until we find a learning_ledger/ dir; this makes
+      // the command work whether you invoke from repo root or apps/cli/.
+      let cur = process.cwd();
+      for (let i = 0; i < 5; i++) {
+        try {
+          const stat = await fs.stat(path.join(cur, 'learning_ledger'));
+          if (stat.isDirectory()) { root = cur; break; }
+        } catch { /* keep walking */ }
+        const parent = path.dirname(cur);
+        if (parent === cur) break;
+        cur = parent;
+      }
+    }
+    const dir = path.resolve(root, 'learning_ledger', 'cookbook', 'promoted_priors');
+    let entries: string[] = [];
+    try { entries = await fs.readdir(dir); } catch { entries = []; }
+    const REQUIRED = [
+      'source trigger', 'proposed prior', 'expected benefit', 'possible harm',
+      'validation evidence', 'promotion decision', 'rollback path',
+    ];
+    const issues: Array<{ file: string; missing: string[] }> = [];
+    for (const f of entries) {
+      if (!f.endsWith('.md')) continue;
+      const text = await fs.readFile(path.join(dir, f), 'utf8').catch(() => '');
+      const missing = REQUIRED.filter((sec) => !text.toLowerCase().includes(sec.toLowerCase()));
+      if (missing.length > 0) issues.push({ file: f, missing });
+    }
+    const report = {
+      ok: issues.length === 0,
+      mode: 'cookbook-ledger-check',
+      promoted_priors_dir: dir,
+      promoted_files: entries.filter((f) => f.endsWith('.md')),
+      issues,
+    };
+    console.log(JSON.stringify(report, null, 2));
+    if (issues.length > 0) process.exit(1);
   });
 
 cookbook

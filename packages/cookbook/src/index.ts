@@ -7,3 +7,4 @@ export * from './similarity.js';
 export * from './validate.js';
 export * from './references.js';
 export * from './vocab-to-query.js';
+export * from './mutations.js';

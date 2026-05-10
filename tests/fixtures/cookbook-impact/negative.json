@@ -1,0 +1,16 @@
+{
+  "name": "negative",
+  "description": "A brief where cookbook is initially expected to overfit / hurt — mutated mode on dnb where dense kick mutations could collide with the half-time-feel snare. Currently used only as a regression sentinel: if a future change makes this brief regress harder, we want to know.",
+  "brief": "dnb 174 BPM, 16 bars, rolling reese sub",
+  "seed": 19,
+  "modes": ["minimal", "enabled", "enabled_mutating"],
+  "expected_influence": {
+    "kick_role_present": true
+  },
+  "expected_pass_fail": {
+    "minimal": "pass",
+    "enabled": "pass",
+    "enabled_mutating": "pass_or_acceptable_warning"
+  },
+  "regression_sentinel": true
+}

@@ -399,6 +399,9 @@ importers:
       '@cactus/agent-runtime':
         specifier: workspace:*
         version: link:../packages/agent-runtime
+      '@cactus/cookbook':
+        specifier: workspace:*
+        version: link:../packages/cookbook
       '@cactus/critic':
         specifier: workspace:*
         version: link:../packages/critic

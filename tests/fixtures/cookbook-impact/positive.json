@@ -1,0 +1,17 @@
+{
+  "name": "positive",
+  "description": "A brief where cookbook activation is expected to help — peak time techno where cookbook entries provide a richer kick + hat + bass set than the legacy fallback.",
+  "brief": "peak time techno 132 BPM, 16 bars, hypnotic warehouse",
+  "seed": 7,
+  "modes": ["minimal", "enabled"],
+  "expected_influence": {
+    "kick_picks_from_cookbook": ["tk-kick-001", "tk-kick-002", "tk-kick-003", "tk-kick-005", "tk-kick-006"],
+    "trace_must_have_pick_with_role": "kick",
+    "trace_must_have_selection_reason_for_at_least_one_pick": true
+  },
+  "expected_pass_fail": {
+    "minimal": "pass",
+    "enabled": "pass",
+    "delta": "no_regression_required; positive sign tolerated"
+  }
+}
