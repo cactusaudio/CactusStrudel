@@ -1,0 +1,65 @@
+slug: techno
+descriptor_version: '1.0.0'
+
+production_trait_clusters:
+  - hypnotic groove primacy: rhythm continuity matters more than harmonic motion
+  - kick + hat as armature: harmonic content optional; many tracks survive on drums + sub alone
+  - sub-bass weight without low-mid mud
+  - controlled stereo low-end: kick/sub usually narrow
+  - selective high-band air: open hat / shaker / shimmer rather than full-spectrum brightness
+  - peak-time hot LUFS, transient retention via gentle clipping not aggressive limiting
+
+arrangement_descriptors:
+  intro:
+    typical_length_bars: [16, 32]
+    typical_layers: [kick, hat, atmo]
+    energy: [0.2, 0.45]
+    notes: kick may enter alone; bring hat then sub then chord
+  main:
+    typical_length_bars: [32, 64]
+    typical_layers: [kick, hat, bass, perc, optional_chord]
+    energy: [0.6, 0.85]
+  breakdown:
+    typical_length_bars: [8, 16]
+    notes: keep kick or thin to chord+atmo; never drop everything
+  drop:
+    typical_length_bars: [32, 48]
+    energy: [0.75, 0.9]
+    notes: re-entry of full kit; resist EDM-style escalating filter sweeps
+
+mix_descriptors:
+  master_lufs: [-9, -7]
+  true_peak_max: -1
+  band_balance:
+    sub: dominant but narrow
+    low: kick-only
+    low_mid: restrained — main mud trap
+    mid: optional chord/perc
+    high_mid: optional brightness
+    high: shimmer / hat
+    air: optional
+  spatial: kick narrow; sub mono; chord moderate width; hat/atmo wide
+  reverb_strategy: chord and atmo room sends; kick/bass dry
+  delay_strategy: rare; mostly on transitions and chord stabs
+
+allowed_influence_notes:
+  - tempo conventions (125-138 BPM range)
+  - section archetypes (intro / main / breakdown / drop)
+  - typical layer roles and orbit assignments
+  - mix targets (LUFS, peak)
+  - rhythmic vocabulary (4-on-4, half-time-feel, syncopation patterns)
+
+forbidden_copying_notes:
+  - no copying basslines from named tracks
+  - no copying chord voicings from named tracks
+  - no sample-replication of identifiable drum sounds
+  - no recognisable melodic motifs
+  - no replication of mix engineer's signature processing chain
+
+feature_targets:
+  rms_band_low_min: 0.18
+  rms_band_low_max: 0.45
+  rms_band_high_min: 0.05
+  rms_band_high_max: 0.20
+  syncopation_max: 0.35
+  arrangement_arc_min: 0.45

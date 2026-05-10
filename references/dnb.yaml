@@ -1,0 +1,58 @@
+slug: dnb
+descriptor_version: '1.0.0'
+
+production_trait_clusters:
+  - 165-178 BPM half-time-feel groove
+  - reese / rolling sub as bass foundation
+  - amen-style displaced kick + backbeat snare
+  - heavy sidechain compression of bass to kick
+  - high transient retention; punchy drums
+
+arrangement_descriptors:
+  intro:
+    typical_length_bars: [8, 16]
+    typical_layers: [drums, atmo]
+    energy: [0.3, 0.5]
+  main:
+    typical_length_bars: [32, 48]
+    typical_layers: [kick, snare, hat, bass]
+    energy: [0.7, 0.9]
+  breakdown:
+    typical_length_bars: [8, 16]
+    notes: drums removed, atmo + bass tail; rebuild via filter/reverb sweep
+  drop:
+    typical_length_bars: [16, 32]
+    energy: [0.85, 0.95]
+    notes: full-kit re-entry; signature DnB drop
+
+mix_descriptors:
+  master_lufs: [-8, -6]
+  true_peak_max: -1
+  band_balance:
+    sub: dominant (reese)
+    low: kick body
+    low_mid: snare body
+    mid: snare crack
+    high_mid: hat / ride
+    high: hat
+    air: rare
+  spatial: kick/sub mono; snare moderately wide; hat very wide
+  reverb_strategy: short snare reverb; very little on bass
+  delay_strategy: 1/4 or 1/8 ping-pong on hat/perc fills
+
+allowed_influence_notes:
+  - tempo conventions (165-178 BPM)
+  - amen / two-step groove archetypes
+  - reese-style sub as standard
+  - punchy snare aesthetic
+
+forbidden_copying_notes:
+  - no copying named-track drum samples (amen breaks specifically)
+  - no replication of named producer signature mixes
+  - no copying basslines from named tracks
+
+feature_targets:
+  rms_band_low_min: 0.20
+  rms_band_high_min: 0.10
+  syncopation_min: 0.25
+  arrangement_arc_min: 0.5

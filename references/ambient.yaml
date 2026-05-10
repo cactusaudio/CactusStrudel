@@ -1,0 +1,50 @@
+slug: ambient
+descriptor_version: '1.0.0'
+
+production_trait_clusters:
+  - sustained pad as harmonic ground
+  - slow / very slow harmonic motion (one chord per 4-8 bars or longer)
+  - texture / noise / field-recording bed
+  - drums optional or absent
+  - long reverb / spatial depth as primary mix tool
+
+arrangement_descriptors:
+  intro:
+    typical_length_bars: [16, 64]
+    notes: full pad enters from silence over 8-16 bars
+  main:
+    typical_length_bars: [32, 256]
+    notes: continuous; cuts replaced by gradual filter / dynamics motion
+  breakdown:
+    notes: not standard — "section" boundary is filter / texture change
+  drop:
+    notes: not standard
+
+mix_descriptors:
+  master_lufs: [-18, -14]   # quiet, dynamic
+  true_peak_max: -2
+  band_balance:
+    sub: optional pad fundamentals
+    low: pad
+    low_mid: pad
+    mid: pad
+    high_mid: optional shimmer
+    high: optional shimmer
+    air: signature ambient ear-candy
+  spatial: very wide; pad usually L/R image fills the field
+  reverb_strategy: heavy; long tails are the genre
+  delay_strategy: subtle, feedback-light
+
+allowed_influence_notes:
+  - tempo flexibility (often 60-100 BPM, may be tempo-less)
+  - long-form preference (3-10+ minutes)
+  - quiet mastering target
+
+forbidden_copying_notes:
+  - no copying field-recording content from copyrighted releases
+  - no replication of named producer signature tape/space FX chains
+  - no copying of named-track chord voicings
+
+feature_targets:
+  arrangement_arc_max: 0.25  # arc is OK to stay flat
+  loop_fatigue_max: 0.35     # very slow change is fine; pure loop is not

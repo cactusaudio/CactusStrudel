@@ -1,14 +1,9 @@
-export interface SnippetEntry {
-  id: string;
-  genre: string;
-  role: string;
-  mini_notation?: string;
-  raw?: string;
-  tags: string[];
-  bpm_range?: [number, number];
-  notes?: string;
-}
+// G9: cookbook is now a typed production-prior library.
 
-export async function loadCookbook(_genreSlug?: string): Promise<SnippetEntry[]> {
-  return [];
-}
+export * from './schema.js';
+export * from './loader.js';
+export * from './retrieval.js';
+export * from './similarity.js';
+export * from './validate.js';
+export * from './references.js';
+export * from './vocab-to-query.js';

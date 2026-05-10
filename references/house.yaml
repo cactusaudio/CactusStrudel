@@ -1,0 +1,56 @@
+slug: house
+descriptor_version: '1.0.0'
+
+production_trait_clusters:
+  - 4-on-4 kick at 118-128 BPM
+  - off-beat hat as canonical companion
+  - swing / shuffle on the eighth-note grid
+  - chord / vocal / sample as harmonic / melodic interest
+  - warm low-end; clap on backbeats
+  - mid-band full (chord + vocal + perc) — denser than techno
+
+arrangement_descriptors:
+  intro:
+    typical_length_bars: [16, 32]
+    notes: kick + hat enter; bass + chord mid-intro
+  main:
+    typical_length_bars: [32, 64]
+    typical_layers: [kick, hat, clap, bass, chord]
+  breakdown:
+    typical_length_bars: [8, 16]
+  drop:
+    typical_length_bars: [32, 48]
+    energy: [0.75, 0.9]
+
+mix_descriptors:
+  master_lufs: [-9, -7]
+  true_peak_max: -1
+  band_balance:
+    sub: present
+    low: kick
+    low_mid: bass + chord lows
+    mid: chord + vocal
+    high_mid: clap / vocal presence
+    high: hat
+    air: optional
+  spatial: kick/bass mono; clap/vocal moderately wide; hat wide
+  reverb_strategy: short chord/vocal reverb; very little on kick/bass
+  delay_strategy: 1/8 or 1/4 ping-pong on vocals / chord
+
+allowed_influence_notes:
+  - tempo conventions (118-128 BPM)
+  - swing / shuffle conventions
+  - canonical kick/hat/clap pattern
+  - warm low-mid character
+
+forbidden_copying_notes:
+  - no copying named-track vocal samples or chord progressions
+  - no replication of named producer signature processing
+  - no copying of named-track basslines
+
+feature_targets:
+  rms_band_low_min: 0.20
+  rms_band_mid_min: 0.10
+  syncopation_min: 0.10
+  syncopation_max: 0.30
+  arrangement_arc_min: 0.40

@@ -40,6 +40,12 @@ export interface CookbookSnippet {
 }
 
 export async function loadCookbookSnippets(genre: string, role?: string): Promise<CookbookSnippet[]> {
+  // G9 §8: when CACTUS_COOKBOOK_MODE=minimal, return an empty corpus so the
+  // audit framework can measure the producer's behavior without cookbook
+  // priors. Default ('enabled' / unset) uses the full cookbook.
+  const mode = process.env.CACTUS_COOKBOOK_MODE;
+  if (mode === 'minimal') return [];
+
   const dir = path.join(COOKBOOK_DIR, genre);
   let entries: string[];
   try {
@@ -56,7 +62,25 @@ export async function loadCookbookSnippets(genre: string, role?: string): Promis
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
-        out.push(JSON.parse(trimmed) as CookbookSnippet);
+        // The legacy CookbookSnippet shape is a strict subset of the v2
+        // schema (id/genre/role/mini_notation are common). Down-cast: the
+        // legacy shape only reads what it needs and ignores the rest.
+        const obj = JSON.parse(trimmed) as Record<string, unknown>;
+        const tags = Array.isArray(obj.tags)
+          ? (obj.tags as string[])
+          : Array.isArray(obj.free_tags) ? (obj.free_tags as string[])
+          : Array.isArray(obj.sound_palette_tags) ? (obj.sound_palette_tags as string[])
+          : [];
+        out.push({
+          id: obj.id as string,
+          genre: obj.genre as string,
+          role: obj.role as string,
+          ...(typeof obj.mini_notation === 'string' ? { mini_notation: obj.mini_notation } : {}),
+          ...(typeof obj.raw === 'string' ? { raw: obj.raw } : {}),
+          tags,
+          ...(Array.isArray(obj.bpm_range) ? { bpm_range: obj.bpm_range as [number, number] } : {}),
+          ...(typeof obj.notes === 'string' ? { notes: obj.notes } : {}),
+        });
       } catch (e) {
         throw new Error(`malformed JSONL in ${dir}/${name}: ${trimmed.slice(0, 60)}`);
       }

@@ -32,6 +32,9 @@ importers:
       '@cactus/audit':
         specifier: workspace:*
         version: link:../../packages/audit
+      '@cactus/cookbook':
+        specifier: workspace:*
+        version: link:../../packages/cookbook
       '@cactus/critic':
         specifier: workspace:*
         version: link:../../packages/critic
@@ -225,6 +228,12 @@ importers:
       '@cactus/strudel-validator':
         specifier: workspace:*
         version: link:../strudel-validator
+      yaml:
+        specifier: ^2.5.0
+        version: 2.8.4
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
 
   packages/critic:
     dependencies:

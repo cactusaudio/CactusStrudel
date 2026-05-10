@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@cactus/ir": "workspace:*",
-    "@cactus/strudel-validator": "workspace:*"
+    "@cactus/strudel-validator": "workspace:*",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.8"
   }
 }

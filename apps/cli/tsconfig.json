@@ -8,6 +8,7 @@
   "references": [
     { "path": "../../packages/ir" },
     { "path": "../../packages/session-store" },
-    { "path": "../../packages/agent-runtime" }
+    { "path": "../../packages/agent-runtime" },
+    { "path": "../../packages/cookbook" }
   ]
 }

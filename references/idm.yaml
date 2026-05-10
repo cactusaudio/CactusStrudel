@@ -1,0 +1,45 @@
+slug: idm
+descriptor_version: '1.0.0'
+
+production_trait_clusters:
+  - asymmetric / non-4-on-4 rhythmic vocabulary
+  - euclidean and stuttering pattern operators
+  - cycle-varying parameters
+  - micro-mutation: small changes per cycle that prevent looping fatigue
+  - less strict mix conventions; experimental sound design
+
+arrangement_descriptors:
+  intro:
+    typical_length_bars: [4, 16]
+    notes: usually unstable from the start
+  main:
+    typical_length_bars: [16, 64]
+    notes: continuous variation; few clean section boundaries
+  breakdown:
+    notes: optional; if present, reduces density rather than removing layers
+  drop:
+    notes: rare; when present often anti-climactic
+
+mix_descriptors:
+  master_lufs: [-12, -8]
+  true_peak_max: -1
+  band_balance:
+    flexible — IDM doesn't follow consistent band balance conventions
+  spatial: experimental; can go very wide or very narrow
+  reverb_strategy: per-element, often short
+  delay_strategy: stutter / glitch delays as compositional tool
+
+allowed_influence_notes:
+  - asymmetric pattern vocabulary
+  - euclidean rhythm conventions
+  - mutation operators
+  - texture-as-structure aesthetic
+
+forbidden_copying_notes:
+  - no copying named producer signature drum textures
+  - no replication of identifiable melodic motifs (IDM is melody-light, but motifs do exist)
+  - no copying of named-track patches
+
+feature_targets:
+  syncopation_min: 0.30
+  arrangement_arc_min: 0.30  # IDM doesn't need a strong arc

@@ -44,3 +44,7 @@ playwright/.cache/
 
 # Logs
 *.log
+
+# G9 audit:cookbook-impact output dirs (per-machine scratch)
+apps/cli/audits/
+audits/

@@ -380,6 +380,152 @@ program
     }, null, 2));
   });
 
+// G9 §2: cookbook subcommands. The validate command is the gate that the
+// final acceptance lists; audit prints per-genre/role counts + diversity.
+const cookbook = program
+  .command('cookbook')
+  .description('G9: cookbook lifecycle — validate, audit, diversity report');
+
+cookbook
+  .command('validate')
+  .description('G9: validate every cookbook entry against the v2 schema + strudel syntax + duplicate-id + near-duplicate checks')
+  .option('--genre <slug>', 'limit to one genre')
+  .option('--role <name>', 'limit to one role within --genre')
+  .option('--json', 'emit machine-readable JSON')
+  .action(async (opts: { genre?: string; role?: string; json?: boolean }) => {
+    const { validateCookbook, formatValidationReport } = await import('@cactus/cookbook');
+    const validateOpts: { genre?: string; role?: string } = {};
+    if (opts.genre !== undefined) validateOpts.genre = opts.genre;
+    if (opts.role !== undefined) validateOpts.role = opts.role;
+    const r = await validateCookbook(validateOpts);
+    if (opts.json) console.log(JSON.stringify(r, null, 2));
+    else console.log(formatValidationReport(r));
+    if (!r.ok) process.exit(1);
+  });
+
+// G9 §8: cookbook-impact A/B audit. Compares mode='minimal' vs mode='enabled'
+// across the existing prompt-suite plumbing and emits a verdict.
+program
+  .command('audit:cookbook-impact')
+  .description('G9 §8: A/B compare cookbook variants — minimal vs enabled vs (optional) hybrid')
+  .option('--suite <name>', 'prompt suite to use (smoke | genre-core)', 'smoke')
+  .option('--seeds <n>', 'seeds per prompt', '1')
+  .option('--out <dir>', 'output dir', './audits/cookbook-impact')
+  .action(async (opts: { suite: string; seeds: string; out: string }) => {
+    const { runAudit, decideVerdict } = await import('@cactus/audit');
+    const { loadCookbookEntries, diversityReport } = await import('@cactus/cookbook');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const outDir = path.resolve(opts.out, ts);
+    await fs.mkdir(outDir, { recursive: true });
+
+    const seeds = parseInt(opts.seeds, 10);
+    const modes: Array<'minimal' | 'enabled'> = ['minimal', 'enabled'];
+    const summaries: Array<{
+      mode: typeof modes[number];
+      prompts_total: number; rendered: number;
+      render_failures: number; analyzer_failures: number;
+      gate_pass: number; gate_fail: number;
+      diversity_mean_overlap?: number; critic_issue_count: number;
+    }> = [];
+
+    for (const mode of modes) {
+      process.env.CACTUS_COOKBOOK_MODE = mode;
+      const modeDir = path.join(outDir, mode);
+      await fs.mkdir(modeDir, { recursive: true });
+      const r = await runAudit({
+        suite: opts.suite, seeds, outDir: modeDir,
+        skipRender: true, // keep impact-audit tractable; mode comparison runs against gates from analysis-shaped data
+        challengers: [],
+      });
+      summaries.push({
+        mode,
+        prompts_total: r.prompts_total,
+        rendered: 0,
+        render_failures: 0,
+        analyzer_failures: 0,
+        gate_pass: r.champion_pass,
+        gate_fail: r.champion_fail,
+        critic_issue_count: 0,
+      });
+    }
+    delete process.env.CACTUS_COOKBOOK_MODE;
+
+    // Diversity: load the cookbook itself and report homogeneity.
+    const loaded = await loadCookbookEntries();
+    const div = diversityReport(loaded.entries);
+    const enabled = summaries.find((s) => s.mode === 'enabled');
+    if (enabled) {
+      // Use the cookbook's mean homogeneity as a proxy for "what the
+      // enabled variant offers". A higher value = entries are more
+      // similar to each other (less diverse).
+      const meanOverlap = div.per_bucket_homogeneity.length === 0
+        ? 0
+        : div.per_bucket_homogeneity.reduce((a, b) => a + b.mean_overlap, 0) / div.per_bucket_homogeneity.length;
+      enabled.diversity_mean_overlap = meanOverlap;
+    }
+
+    const verdict = decideVerdict(summaries.map((s) => ({
+      mode: s.mode,
+      prompts_total: s.prompts_total,
+      rendered: s.rendered,
+      render_failures: s.render_failures,
+      analyzer_failures: s.analyzer_failures,
+      gate_pass: s.gate_pass,
+      gate_fail: s.gate_fail,
+      critic_issue_count: s.critic_issue_count,
+      ...(s.diversity_mean_overlap !== undefined ? { diversity_mean_overlap: s.diversity_mean_overlap } : {}),
+    })));
+
+    const report = {
+      ok: true,
+      mode: 'cookbook-impact',
+      ts: new Date().toISOString(),
+      suite: opts.suite,
+      seeds,
+      modes,
+      per_mode: summaries,
+      cookbook_diversity: {
+        total_entries: div.total_entries,
+        bucket_homogeneity: div.per_bucket_homogeneity,
+        near_duplicate_pairs: div.near_duplicate_pairs.length,
+      },
+      verdict: verdict.verdict,
+      notes: verdict.notes,
+      out_dir: outDir,
+    };
+    await fs.writeFile(path.join(outDir, 'cookbook-impact-report.json'), JSON.stringify(report, null, 2));
+    console.log(JSON.stringify(report, null, 2));
+  });
+
+cookbook
+  .command('audit')
+  .description('G9: print per-genre/role counts, mean homogeneity, and near-duplicate pairs')
+  .option('--genre <slug>', 'limit to one genre')
+  .option('--role <name>', 'limit to one role')
+  .option('--all', 'include all genres + roles (default)')
+  .action(async (opts: { genre?: string; role?: string }) => {
+    const { loadCookbookEntries, diversityReport } = await import('@cactus/cookbook');
+    const loaded = await loadCookbookEntries();
+    const filtered = loaded.entries.filter((e) =>
+      (!opts.genre || e.genre === opts.genre) &&
+      (!opts.role || e.role === opts.role),
+    );
+    const div = diversityReport(filtered);
+    console.log(JSON.stringify({
+      ok: loaded.issues.length === 0,
+      mode: 'cookbook-audit',
+      ...(opts.genre ? { filter_genre: opts.genre } : {}),
+      ...(opts.role ? { filter_role: opts.role } : {}),
+      total_entries: div.total_entries,
+      per_genre_role: div.per_genre_role_counts,
+      bucket_homogeneity: div.per_bucket_homogeneity,
+      near_duplicate_pairs: div.near_duplicate_pairs,
+      load_issues: loaded.issues,
+    }, null, 2));
+  });
+
 async function listIters(dir: string): Promise<number[]> {
   let entries: string[] = [];
   try { entries = await fs.readdir(dir); } catch { return []; }

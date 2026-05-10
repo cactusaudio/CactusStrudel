@@ -28,6 +28,7 @@
     "@cactus/analyzer": "workspace:*",
     "@cactus/genres": "workspace:*",
     "@cactus/revision": "workspace:*",
+    "@cactus/cookbook": "workspace:*",
     "commander": "^12.1.0",
     "uuid": "^10.0.0"
   },

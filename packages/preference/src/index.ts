@@ -27,3 +27,7 @@ export {
   DEFAULT_LEDGER_PATH,
   type LedgerEntry, type LedgerMode, type AppendLedgerOptions,
 } from './learning-ledger.js';
+export {
+  PRODUCTION_VOCAB, matchProductionVocab, aggregateMatches,
+  type ProductionVocabEntry, type VocabMatch, type VocabAggregate, type LanguageTag,
+} from './production-vocab.js';

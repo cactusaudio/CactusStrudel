@@ -44,3 +44,9 @@ export {
   type DiagnosticReportInput,
   type DiagnosticReportPaths,
 } from './diagnostic-report.js';
+export {
+  decideVerdict,
+  type CookbookImpactReport,
+  type CookbookImpactRunSummary,
+  type CookbookMode,
+} from './cookbook-impact.js';

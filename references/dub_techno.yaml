@@ -1,0 +1,60 @@
+slug: dub_techno
+descriptor_version: '1.0.0'
+
+production_trait_clusters:
+  - chord stab + reverb tail as primary harmonic engine
+  - groove continuity over harmonic motion
+  - deep low-end with restrained highs
+  - spatial depth: long room sends, generous delay returns on chord
+  - tape / noise / weather texture as bed
+  - kick decays into chord tail, not into silence
+
+arrangement_descriptors:
+  intro:
+    typical_length_bars: [16, 32]
+    typical_layers: [kick, atmo, optional_chord]
+    energy: [0.2, 0.4]
+    notes: chord stab often enters before bass
+  main:
+    typical_length_bars: [48, 96]
+    typical_layers: [kick, hat, bass, chord_stab, atmo]
+    energy: [0.55, 0.75]
+    notes: long sustained main; subtle filter automation rather than new layers
+  breakdown:
+    typical_length_bars: [16, 24]
+    notes: chord + atmo + optional sub; kick removed or muted
+  drop:
+    notes: dub_techno often skips formal drops; if present, re-entry of kick alone
+
+mix_descriptors:
+  master_lufs: [-12, -9]
+  true_peak_max: -1
+  band_balance:
+    sub: dominant, tight
+    low: kick body
+    low_mid: chord lower harmonics
+    mid: chord stab + delays
+    high_mid: minimal
+    high: hat shimmer (sparse)
+    air: room/reverb tails
+  spatial: very wide chord/atmo; tight kick/bass
+  reverb_strategy: heavy on chord + atmo; medium on hat; dry kick/bass
+  delay_strategy: signature element on chord stab; tape-style ping-pong
+
+allowed_influence_notes:
+  - tempo conventions (118-128 BPM)
+  - chord stab + delay tail aesthetic
+  - long arrangement preference
+  - restrained dynamics (no big drops)
+
+forbidden_copying_notes:
+  - no replicating named-track chord voicings or progressions
+  - no copying signature dub-techno producer mix processing
+  - no sample replication
+  - 'reference scenes (Basic Channel / Rhythm & Sound / Modern Love roster) — descriptive use only; never melodic/rhythmic copy'
+
+feature_targets:
+  rms_band_low_min: 0.20
+  rms_band_high_max: 0.10
+  syncopation_max: 0.20
+  arrangement_arc_max: 0.4   # restrained dynamics — flat is OK here
