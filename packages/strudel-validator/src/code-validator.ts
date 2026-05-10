@@ -21,7 +21,9 @@ export function validateStrudelCode(code: string, options: CodeValidatorOptions 
   try {
     ast = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module' });
   } catch (e) {
-    const err = e as acorn.SyntaxError & { pos?: number; loc?: { offset?: number } };
+    // acorn throws a SyntaxError at runtime but does not export the type.
+    // Use a structural shape that matches the runtime fields we read.
+    const err = e as Error & { pos?: number; loc?: { offset?: number } };
     issues.push({
       code: 'JS_PARSE_ERROR',
       message: `cannot parse JS: ${err.message}`,

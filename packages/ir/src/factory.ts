@@ -17,7 +17,8 @@ export function createSessionGraph(init: CreateSessionInit): SessionGraph {
     session_id: uuid(),
     created_at: now,
     brief: {
-      text: init.brief.text,
+      // Defaults first, then caller's brief spread to override.
+      // (init.brief carries the required `text` field via its type.)
       mood: [],
       references: [],
       modifiers: [],

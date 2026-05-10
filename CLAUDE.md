@@ -19,25 +19,38 @@ Closed-loop autonomous Strudel-centered music producer. Talk → BriefGraph → 
 
 ```
 apps/
-  cli/              — `cactus` command (sketch | produce | revise | stems | explain | live | taste)
+  cli/              — `cactus` command (produce | sketch | revise | stems | explain | taste | audit | audit:repair)
   renderer-page/    — self-hosted vite static page hosting @strudel/web
+  studio-ui/        — read-only session inspector (Phase 12; minimal)
 packages/
-  ir/               — SessionGraph schemas, types, migrations
+  ir/               — SessionGraph schemas, types, migrations, JSON Patch helpers, agent write-paths
   session-store/    — append-only iteration persistence
-  strudel-validator/— mini-notation + JS-AST + registry checks
-  strudel-compiler/ — IR → Strudel code with source maps
-  renderer/         — Playwright driver for renderer-page
-  analyzer/         — essentia.js + LUFS + spectral + rhythmic + spectrogram
-  critic/           — scoring vector + rubric eval + revision targets
-  cookbook/         — validated snippets (JSONL)
-  genres/           — genre YAML + bridging logic
-  agent-runtime/    — orchestration contracts
-  preference/       — taste memory + ranking
-  mastering/        — loudness norm + true-peak limit + stem post
-genres/             — genre YAML data files
-cookbook/           — JSONL snippet corpus
-sessions/           — runtime session directories
-docs/               — architecture, IR, renderer, critic, ops, ADRs, research
+  strudel-validator/— mini-notation + JS-AST + registry checks (503-name auto-extracted)
+  strudel-compiler/ — IR → Strudel code with source maps + arrange()/orbit/duck/solo
+  renderer/         — Playwright + OfflineAudioContext driver for renderer-page
+  analyzer/         — essentia.js + ITU-R BS.1770 LUFS + spectral + rhythmic + stereo +
+                       section-features + section-diagnostics + stem-diagnostics + 11 quality gates
+  critic/           — 9-axis scoring + revision targets + self-consistency
+  cookbook/         — validated snippet loader
+  genres/           — genre YAML + bridging + per-genre coverage constraints + applier
+  agent-runtime/    — brief parser (English/Chinese/mixed) + buildSessionGraphFromBrief +
+                       produce orchestrator + sketch/rank/closed-loop + revision-planner
+  preference/       — taste memory + feedback parser + ScoreVector weights
+  mastering/        — Phase 11 single-pass LUFS normalize + tanh soft-clip true-peak limiter +
+                       stems-by-orbit
+  mix/              — Phase 15 deterministic mix controller: gain-staging + band-balance +
+                       master-normalize (with refusal heuristic) + peak-guard
+  orchestrator/     — backend abstraction (rules / claude-shadow / hybrid) +
+                       arrangement-coverage re-export
+  revision/         — revision locality scorer (unrelated_change_ratio + invariant violations)
+  audit/            — Phase 14 adversarial harness: prompt-suite loader + run-audit +
+                       genre-confusion + genre-discriminators + failure-taxonomy +
+                       champion-challenger + diagnostic-report
+genres/             — genre YAML data files (techno / dub_techno / house / dnb / idm / ambient)
+cookbook/           — JSONL snippet corpus per genre × role
+sessions/           — runtime session directories (gitignored)
+docs/               — architecture, IR, renderer, critic, ops, ADRs (0001-0005), audit findings
+scripts/            — verify-repo.sh (G0 truth gate runner)
 ```
 
 ## Tooling
@@ -49,11 +62,18 @@ docs/               — architecture, IR, renderer, critic, ops, ADRs, research
 
 ## Commands
 
-- `pnpm test` — run all package tests.
-- `pnpm build` — TypeScript build all packages.
-- `pnpm dev:renderer` — local renderer-page on http://localhost:5173.
-- `pnpm cactus -- sketch --brief "..."` — multi-candidate sketch mode (Phase 9+).
-- `pnpm cactus -- produce --brief "..."` — full track (Phase 7+).
+| Command | What it does |
+|---|---|
+| `pnpm exec tsc -b` | Project-references TypeScript build. Must exit 0. |
+| `pnpm test` | Unit suite (~250 tests; 6 E2E gated behind `CACTUS_RENDER_E2E=1`). |
+| `pnpm build` | `pnpm -r build` across packages + apps. |
+| `pnpm dev:renderer` | Local renderer-page at http://localhost:5173. |
+| `pnpm cactus -- produce -b '...'` | Full single-pass produce (Phase 7). |
+| `pnpm cactus -- sketch -b '...' -n 5` | N-candidate sketches at different seeds. |
+| `pnpm cactus -- revise -s <id> -f '...'` | Apply NL feedback (records preference; full audio loop is G3 work). |
+| `pnpm cactus -- audit --suite smoke --seeds 1` | Adversarial audit harness (Phase 14). |
+| `pnpm cactus -- audit:repair` | Real-WAV smoke audit + diagnostics (Phase 15 default repair loop). |
+| `scripts/verify-repo.sh` | G0 truth gate: install + tsc + test + audit:repair end-to-end. |
 
 ## ADRs
 
