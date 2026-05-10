@@ -106,6 +106,9 @@ importers:
 
   apps/studio-ui:
     devDependencies:
+      playwright:
+        specifier: ^1.59.0
+        version: 1.59.1
       vite:
         specifier: ^6.0.3
         version: 6.4.2(@types/node@22.19.18)(tsx@4.21.0)(yaml@2.8.4)

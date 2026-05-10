@@ -48,3 +48,7 @@ playwright/.cache/
 # G9 audit:cookbook-impact output dirs (per-machine scratch)
 apps/cli/audits/
 audits/
+
+# G11A studio-ui build output
+apps/studio-ui/dist/
+

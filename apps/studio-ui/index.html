@@ -2,53 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Cactus Studio</title>
+    <title>Cactus Studio Inspector</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>cactus studio</h1>
-      <div class="muted">SessionGraph viewer · graph is canonical · UI is read-only client</div>
-    </header>
-    <main>
-      <section class="picker">
-        <label>session id <input id="session-input" placeholder="paste session uuid" /></label>
-        <label>iteration <input id="iter-input" type="number" min="0" value="0" /></label>
-        <button id="load">load</button>
-        <span id="status" class="status muted"></span>
-      </section>
-
-      <section class="audio" hidden id="audio-pane">
-        <h2>audio</h2>
-        <audio id="player" controls></audio>
-      </section>
-
-      <section class="brief" hidden id="brief-pane">
-        <h2>brief</h2>
-        <pre id="brief-text"></pre>
-      </section>
-
-      <section class="song" hidden id="song-pane">
-        <h2>song · sections</h2>
-        <div id="song-grid"></div>
-      </section>
-
-      <section class="layers" hidden id="layers-pane">
-        <h2>layers</h2>
-        <ul id="layers-list"></ul>
-      </section>
-
-      <section class="critique" hidden id="critique-pane">
-        <h2>critique</h2>
-        <pre id="critique-json"></pre>
-      </section>
-
-      <section class="raw" hidden id="raw-pane">
-        <h2>graph json</h2>
-        <details><summary>show full SessionGraph</summary><pre id="raw-json"></pre></details>
-      </section>
-    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

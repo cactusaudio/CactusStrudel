@@ -1,108 +1,101 @@
-// Cactus Studio — SessionGraph viewer.
-// The UI is a read-only client of session bundles produced by the CLI.
+// G11A: studio inspector entry point. Tab-based navigation; URL hash drives
+// state so links + screenshots are stable.
 
-interface SessionGraph {
-  session_id: string;
-  brief: { text: string; bpm?: number; primary_genre?: string };
-  song: {
-    total_bars: number;
-    sections: Array<{ id: string; name: string; start_bar: number; end_bar: number; energy: number; function: string }>;
-    energy_curve: number[];
-  };
-  layers: Array<{ id: string; role: string; orbit: number; description?: string }>;
-  critique_graph: Array<{ scores: Record<string, number>; targets: unknown[]; notes?: string }>;
+import './style.css';
+import { h, render } from './dom.js';
+import { renderSessionsList } from './screens/sessions-list.js';
+import { renderSessionOverview } from './screens/session-overview.js';
+import { renderQualityGates } from './screens/quality-gates.js';
+import { renderCookbookTrace } from './screens/cookbook-trace.js';
+import { renderImpactAudits } from './screens/impact-audit.js';
+import { renderLedger } from './screens/ledger.js';
+
+type Screen =
+  | { kind: 'sessions' }
+  | { kind: 'session'; id: string; tab: 'overview' | 'gates' | 'trace' }
+  | { kind: 'impact' }
+  | { kind: 'ledger' };
+
+function parseHash(): Screen {
+  const h = location.hash.slice(1);
+  if (!h) return { kind: 'sessions' };
+  const parts = h.split('/');
+  if (parts[0] === 'session' && parts[1]) {
+    const tab = (parts[2] as 'overview' | 'gates' | 'trace') ?? 'overview';
+    return { kind: 'session', id: parts[1], tab };
+  }
+  if (parts[0] === 'impact') return { kind: 'impact' };
+  if (parts[0] === 'ledger') return { kind: 'ledger' };
+  return { kind: 'sessions' };
 }
 
-const sessionInput = document.getElementById('session-input') as HTMLInputElement;
-const iterInput = document.getElementById('iter-input') as HTMLInputElement;
-const loadButton = document.getElementById('load') as HTMLButtonElement;
-const status = document.getElementById('status') as HTMLSpanElement;
+function setHash(s: Screen): void {
+  if (s.kind === 'sessions') location.hash = '';
+  else if (s.kind === 'session') location.hash = `session/${s.id}/${s.tab}`;
+  else if (s.kind === 'impact') location.hash = 'impact';
+  else if (s.kind === 'ledger') location.hash = 'ledger';
+}
 
-loadButton.addEventListener('click', () => loadSession().catch((e) => setStatus(`error: ${(e as Error).message}`, true)));
+async function navigate(screen: Screen): Promise<void> {
+  const main = document.getElementById('main') as HTMLElement;
+  for (const btn of document.querySelectorAll('.topbar nav button')) btn.classList.remove('active');
+  const activeTopId =
+    screen.kind === 'sessions' ? 'tab-sessions'
+    : screen.kind === 'session' ? 'tab-sessions'
+    : screen.kind === 'impact' ? 'tab-impact'
+    : 'tab-ledger';
+  document.getElementById(activeTopId)?.classList.add('active');
 
-async function loadSession(): Promise<void> {
-  const id = sessionInput.value.trim();
-  const iter = parseInt(iterInput.value, 10) || 0;
-  if (!id) {
-    setStatus('paste a session id', true);
+  if (screen.kind === 'sessions') {
+    await renderSessionsList(main, (id) => {
+      setHash({ kind: 'session', id, tab: 'overview' });
+    });
     return;
   }
-  const base = `/sessions/${id}/iter_${String(iter).padStart(4, '0')}`;
-  setStatus('loading…');
-  const graphResp = await fetch(`${base}.json`);
-  if (!graphResp.ok) {
-    setStatus(`graph not found at ${base}.json`, true);
+  if (screen.kind === 'session') {
+    const subTabs = h('div', { class: 'panel', style: 'padding: 8px 16px' },
+      h('div', { style: 'display: flex; gap: 12px; align-items: center' },
+        h('span', { class: 'meta', style: 'font-family: var(--font-mono)' }, `session ${screen.id.slice(0, 8)}`),
+        ...(['overview', 'gates', 'trace'] as const).map((t) =>
+          h('button', {
+            class: t === screen.tab ? 'primary' : '',
+            onclick: (() => setHash({ kind: 'session', id: screen.id, tab: t })) as EventListener,
+          }, t),
+        ),
+        h('button', {
+          style: 'margin-left: auto',
+          onclick: (() => setHash({ kind: 'sessions' })) as EventListener,
+        }, '← back'),
+      ),
+    );
+    render(main, subTabs);
+    const body = h('div', {});
+    main.appendChild(body);
+    if (screen.tab === 'overview') await renderSessionOverview(body, screen.id);
+    else if (screen.tab === 'gates') await renderQualityGates(body, screen.id);
+    else if (screen.tab === 'trace') await renderCookbookTrace(body, screen.id);
     return;
   }
-  const graph = (await graphResp.json()) as SessionGraph;
-  renderGraph(graph);
-  // Try audio.
-  const audioPane = document.getElementById('audio-pane') as HTMLElement;
-  const player = document.getElementById('player') as HTMLAudioElement;
-  player.src = `${base}.wav`;
-  audioPane.hidden = false;
-  setStatus('loaded');
+  if (screen.kind === 'impact') { await renderImpactAudits(main); return; }
+  if (screen.kind === 'ledger') { await renderLedger(main); return; }
 }
 
-function renderGraph(graph: SessionGraph): void {
-  // Brief
-  const brief = document.getElementById('brief-pane') as HTMLElement;
-  const briefText = document.getElementById('brief-text') as HTMLElement;
-  briefText.textContent = JSON.stringify({
-    text: graph.brief.text,
-    bpm: graph.brief.bpm,
-    primary_genre: graph.brief.primary_genre,
-  }, null, 2);
-  brief.hidden = false;
-
-  // Song
-  const songPane = document.getElementById('song-pane') as HTMLElement;
-  const songGrid = document.getElementById('song-grid') as HTMLElement;
-  songGrid.innerHTML = '';
-  songGrid.className = 'song-grid';
-  const total = graph.song.total_bars || 1;
-  for (const sec of graph.song.sections) {
-    const row = document.createElement('div');
-    row.className = 'song-section';
-    const widthPct = (((sec.end_bar - sec.start_bar) / total) * 100).toFixed(1);
-    row.innerHTML = `<span style="width:${widthPct}%; min-width:80px;">${escapeHtml(sec.name)} <span class="muted">[${sec.start_bar}-${sec.end_bar}]</span></span><span class="bar" style="width:${(sec.energy * 100).toFixed(0)}px;"></span><span class="energy">e=${sec.energy.toFixed(2)} fn=${sec.function}</span>`;
-    songGrid.appendChild(row);
-  }
-  songPane.hidden = false;
-
-  // Layers
-  const layersPane = document.getElementById('layers-pane') as HTMLElement;
-  const layersList = document.getElementById('layers-list') as HTMLElement;
-  layersList.innerHTML = '';
-  for (const layer of graph.layers) {
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="role">${escapeHtml(layer.role)}</span><span>${escapeHtml(layer.id)}</span><span class="muted">orbit ${layer.orbit}</span>${layer.description ? `<span class="muted">${escapeHtml(layer.description)}</span>` : ''}`;
-    layersList.appendChild(li);
-  }
-  layersPane.hidden = false;
-
-  // Critique
-  const critPane = document.getElementById('critique-pane') as HTMLElement;
-  const critJson = document.getElementById('critique-json') as HTMLElement;
-  if (graph.critique_graph.length > 0) {
-    critJson.textContent = JSON.stringify(graph.critique_graph[graph.critique_graph.length - 1], null, 2);
-    critPane.hidden = false;
-  } else {
-    critPane.hidden = true;
-  }
-
-  // Raw
-  const raw = document.getElementById('raw-pane') as HTMLElement;
-  const rawJson = document.getElementById('raw-json') as HTMLElement;
-  rawJson.textContent = JSON.stringify(graph, null, 2);
-  raw.hidden = false;
+function bootstrap(): void {
+  const app = h('div', { class: 'app' },
+    h('header', { class: 'topbar' },
+      h('h1', {}, 'CACTUS · STUDIO'),
+      h('nav', {},
+        h('button', { id: 'tab-sessions', onclick: (() => setHash({ kind: 'sessions' })) as EventListener }, 'sessions'),
+        h('button', { id: 'tab-impact', onclick: (() => setHash({ kind: 'impact' })) as EventListener }, 'impact a/b'),
+        h('button', { id: 'tab-ledger', onclick: (() => setHash({ kind: 'ledger' })) as EventListener }, 'ledger'),
+      ),
+      h('div', { class: 'right' }, 'read-only · file-backed inspector'),
+    ),
+    h('main', { id: 'main' }),
+  );
+  render(document.body, app);
+  void navigate(parseHash());
+  window.addEventListener('hashchange', () => { void navigate(parseHash()); });
 }
 
-function setStatus(msg: string, error = false): void {
-  status.textContent = msg;
-  status.style.color = error ? 'var(--warn)' : 'var(--muted)';
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
-}
+bootstrap();
