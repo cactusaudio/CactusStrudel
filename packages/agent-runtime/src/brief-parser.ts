@@ -4,7 +4,11 @@ import type { BriefGraph, Mode } from '@cactus/ir';
 
 const GENRE_KEYWORDS: Array<[RegExp, string, string[]]> = [
   // Order: most-specific first so 'neurofunk dnb' or 'dub techno' match before bare genre.
-  [/\bdub[\s-]+techno\b/i, 'dub_techno', []],
+  // Accept space, hyphen, OR underscore as separator. Pre-G11A-closeout the
+  // separator class was [\s-]; "dub_techno" silently dropped through parseBrief
+  // and made smoke-real under-count prompts. Tests in
+  // brief-parser-contract.test.ts pin this contract.
+  [/\bdub[\s\-_]+techno\b/i, 'dub_techno', []],
   [/\bdeep[\s-]+house\b/i, 'house', ['deep']],
   [/\blo[\s-]?fi[\s-]+house\b/i, 'house', ['lo_fi']],
   [/\bacid[\s-]+house\b/i, 'house', ['acid']],
