@@ -81,12 +81,32 @@ describe('selectPrior trace shape (G9B)', () => {
     expect(r.trace.fallback_reason).toBe('role-not-modeled');
   });
 
-  it('returns no-cookbook-match for an unknown genre', async () => {
+  it('returns policy-disabled for an unknown genre (G9C policy gate)', async () => {
     const r = await selectPrior({
       genre: 'totally-not-a-genre',
       layer: { id: 'lyr-1', role: 'kick' },
       section: { id: 'sec-1', function: 'main', energy: 0.7 },
       bpm: 130,
+    });
+    expect(r.entry).toBeNull();
+    // G9C: the activation policy gate short-circuits unknown (genre, role)
+    // pairs to default minimal_only — we report this as a policy-disabled
+    // fallback, NOT a no-cookbook-match (which is now reserved for the
+    // case where policy says enable but the cookbook has nothing).
+    expect(r.trace.fallback_reason).toMatch(/^policy-disabled:/);
+  });
+
+  it('returns no-cookbook-match when policy enables but cookbook empty', async () => {
+    const r = await selectPrior({
+      genre: 'totally-not-a-genre',
+      layer: { id: 'lyr-1', role: 'kick' },
+      section: { id: 'sec-1', function: 'main', energy: 0.7 },
+      bpm: 130,
+      policy: {
+        default_level: 'enabled_default',
+        default_reason: 'test override',
+        per_genre_role: {},
+      },
     });
     expect(r.entry).toBeNull();
     expect(r.trace.fallback_reason).toBe('no-cookbook-match');

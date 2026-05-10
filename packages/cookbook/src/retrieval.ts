@@ -28,7 +28,30 @@ export interface RetrieveQuery {
    * experimental entries too. Default false (production-only).
    */
   include_diagnostic?: boolean;
+  /**
+   * G9C: opt-in to retrieve `accepted_with_warning` entries. Default false
+   * (warnings not surfaced in default `enabled` mode).
+   */
+  allow_warnings?: boolean;
 }
+
+/**
+ * Validation states that disqualify an entry from default-mode retrieval.
+ * `enabled` mode hides these unless the caller explicitly opts in via
+ * `include_diagnostic` (for diagnostic/experimental) or `allow_warnings`
+ * (for accepted_with_warning).
+ */
+const HARD_EXCLUDE: ReadonlySet<string> = new Set([
+  'quarantined',
+  'rejected',
+]);
+const DIAGNOSTIC_GATED: ReadonlySet<string> = new Set([
+  'diagnostic',
+  'experimental',
+]);
+const WARNING_GATED: ReadonlySet<string> = new Set([
+  'accepted_with_warning',
+]);
 
 export interface RetrieveResult {
   entry: CookbookEntry;
@@ -68,9 +91,12 @@ export function retrieve(entries: CookbookEntry[], q: RetrieveQuery): RetrieveRe
       const [lo, hi] = e.bpm_range;
       if (q.bpm < lo - 5 || q.bpm > hi + 5) continue;
     }
-    if (!q.include_diagnostic) {
-      if (e.validation_status === 'diagnostic' || e.validation_status === 'experimental') continue;
-    }
+    // G9C: hard-exclude quarantined / rejected always.
+    if (HARD_EXCLUDE.has(e.validation_status)) continue;
+    // diagnostic + experimental gated unless caller opts in.
+    if (DIAGNOSTIC_GATED.has(e.validation_status) && !q.include_diagnostic) continue;
+    // accepted_with_warning gated unless caller opts in.
+    if (WARNING_GATED.has(e.validation_status) && !q.allow_warnings) continue;
     if (q.forbid_tags && q.forbid_tags.length > 0) {
       if (e.sound_palette_tags.some((t: SoundPaletteTag) => q.forbid_tags!.includes(t))) continue;
     }

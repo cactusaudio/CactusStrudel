@@ -327,9 +327,19 @@ async function buildPatternBank(
 
     // Pre-load legacy snippets only once per layer; used for minimal mode + as
     // a final fallback when typed retrieval returns nothing in enabled mode.
+    //
+    // G9C fix: ROLE-AWARE FALLBACK ONLY. The pre-G9C code widened the lookup
+    // to `loadCookbookSnippets(genre.slug)` (no role filter) when the
+    // role-specific JSONL was empty. That widening caused dnb's enabled-mode
+    // silence regression: dnb has no hat/pad entries, the wide lookup returned
+    // kick+snare+bass entries, pickSnippet randomly assigned a kick pattern
+    // (`bd ~ ~ ~`) to the pad layer, and the compiler then emitted
+    // `note("bd ~ ~ ~").s("fm")` — Strudel cannot parse "bd" as a note name,
+    // so the pad rendered as silence across most of the timeline. We now
+    // fall through to defaultPatternForRole instead, preserving role
+    // semantics. See docs/g9c-dnb-regression-root-cause.md.
     const legacyRole = roleToCookbookKey(layer.role);
-    let legacySnippets = await loadCookbookSnippets(genre.slug, legacyRole);
-    if (legacySnippets.length === 0) legacySnippets = await loadCookbookSnippets(genre.slug);
+    const legacySnippets = await loadCookbookSnippets(genre.slug, legacyRole);
 
     for (const sec of song.sections) {
       const active = song.layer_activation[layer.id]?.sections[sec.id] ?? false;
@@ -394,7 +404,19 @@ async function buildPatternBank(
       }
 
       patterns[layer.id]![sec.id] = chosenPattern;
-      tracePicks.push(trace);
+      // G9C: blame attribution. Record which graph path got which value so
+      // an audit can correlate a hard failure back to a specific pick.
+      const post = chosenPattern.mini_notation ?? chosenPattern.raw ?? '';
+      tracePicks.push({
+        ...trace,
+        blame: {
+          graph_path: `/pattern_bank/patterns/${layer.id}/${sec.id}`,
+          pre_value: null,
+          post_value: post,
+          contributes_to_orbit: layer.orbit,
+          suspected_in_hard_failure: false,
+        },
+      });
     }
   }
   return { patterns };

@@ -56,6 +56,28 @@ export interface CookbookImpactReport {
 }
 
 /**
+ * G9C §9: blame-aware verdict subclass. The runner can take a generic
+ * negative verdict and refine it to one of these based on which prompts
+ * regressed and which cookbook entries were involved.
+ */
+export type DetailedRegressionVerdict =
+  | 'cookbook_negative_regression_due_to_entry'
+  | 'cookbook_negative_regression_due_to_integration'
+  | 'cookbook_negative_regression_due_to_mutation'
+  | 'cookbook_negative_regression_due_to_existing_genre_failure';
+
+export interface DetailedVerdict {
+  base_verdict: CookbookImpactReport['verdict'] | 'cookbook_inconclusive_insufficient_signal';
+  detailed_verdict?: DetailedRegressionVerdict;
+  regressions_by_genre: Record<string, number>;
+  positive_cases: Array<{ genre: string; metric: string; minimal: number; enabled: number }>;
+  pre_existing_failures: string[];
+  unrelated_failures: string[];
+  suspected_entries: string[];
+  quarantined_entries: string[];
+}
+
+/**
  * Pure-data verdict computation. Given per-mode summaries, return the verdict
  * + supporting notes. The runner provides this as the canonical reasoning
  * step so it's testable independently of orchestration.

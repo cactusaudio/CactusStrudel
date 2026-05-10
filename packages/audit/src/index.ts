@@ -49,4 +49,6 @@ export {
   type CookbookImpactReport,
   type CookbookImpactRunSummary,
   type CookbookMode,
+  type DetailedVerdict,
+  type DetailedRegressionVerdict,
 } from './cookbook-impact.js';

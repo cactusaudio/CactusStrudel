@@ -49,14 +49,29 @@ export const SourceTypeEnum = z.enum([
 ]);
 export type SourceType = z.infer<typeof SourceTypeEnum>;
 
-/** Validation status — how rigorously the entry has been checked. */
+/**
+ * Validation status — lifecycle state of an entry.
+ *
+ * Default retrieval (G9C: `enabled` mode) excludes:
+ *   experimental, diagnostic, quarantined, rejected
+ *
+ * `accepted_with_warning` is excluded from `enabled_mutating` unless
+ * `allow_warnings: true` is passed to retrieve(). `promoted` requires a
+ * matching ledger entry under `learning_ledger/cookbook/promoted_priors/`.
+ */
 export const ValidationStatusEnum = z.enum([
   'unvalidated',              // schema-checked only
+  'candidate',                // proposed; not yet retrieved by default
   'validator_passed',         // strudel-validator clean
   'render_smoke_passed',      // also rendered without crashing
+  'accepted',                 // render-audit accepted, no warning
+  'accepted_with_warning',    // render-audit produced a warning we tolerate
   'feature_match',            // also matches expected feature movement
-  'diagnostic',               // intentionally rough — keep, but don't auto-pick
-  'experimental',             // gated — only used when explicitly requested
+  'diagnostic',               // intentionally rough — never auto-pick
+  'experimental',             // gated — only used with explicit opt-in
+  'quarantined',              // suspected of regressing real renders; excluded
+  'rejected',                 // proven harmful or never-render; excluded
+  'promoted',                 // promoted with ledger evidence
 ]);
 export type ValidationStatus = z.infer<typeof ValidationStatusEnum>;
 

@@ -11,8 +11,11 @@
 
 import {
   loadCookbookEntries, retrieve, pickOne,
+  shouldUseCookbook, shouldAllowMutation, shouldAllowWarnings,
+  lookupActivation, DEFAULT_POLICY,
   type CookbookEntry, type Role as CookbookRole, type SectionFunction,
   type SoundPaletteTag, type EnergyBand,
+  type ActivationPolicy,
 } from '@cactus/cookbook';
 import type { Role as IrRole } from '@cactus/ir';
 
@@ -47,6 +50,23 @@ export interface CookbookTracePick {
   selection_reason: string | null;
   mutation_applied: { operator: string; before: string; after: string } | null;
   fallback_reason?: string;
+  /**
+   * G9C blame attribution. When the producer assigns a pattern to a graph
+   * path, this records which path got which pre/post values, so the audit
+   * can correlate a hard failure back to a single cookbook entry.
+   */
+  blame?: {
+    /** JSON Pointer of the path the pick wrote to (e.g. /pattern_bank/patterns/<layer>/<section>). */
+    graph_path: string;
+    /** Pattern token before this pick (legacy fallback) — null if no prior. */
+    pre_value: string | null;
+    /** Pattern token after this pick. */
+    post_value: string;
+    /** Compiled-code span (orbit number) the pick contributed to, when known. */
+    contributes_to_orbit: number | null;
+    /** Whether this pick is suspected of contributing to a hard failure. */
+    suspected_in_hard_failure: boolean;
+  };
 }
 
 export interface CookbookTrace {
@@ -127,6 +147,12 @@ export interface SelectPriorInput {
   /** Optional caller-supplied tag preferences (from production-vocab matches). */
   prefer_tags?: SoundPaletteTag[];
   forbid_tags?: SoundPaletteTag[];
+  /**
+   * G9C: activation policy. When omitted, DEFAULT_POLICY is used. The
+   * trace records `policy_decision` so audits can see why a (genre, role)
+   * was or wasn't activated.
+   */
+  policy?: ActivationPolicy;
 }
 
 export interface SelectPriorResult {
@@ -170,6 +196,22 @@ export async function selectPrior(input: SelectPriorInput): Promise<SelectPriorR
     return { entry: null, trace: { ...baseTrace, fallback_reason: 'role-not-modeled' } };
   }
 
+  // G9C: activation policy gate — even if the cookbook has entries for this
+  // (genre, role), the policy may say "not yet evidence-safe" and we fall
+  // back to default behavior. Trace records the reason.
+  const policy = input.policy ?? DEFAULT_POLICY;
+  const lookup = lookupActivation(policy, input.genre, cookbookRole);
+  if (!shouldUseCookbook(policy, input.genre, cookbookRole)) {
+    return {
+      entry: null,
+      trace: {
+        ...baseTrace,
+        fallback_reason: `policy-disabled: ${lookup.reason}`,
+      },
+    };
+  }
+  const allowWarnings = shouldAllowWarnings(policy, input.genre, cookbookRole);
+
   const entries = await loadCookbookOnce();
   const ranked = retrieve(entries, {
     genre: input.genre,
@@ -180,6 +222,7 @@ export async function selectPrior(input: SelectPriorInput): Promise<SelectPriorR
     ...(input.prefer_tags ? { prefer_tags: input.prefer_tags } : {}),
     ...(input.forbid_tags ? { forbid_tags: input.forbid_tags } : {}),
     ...(input.seen_ids ? { seen_ids: input.seen_ids } : {}),
+    ...(allowWarnings ? { allow_warnings: true } : {}),
   });
 
   if (ranked.length === 0) {
@@ -194,6 +237,7 @@ export async function selectPrior(input: SelectPriorInput): Promise<SelectPriorR
     ...(input.prefer_tags ? { prefer_tags: input.prefer_tags } : {}),
     ...(input.forbid_tags ? { forbid_tags: input.forbid_tags } : {}),
     ...(input.seen_ids ? { seen_ids: input.seen_ids } : {}),
+    ...(allowWarnings ? { allow_warnings: true } : {}),
   });
 
   if (!picked) {

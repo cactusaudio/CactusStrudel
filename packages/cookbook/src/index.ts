@@ -8,3 +8,8 @@ export * from './validate.js';
 export * from './references.js';
 export * from './vocab-to-query.js';
 export * from './mutations.js';
+export {
+  DEFAULT_POLICY, lookupActivation, shouldUseCookbook,
+  shouldAllowWarnings, shouldAllowMutation,
+  type ActivationLevel, type ActivationPolicy, type RoleActivationPolicy,
+} from './activation-policy.js';

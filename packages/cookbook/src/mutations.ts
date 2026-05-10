@@ -119,10 +119,26 @@ function densityDown(e: CookbookEntry, _rng: () => number): MutationResult | nul
   if (!e.mini_notation) return null;
   const next = thinMini(e.mini_notation);
   if (!next || next === e.mini_notation) return null;
+  // G9C guard: refuse a mutation that produces an all-rest pattern. Such a
+  // pattern compiles to silence and would cause the same class of failure
+  // the dnb regression had — silent layer that the analyzer sees as
+  // non_silent_ratio=0.
+  if (isAllRest(next)) return null;
   const after: CookbookEntry = { ...e, mini_notation: next, id: `${e.id}__density_down` };
   const valid = CookbookEntrySchema.safeParse(after);
   if (!valid.success) return null;
   return { operator: 'density_down', before: e, after, delta: `density down: ${e.mini_notation} → ${next}` };
+}
+
+/**
+ * Returns true iff every cell in the pattern is a rest token.
+ * Used as a mutation safety guard.
+ */
+export function isAllRest(mini: string): boolean {
+  // Strip operators + digits; what remains should be only `~` tokens or empty.
+  const cells = mini.replace(/[\[\]<>{}()*\d]/g, ' ').split(/\s+/).filter((c) => c.length > 0);
+  if (cells.length === 0) return true;
+  return cells.every((c) => c === '~');
 }
 
 function restInsert(e: CookbookEntry, _rng: () => number): MutationResult | null {

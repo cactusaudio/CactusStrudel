@@ -1,0 +1,412 @@
+{
+  "mode": "enabled",
+  "genre": "dnb",
+  "bpm": 174,
+  "picks": [
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "drop",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "dnb",
+        "role": "kick",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "dnb-kick-001",
+          "dnb-kick-002"
+        ]
+      },
+      "candidates_total": 2,
+      "candidates_top_ids": [
+        "dnb-kick-001",
+        "dnb-kick-002"
+      ],
+      "selected_id": "dnb-kick-001",
+      "selection_reason": "section:drop compatible (+3); energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+      "section_function": "drop",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "dnb",
+        "role": "kick",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "dnb-kick-001",
+          "dnb-kick-002"
+        ]
+      },
+      "candidates_total": 2,
+      "candidates_top_ids": [
+        "dnb-kick-002",
+        "dnb-kick-001"
+      ],
+      "selected_id": "dnb-kick-002",
+      "selection_reason": "",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "00fb8673-8b42-4c83-8548-4f3e32248c1e",
+      "section_function": "intro",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "dnb",
+        "role": "hat",
+        "section": "intro",
+        "energy": [
+          "low"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "drop",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "dnb",
+        "role": "hat",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+      "section_function": "drop",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "dnb",
+        "role": "hat",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "9bf739cd-3878-4247-8720-201ef0267b55",
+      "section_function": "outro",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "dnb",
+        "role": "hat",
+        "section": "outro",
+        "energy": [
+          "low"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "snare",
+      "layer_role": "snare",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "drop",
+      "cookbook_role": "clap_snare",
+      "query": {
+        "genre": "dnb",
+        "role": "clap_snare",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "dnb-snare-001",
+          "dnb-snare-002"
+        ]
+      },
+      "candidates_total": 2,
+      "candidates_top_ids": [
+        "dnb-snare-001",
+        "dnb-snare-002"
+      ],
+      "selected_id": "dnb-snare-001",
+      "selection_reason": "section:drop compatible (+3); energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "snare",
+      "layer_role": "snare",
+      "section_id": "4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+      "section_function": "drop",
+      "cookbook_role": "clap_snare",
+      "query": {
+        "genre": "dnb",
+        "role": "clap_snare",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "dnb-snare-001",
+          "dnb-snare-002"
+        ]
+      },
+      "candidates_total": 2,
+      "candidates_top_ids": [
+        "dnb-snare-002",
+        "dnb-snare-001"
+      ],
+      "selected_id": "dnb-snare-002",
+      "selection_reason": "section:drop compatible (+3)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "bass",
+      "layer_role": "bass",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "drop",
+      "cookbook_role": "bass",
+      "query": {
+        "genre": "dnb",
+        "role": "bass",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "dnb-bass-001",
+          "dnb-bass-002"
+        ]
+      },
+      "candidates_total": 2,
+      "candidates_top_ids": [
+        "dnb-bass-001",
+        "dnb-bass-002"
+      ],
+      "selected_id": "dnb-bass-001",
+      "selection_reason": "section:drop compatible (+3); energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "bass",
+      "layer_role": "bass",
+      "section_id": "4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+      "section_function": "drop",
+      "cookbook_role": "bass",
+      "query": {
+        "genre": "dnb",
+        "role": "bass",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "dnb-bass-001",
+          "dnb-bass-002"
+        ]
+      },
+      "candidates_total": 2,
+      "candidates_top_ids": [
+        "dnb-bass-002",
+        "dnb-bass-001"
+      ],
+      "selected_id": "dnb-bass-002",
+      "selection_reason": "energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "pad",
+      "layer_role": "pad",
+      "section_id": "00fb8673-8b42-4c83-8548-4f3e32248c1e",
+      "section_function": "intro",
+      "cookbook_role": "pad_atmo",
+      "query": {
+        "genre": "dnb",
+        "role": "pad_atmo",
+        "section": "intro",
+        "energy": [
+          "low"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "pad",
+      "layer_role": "pad",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "drop",
+      "cookbook_role": "pad_atmo",
+      "query": {
+        "genre": "dnb",
+        "role": "pad_atmo",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "pad",
+      "layer_role": "pad",
+      "section_id": "ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+      "section_function": "breakdown",
+      "cookbook_role": "pad_atmo",
+      "query": {
+        "genre": "dnb",
+        "role": "pad_atmo",
+        "section": "breakdown",
+        "energy": [
+          "low"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "pad",
+      "layer_role": "pad",
+      "section_id": "4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+      "section_function": "drop",
+      "cookbook_role": "pad_atmo",
+      "query": {
+        "genre": "dnb",
+        "role": "pad_atmo",
+        "section": "drop",
+        "energy": [
+          "high"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "pad",
+      "layer_role": "pad",
+      "section_id": "9bf739cd-3878-4247-8720-201ef0267b55",
+      "section_function": "outro",
+      "cookbook_role": "pad_atmo",
+      "query": {
+        "genre": "dnb",
+        "role": "pad_atmo",
+        "section": "outro",
+        "energy": [
+          "low"
+        ],
+        "bpm": 174,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    }
+  ]
+}

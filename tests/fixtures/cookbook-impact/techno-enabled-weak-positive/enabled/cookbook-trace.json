@@ -1,0 +1,612 @@
+{
+  "mode": "enabled",
+  "genre": "techno",
+  "bpm": 132,
+  "picks": [
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "00fb8673-8b42-4c83-8548-4f3e32248c1e",
+      "section_function": "intro",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "techno",
+        "role": "kick",
+        "section": "intro",
+        "energy": [
+          "mid"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-kick-001",
+          "tk-kick-005",
+          "tk-kick-002",
+          "tk-kick-004",
+          "tk-kick-003",
+          "tk-kick-006"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-kick-001",
+        "tk-kick-003",
+        "tk-kick-006",
+        "tk-kick-005"
+      ],
+      "selected_id": "tk-kick-001",
+      "selection_reason": "section:intro compatible (+3); energy:mid (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "build",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "techno",
+        "role": "kick",
+        "section": "build",
+        "energy": [
+          "high"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-kick-001",
+          "tk-kick-005",
+          "tk-kick-002",
+          "tk-kick-004",
+          "tk-kick-003",
+          "tk-kick-006"
+        ]
+      },
+      "candidates_total": 5,
+      "candidates_top_ids": [
+        "tk-kick-005",
+        "tk-kick-002",
+        "tk-kick-004",
+        "tk-kick-003",
+        "tk-kick-001"
+      ],
+      "selected_id": "tk-kick-005",
+      "selection_reason": "section:build compatible (+3); energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+      "section_function": "drop",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "techno",
+        "role": "kick",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-kick-001",
+          "tk-kick-005",
+          "tk-kick-002",
+          "tk-kick-004",
+          "tk-kick-003",
+          "tk-kick-006"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-kick-002",
+        "tk-kick-004",
+        "tk-kick-003",
+        "tk-kick-005"
+      ],
+      "selected_id": "tk-kick-002",
+      "selection_reason": "section:drop compatible (+3); energy:peak (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "9bf739cd-3878-4247-8720-201ef0267b55",
+      "section_function": "build",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "techno",
+        "role": "kick",
+        "section": "build",
+        "energy": [
+          "high"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-kick-001",
+          "tk-kick-005",
+          "tk-kick-002",
+          "tk-kick-004",
+          "tk-kick-003",
+          "tk-kick-006"
+        ]
+      },
+      "candidates_total": 5,
+      "candidates_top_ids": [
+        "tk-kick-004",
+        "tk-kick-003",
+        "tk-kick-005",
+        "tk-kick-002",
+        "tk-kick-001"
+      ],
+      "selected_id": "tk-kick-004",
+      "selection_reason": "energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "cbc8c694-8c14-4ddc-865e-457d6f86584e",
+      "section_function": "drop",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "techno",
+        "role": "kick",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-kick-001",
+          "tk-kick-005",
+          "tk-kick-002",
+          "tk-kick-004",
+          "tk-kick-003",
+          "tk-kick-006"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-kick-003",
+        "tk-kick-002",
+        "tk-kick-004",
+        "tk-kick-005"
+      ],
+      "selected_id": "tk-kick-003",
+      "selection_reason": "",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "kick",
+      "layer_role": "kick",
+      "section_id": "9fd76be8-a2b6-49d6-841a-bf541becdf3f",
+      "section_function": "outro",
+      "cookbook_role": "kick",
+      "query": {
+        "genre": "techno",
+        "role": "kick",
+        "section": "outro",
+        "energy": [
+          "mid"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-kick-001",
+          "tk-kick-005",
+          "tk-kick-002",
+          "tk-kick-004",
+          "tk-kick-003",
+          "tk-kick-006"
+        ]
+      },
+      "candidates_total": 5,
+      "candidates_top_ids": [
+        "tk-kick-006",
+        "tk-kick-001",
+        "tk-kick-003",
+        "tk-kick-005",
+        "tk-kick-004"
+      ],
+      "selected_id": "tk-kick-006",
+      "selection_reason": "",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "build",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "techno",
+        "role": "hat",
+        "section": "build",
+        "energy": [
+          "high"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-hat-002",
+          "tk-hat-003",
+          "tk-hat-001",
+          "tk-hat-004",
+          "tk-hat-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-hat-002",
+        "tk-hat-003",
+        "tk-hat-004",
+        "tk-hat-001"
+      ],
+      "selected_id": "tk-hat-002",
+      "selection_reason": "section:build compatible (+3); energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+      "section_function": "drop",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "techno",
+        "role": "hat",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-hat-002",
+          "tk-hat-003",
+          "tk-hat-001",
+          "tk-hat-004",
+          "tk-hat-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-hat-003",
+        "tk-hat-004",
+        "tk-hat-001",
+        "tk-hat-002"
+      ],
+      "selected_id": "tk-hat-003",
+      "selection_reason": "section:drop compatible (+3); energy:peak (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+      "section_function": "breakdown",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "techno",
+        "role": "hat",
+        "section": "breakdown",
+        "energy": [
+          "mid"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-hat-002",
+          "tk-hat-003",
+          "tk-hat-001",
+          "tk-hat-004",
+          "tk-hat-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-hat-001",
+        "tk-hat-004",
+        "tk-hat-002",
+        "tk-hat-003"
+      ],
+      "selected_id": "tk-hat-001",
+      "selection_reason": "section:breakdown compatible (+3); energy:mid (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "9bf739cd-3878-4247-8720-201ef0267b55",
+      "section_function": "build",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "techno",
+        "role": "hat",
+        "section": "build",
+        "energy": [
+          "high"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-hat-002",
+          "tk-hat-003",
+          "tk-hat-001",
+          "tk-hat-004",
+          "tk-hat-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-hat-004",
+        "tk-hat-002",
+        "tk-hat-003",
+        "tk-hat-001"
+      ],
+      "selected_id": "tk-hat-004",
+      "selection_reason": "energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "hat",
+      "layer_role": "hat",
+      "section_id": "cbc8c694-8c14-4ddc-865e-457d6f86584e",
+      "section_function": "drop",
+      "cookbook_role": "hat",
+      "query": {
+        "genre": "techno",
+        "role": "hat",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-hat-002",
+          "tk-hat-003",
+          "tk-hat-001",
+          "tk-hat-004",
+          "tk-hat-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-hat-003",
+        "tk-hat-004",
+        "tk-hat-001",
+        "tk-hat-002"
+      ],
+      "selected_id": "tk-hat-003",
+      "selection_reason": "section:drop compatible (+3); energy:peak (+2); already-seen (-10)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "bass",
+      "layer_role": "bass",
+      "section_id": "89af9ed0-2560-41c5-867f-bb5522e53a50",
+      "section_function": "build",
+      "cookbook_role": "bass",
+      "query": {
+        "genre": "techno",
+        "role": "bass",
+        "section": "build",
+        "energy": [
+          "high"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-bass-002",
+          "tk-bass-004",
+          "tk-bass-001",
+          "tk-bass-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-bass-002",
+        "tk-bass-004",
+        "tk-bass-001",
+        "tk-bass-003"
+      ],
+      "selected_id": "tk-bass-002",
+      "selection_reason": "energy:high (+2)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "bass",
+      "layer_role": "bass",
+      "section_id": "ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+      "section_function": "drop",
+      "cookbook_role": "bass",
+      "query": {
+        "genre": "techno",
+        "role": "bass",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-bass-002",
+          "tk-bass-004",
+          "tk-bass-001",
+          "tk-bass-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-bass-004",
+        "tk-bass-001",
+        "tk-bass-003",
+        "tk-bass-002"
+      ],
+      "selected_id": "tk-bass-004",
+      "selection_reason": "section:drop compatible (+3)",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "bass",
+      "layer_role": "bass",
+      "section_id": "9bf739cd-3878-4247-8720-201ef0267b55",
+      "section_function": "build",
+      "cookbook_role": "bass",
+      "query": {
+        "genre": "techno",
+        "role": "bass",
+        "section": "build",
+        "energy": [
+          "high"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-bass-002",
+          "tk-bass-004",
+          "tk-bass-001",
+          "tk-bass-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-bass-001",
+        "tk-bass-003",
+        "tk-bass-002",
+        "tk-bass-004"
+      ],
+      "selected_id": "tk-bass-001",
+      "selection_reason": "",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "bass",
+      "layer_role": "bass",
+      "section_id": "cbc8c694-8c14-4ddc-865e-457d6f86584e",
+      "section_function": "drop",
+      "cookbook_role": "bass",
+      "query": {
+        "genre": "techno",
+        "role": "bass",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": [
+          "tk-bass-002",
+          "tk-bass-004",
+          "tk-bass-001",
+          "tk-bass-003"
+        ]
+      },
+      "candidates_total": 4,
+      "candidates_top_ids": [
+        "tk-bass-003",
+        "tk-bass-002",
+        "tk-bass-004",
+        "tk-bass-001"
+      ],
+      "selected_id": "tk-bass-003",
+      "selection_reason": "",
+      "mutation_applied": null
+    },
+    {
+      "layer_id": "stab",
+      "layer_role": "chord",
+      "section_id": "ae8dae18-aefd-49ff-88d0-85b8cf8d6ab8",
+      "section_function": "drop",
+      "cookbook_role": "chord_stab",
+      "query": {
+        "genre": "techno",
+        "role": "chord_stab",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "stab",
+      "layer_role": "chord",
+      "section_id": "4300fda0-99bf-44fa-8c9d-2f89263ddbaf",
+      "section_function": "breakdown",
+      "cookbook_role": "chord_stab",
+      "query": {
+        "genre": "techno",
+        "role": "chord_stab",
+        "section": "breakdown",
+        "energy": [
+          "mid"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    },
+    {
+      "layer_id": "stab",
+      "layer_role": "chord",
+      "section_id": "cbc8c694-8c14-4ddc-865e-457d6f86584e",
+      "section_function": "drop",
+      "cookbook_role": "chord_stab",
+      "query": {
+        "genre": "techno",
+        "role": "chord_stab",
+        "section": "drop",
+        "energy": [
+          "peak"
+        ],
+        "bpm": 132,
+        "prefer_tags": [],
+        "forbid_tags": [],
+        "seen_ids": []
+      },
+      "candidates_total": 0,
+      "candidates_top_ids": [],
+      "selected_id": null,
+      "selection_reason": null,
+      "mutation_applied": null,
+      "fallback_reason": "no-cookbook-match"
+    }
+  ]
+}
