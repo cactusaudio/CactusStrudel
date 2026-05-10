@@ -10,6 +10,7 @@
     "@cactus/strudel-compiler": "workspace:*",
     "@cactus/strudel-validator": "workspace:*",
     "@cactus/critic": "workspace:*",
-    "@cactus/preference": "workspace:*"
+    "@cactus/preference": "workspace:*",
+    "@cactus/renderer": "workspace:*"
   }
 }

@@ -80,6 +80,13 @@ export async function runAudit(options: RunAuditOptions): Promise<RunAuditResult
   const championPerPrompt: Array<{ prompt: ExpandedPrompt; pass: boolean; categories: FailureCategory[] }> = [];
   const verdicts: ChampionChallengerVerdict[] = [];
 
+  // G4: pin the renderer warm across the whole audit so we boot Chromium once
+  // instead of once per prompt × backend. shutdown() in the finally below.
+  const rendererControl = options.skipRender
+    ? null
+    : await import('@cactus/renderer').then((m) => ({ shutdown: m.shutdown, warmup: m.warmup }));
+  if (rendererControl) await rendererControl.warmup();
+  try {
   for (const prompt of expanded) {
     const champRun = await runOneBackend(prompt, champion, options, rendersDir);
     if (champRun.confusion) championConfusionReports.push(champRun.confusion);
@@ -178,6 +185,9 @@ export async function runAudit(options: RunAuditOptions): Promise<RunAuditResult
     champion_failures_by_category: failureCategoryCounts,
     ...(ccSummary ? { champion_challenger: ccSummary } : {}),
   };
+  } finally {
+    if (rendererControl) await rendererControl.shutdown();
+  }
 }
 
 interface BackendRunInternals extends BackendRunSummary {

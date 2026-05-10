@@ -399,6 +399,9 @@ importers:
       '@cactus/preference':
         specifier: workspace:*
         version: link:../packages/preference
+      '@cactus/renderer':
+        specifier: workspace:*
+        version: link:../packages/renderer
       '@cactus/strudel-compiler':
         specifier: workspace:*
         version: link:../packages/strudel-compiler

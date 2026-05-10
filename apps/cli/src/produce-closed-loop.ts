@@ -95,6 +95,12 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
   let prevGraph: SessionGraph | null = null;
   let prevWeighted = -Infinity;
 
+  // G4: pin the renderer warm for the whole closed loop so we pay the boot
+  // tax once instead of once per iteration. Shutdown happens in the finally
+  // below.
+  const { warmup, shutdown } = await import('@cactus/renderer');
+  await warmup();
+  try {
   for (let iter = 0; iter <= maxIter; iter++) {
     const iterTag = `iter_${String(iter).padStart(4, '0')}`;
     const codePath = path.join(sessionDir, `${iterTag}.strudel.js`);
@@ -249,6 +255,9 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
     hardFailures,
     failureCategories: Array.from(new Set(iterationLog.flatMap((i) => i.classification.categories))),
   };
+  } finally {
+    await shutdown();
+  }
 }
 
 function avgScores(c: CritiqueEntry): number {

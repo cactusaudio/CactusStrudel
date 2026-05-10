@@ -47,6 +47,7 @@ declare global {
       warnings: string[];
     }>;
     __cactusInitError?: string;
+    __cactusSampleRegistry?: () => Array<{ name: string; type: 'sample' | 'synth' | 'unknown' }>;
     initStrudel?: typeof initStrudel;
   }
 }
@@ -94,6 +95,35 @@ void (async () => {
     try { hush(); blog('init:hush-ok'); } catch (e) {
       blog('init:hush-skipped:' + (e instanceof Error ? e.message : 'err'));
     }
+    // G4: probe a fixed list of well-known names for sample/synth availability.
+    // The list is the conformance contract — adding to it implies a renderer
+    // version bump.
+    window.__cactusSampleRegistry = () => {
+      const probes = [
+        // dirt-samples drum bank
+        'bd', 'sd', 'hh', 'oh', 'cp', 'rim', 'crash', 'ride', 'lt', 'mt', 'ht',
+        // Strudel built-in synths
+        'sawtooth', 'square', 'triangle', 'sine', 'pulse',
+        // sampled instruments often present in dirt-samples
+        'piano', 'bass', 'pad', 'lead',
+      ];
+      const out: Array<{ name: string; type: 'sample' | 'synth' | 'unknown' }> = [];
+      for (const n of probes) {
+        try {
+          const s = getSound(n);
+          let type: 'sample' | 'synth' | 'unknown' = 'unknown';
+          if (s) {
+            const data = (s as any).data ?? s;
+            if (data?.type === 'synth' || ['sawtooth','square','triangle','sine','pulse'].includes(n)) type = 'synth';
+            else type = 'sample';
+          }
+          out.push({ name: n, type });
+        } catch {
+          out.push({ name: n, type: 'unknown' });
+        }
+      }
+      return out;
+    };
     window.__cactusReady = true;
     blog('init:ready');
   } catch (e) {

@@ -39,6 +39,12 @@ const RENDERER_PAGE_DIR = path.resolve(HERE, '..', '..', '..', 'apps', 'renderer
 
 let sharedHandle: Promise<RendererPageHandle> | null = null;
 let activeRenders = 0;
+/**
+ * G4: when true, the user has explicitly warmed the renderer and refcount-based
+ * teardown is suppressed until shutdown() is called. Lets the closed-loop /
+ * audit / batch jobs amortize browser boot across many renders.
+ */
+let userWarmed = false;
 
 export async function ensureRenderer(): Promise<RendererPageHandle> {
   if (!sharedHandle) {
@@ -50,7 +56,7 @@ export async function ensureRenderer(): Promise<RendererPageHandle> {
 
 export async function releaseRenderer(): Promise<void> {
   activeRenders--;
-  if (activeRenders <= 0 && sharedHandle) {
+  if (activeRenders <= 0 && !userWarmed && sharedHandle) {
     const h = await sharedHandle;
     sharedHandle = null;
     activeRenders = 0;
@@ -59,7 +65,49 @@ export async function releaseRenderer(): Promise<void> {
     if (h.serverProcess && !h.serverProcess.killed) {
       h.serverProcess.kill('SIGTERM');
     }
+  } else if (activeRenders < 0) {
+    activeRenders = 0;
   }
+}
+
+/**
+ * G4: explicit lifecycle. `warmup()` boots the renderer and pins it open;
+ * subsequent render() calls reuse the same browser/page. Call `shutdown()`
+ * when done.
+ */
+export async function warmup(): Promise<void> {
+  await ensureRenderer();
+  userWarmed = true;
+  // Pair the implicit ensure with an immediate release so the refcount returns
+  // to baseline (warmed but no in-flight renders). The userWarmed flag prevents
+  // releaseRenderer() from tearing the handle down here.
+  await releaseRenderer();
+}
+
+/**
+ * G4: force shutdown regardless of refcount or warm flag. Always safe; idempotent.
+ */
+export async function shutdown(): Promise<void> {
+  userWarmed = false;
+  if (sharedHandle) {
+    const h = await sharedHandle;
+    sharedHandle = null;
+    activeRenders = 0;
+    try { await h.context.close(); } catch { /* */ }
+    try { await h.browser.close(); } catch { /* */ }
+    if (h.serverProcess && !h.serverProcess.killed) h.serverProcess.kill('SIGTERM');
+  }
+}
+
+/** Test-only helper. NOT exported from the package barrel for production use. */
+export function _resetLifecycleStateForTests(): void {
+  sharedHandle = null;
+  activeRenders = 0;
+  userWarmed = false;
+}
+
+export function _getLifecycleStateForTests(): { hasHandle: boolean; activeRenders: number; userWarmed: boolean } {
+  return { hasHandle: sharedHandle !== null, activeRenders, userWarmed };
 }
 
 async function bootRenderer(): Promise<RendererPageHandle> {
@@ -215,6 +263,53 @@ function encodeFloat32ToWav(interleaved: Float32Array, sampleRate: number, chann
   const wav = new WaveFile();
   wav.fromScratch(channels, sampleRate, '32f', samples as unknown as number[][]);
   return wav.toBuffer();
+}
+
+/**
+ * G4: batch render. Warms the renderer once, runs inputs in order against the
+ * shared page (Playwright serializes per-page evaluate() anyway), and leaves
+ * the renderer warm afterward. Caller controls shutdown.
+ */
+export async function renderMany(inputs: RenderInput[]): Promise<RenderResult[]> {
+  if (inputs.length === 0) return [];
+  await warmup();
+  const out: RenderResult[] = [];
+  for (const input of inputs) {
+    out.push(await render(input));
+  }
+  return out;
+}
+
+export interface SampleRegistryEntry {
+  name: string;
+  type: 'sample' | 'synth' | 'unknown';
+}
+
+export interface SampleRegistry {
+  entries: SampleRegistryEntry[];
+  loaded_count: number;
+  total_probed: number;
+}
+
+/**
+ * G4: probe the renderer page for which sample/synth names are loaded. Used by
+ * the conformance suite to assert deterministic boot state across runs.
+ */
+export async function getSampleRegistry(): Promise<SampleRegistry> {
+  const handle = await ensureRenderer();
+  try {
+    const entries = (await handle.page.evaluate(() => {
+      const fn = (window as unknown as { __cactusSampleRegistry?: () => SampleRegistryEntry[] }).__cactusSampleRegistry;
+      return fn ? fn() : [];
+    })) as SampleRegistryEntry[];
+    return {
+      entries,
+      loaded_count: entries.filter((e) => e.type !== 'unknown').length,
+      total_probed: entries.length,
+    };
+  } finally {
+    await releaseRenderer();
+  }
 }
 
 export async function renderPeak(wavPath: string): Promise<{ peakDb: number; rmsDb: number }> {
