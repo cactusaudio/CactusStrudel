@@ -3,12 +3,21 @@ import type { QualityGatesReport } from '@cactus/analyzer';
 import { classifyFailure } from './failure-taxonomy.js';
 
 function gate(name: string, passed: boolean, value = 0, severity = passed ? 0 : 1): QualityGatesReport['gates'][number] {
-  return { name, passed, value, threshold: 0, severity };
+  return { name, passed, value, threshold: 0, severity, severity_tier: passed ? 'informational' : 'severe_warning', confidence: 'synthetic_fixture' };
 }
 
 function gates(list: QualityGatesReport['gates']): QualityGatesReport {
   const fail_count = list.filter((g) => !g.passed).length;
-  return { gates: list, pass_count: list.length - fail_count, fail_count, overall_pass: fail_count === 0 };
+  const failed = list.filter((g) => !g.passed);
+  return {
+    gates: list, pass_count: list.length - fail_count, fail_count,
+    hard_fail_count: failed.filter((g) => g.severity_tier === 'hard_fail').length,
+    severe_warning_count: failed.filter((g) => g.severity_tier === 'severe_warning').length,
+    calibration_warning_count: failed.filter((g) => g.severity_tier === 'calibration_warning').length,
+    informational_count: failed.filter((g) => g.severity_tier === 'informational').length,
+    skipped_count: list.filter((g) => g.severity_tier === 'skipped').length,
+    overall_pass: fail_count === 0,
+  };
 }
 
 describe('classifyFailure', () => {

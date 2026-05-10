@@ -22,10 +22,16 @@ function critiqueWith(scores: Partial<ScoreVector>, severeTargets = 0): Critique
 }
 
 function gates(failCount: number): QualityGatesReport {
-  const gs = Array.from({ length: failCount }, (_, i) => ({
+  const gs: QualityGatesReport['gates'] = Array.from({ length: failCount }, (_, i) => ({
     name: `g${i}`, passed: false, value: 0, threshold: 0, severity: 1,
+    severity_tier: 'severe_warning', confidence: 'synthetic_fixture',
   }));
-  return { gates: gs, pass_count: 0, fail_count: failCount, overall_pass: failCount === 0 };
+  return {
+    gates: gs, pass_count: 0, fail_count: failCount,
+    hard_fail_count: 0, severe_warning_count: failCount,
+    calibration_warning_count: 0, informational_count: 0, skipped_count: 0,
+    overall_pass: failCount === 0,
+  };
 }
 
 function summary(scores: Partial<ScoreVector>, opts: { hard?: number; intendedTop1?: boolean; failGates?: number; severe?: number } = {}): BackendRunSummary {

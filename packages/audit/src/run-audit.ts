@@ -368,6 +368,27 @@ function renderAuditMarkdown(input: RenderMarkdownInput): string {
   lines.push(`- champion (rules) pass: ${pass} / ${total} (${((pass / Math.max(1, total)) * 100).toFixed(1)}%)`);
   lines.push(`- champion fail: ${total - pass}`);
   lines.push('');
+
+  // G1: tier-aware breakdown across the championFailures dossiers.
+  // We sum tier counts from gate dossiers attached to each failure.
+  let hard = 0, severe = 0, cal = 0, info = 0, skipped = 0;
+  for (const f of input.championFailures) {
+    const g = (f as { gates?: QualityGatesReport }).gates;
+    if (!g) continue;
+    hard += g.hard_fail_count;
+    severe += g.severe_warning_count;
+    cal += g.calibration_warning_count;
+    info += g.informational_count;
+    skipped += g.skipped_count;
+  }
+  lines.push('## gate severity breakdown (failed gates across champion dossiers)');
+  lines.push(`- hard_fail:           ${hard}  (blocks audit pass)`);
+  lines.push(`- severe_warning:      ${severe}  (visible; does not block by default)`);
+  lines.push(`- calibration_warning: ${cal}  (informational, ADR 0005 known calibration zones)`);
+  lines.push(`- informational:       ${info}`);
+  lines.push(`- skipped:             ${skipped}  (preconditions not met; see notes)`);
+  lines.push('');
+
   lines.push('## failure taxonomy (champion)');
   if (Object.keys(input.failureCategoryCounts).length === 0) {
     lines.push('_no failures classified — every champion render passed all gates and intended-genre top-1._');
