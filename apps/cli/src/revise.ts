@@ -14,7 +14,7 @@ import {
 import { compileSessionGraph } from '@cactus/strudel-compiler';
 import { validateStrudelCode } from '@cactus/strudel-validator';
 import { planRevisions } from '@cactus/agent-runtime';
-import { parseFeedback, applyFeedback, recordDecision } from '@cactus/preference';
+import { parseFeedback, applyFeedback, recordDecision, appendLedgerEntry } from '@cactus/preference';
 import { runQualityGates, analyzeWav } from '@cactus/analyzer';
 import { critique } from '@cactus/critic';
 import { loadGenre } from '@cactus/genres';
@@ -193,6 +193,30 @@ export async function revise(input: ReviseInput): Promise<ReviseResult> {
     hardFailures,
     rendered: !!renderedWav,
   }));
+
+  // G7: ledger entry for the revise pass.
+  try {
+    await appendLedgerEntry({
+      ts: new Date().toISOString(),
+      session_id: graph.session_id,
+      mode: 'revise',
+      brief: `revise[${parsed.language}]: ${input.feedback}`,
+      iterations: 1,
+      stopped_reason: hardFailures.length === 0 ? 'completed' : 'failure',
+      hard_fail_count: hardFailures.length,
+      severe_warning_count: locality.invariant_violations.length,
+      patches_applied: patchesApplied,
+      failed_patch_iters: [],
+      weighted_score_first: null,
+      weighted_score_last: null,
+      spectrogram_path: null,
+      notes: `targets=${parsed.synthetic_targets.length} drift=${locality.drift_severity.toFixed(3)}`,
+    });
+  } catch (e) {
+    if (process.env.CACTUS_LEDGER_VERBOSE) {
+      console.error(`[ledger] append failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   return {
     ok: hardFailures.length === 0,

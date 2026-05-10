@@ -22,3 +22,8 @@ export function weightedScore(scores: ScoreVector, weights: ScoreVector): number
 }
 
 export { parseFeedback, applyFeedback, type ParsedFeedback } from './feedback.js';
+export {
+  appendLedgerEntry, readLedger, buildLedgerEntryFromClosedLoop,
+  DEFAULT_LEDGER_PATH,
+  type LedgerEntry, type LedgerMode, type AppendLedgerOptions,
+} from './learning-ledger.js';

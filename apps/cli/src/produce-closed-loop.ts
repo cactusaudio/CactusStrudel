@@ -36,6 +36,7 @@ import { loadGenre } from '@cactus/genres';
 import { masterTrack } from '@cactus/mastering';
 import { scoreRevisionLocality, type LocalityResult } from '@cactus/revision';
 import { classifyFailure, type ClassifiedFailure } from '@cactus/audit';
+import { appendLedgerEntry, buildLedgerEntryFromClosedLoop } from '@cactus/preference';
 
 export interface ProduceClosedLoopOptions {
   brief: string;
@@ -301,6 +302,32 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
   }
 
   const report = await writeReport({ sessionDir, graph, iterationLog, hardFailures, stoppedReason });
+
+  // G7: append a learning-ledger entry summarizing what this session tried
+  // and what came of it. Best-effort — never fail the session over a ledger
+  // write error.
+  try {
+    const ledgerEntry = buildLedgerEntryFromClosedLoop({
+      sessionId: graph.session_id,
+      brief: input.brief,
+      stoppedReason,
+      iterations: iterationLog.length,
+      hardFailures,
+      iterationLog: iterationLog.map((it) => ({
+        iter: it.iter,
+        appliedOps: it.appliedOps,
+        qualityPass: it.qualityPass,
+        weighted: it.weighted,
+        classification: { categories: it.classification.categories },
+      })),
+    });
+    await appendLedgerEntry(ledgerEntry);
+  } catch (e) {
+    if (process.env.CACTUS_LEDGER_VERBOSE) {
+      console.error(`[ledger] append failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   return {
     ok: hardFailures.length === 0 && (stoppedReason === 'accepted' || stoppedReason === 'plateau' || stoppedReason === 'max_iterations'),
     sessionDir,
