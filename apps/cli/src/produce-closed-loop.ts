@@ -27,7 +27,10 @@ import {
   applyPatch, isAgentAllowedToWrite, validateSemanticInvariants, formatSemanticReport,
   type Patch, type SessionGraph, type AnalyzerFeatures, type CritiqueEntry,
 } from '@cactus/ir';
-import { runQualityGates, analyzeWav, type QualityGatesReport } from '@cactus/analyzer';
+import {
+  runQualityGates, analyzeWav, computeSectionDiagnostics, generateSpectrogram,
+  type QualityGatesReport,
+} from '@cactus/analyzer';
 import { critique } from '@cactus/critic';
 import { loadGenre } from '@cactus/genres';
 import { masterTrack } from '@cactus/mastering';
@@ -179,7 +182,32 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
         validatorIssues: validation.issues.length,
       });
       await fs.writeFile(taxonomyPath, JSON.stringify(classification, null, 2));
-      crit = await critique({ graph, features, iteration: iter });
+      // G6: section diagnostics + spectrogram fed into the critic so it can
+      // emit per-section + per-band targets with image evidence.
+      let sectionDiagsLite: Array<{ section_id: string; section_name?: string; non_silent_ratio: number; rms_db?: number; band_rms?: Record<string, number>; active_layers?: number }> | undefined;
+      let spectrogramPath: string | undefined;
+      try {
+        const sdReport = await computeSectionDiagnostics(wavPath, graph);
+        sectionDiagsLite = sdReport.rendered_sections.map((s) => ({
+          section_id: s.section_id,
+          section_name: s.name,
+          non_silent_ratio: s.non_silent_ratio,
+          rms_db: s.rms_db,
+          band_rms: s.band_rms,
+          active_layers: s.active_layer_count,
+        }));
+        const specOut = path.join(sessionDir, `${iterTag}.spectrogram.png`);
+        await generateSpectrogram(wavPath, { outputPath: specOut }).catch(() => undefined);
+        spectrogramPath = specOut;
+      } catch (e) {
+        hardFailures.push(`${iterTag}: section/spectrogram analysis failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
+
+      crit = await critique({
+        graph, features, iteration: iter,
+        ...(sectionDiagsLite ? { sectionDiagnostics: sectionDiagsLite } : {}),
+        ...(spectrogramPath ? { spectrogramPath } : {}),
+      });
       await fs.writeFile(critiquePath, JSON.stringify(crit, null, 2));
 
       if (input.emitAuditFailures && classification.categories.length > 0) {
@@ -230,6 +258,28 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
     }
 
     iterationLog.push({ iter, patches, appliedOps, classification, qualityPass, weighted, ...(locality ? { locality } : {}) });
+
+    // G6: failed-patch artifact. If we had patches in the previous iteration
+    // and this iteration's weighted score regressed, surface which patches
+    // didn't help so the next planner run (and the human) can see it.
+    if (iter > 0 && iterationLog.length >= 1) {
+      const prev = iterationLog[iterationLog.length - 1]!;
+      if (prev.patches.length > 0 && weighted < prev.weighted - 0.005) {
+        const failedPatchesPath = path.join(sessionDir, `${iterTag}.failed-patches.json`);
+        await fs.writeFile(failedPatchesPath, JSON.stringify({
+          previous_iteration: prev.iter,
+          weighted_before: prev.weighted,
+          weighted_after: weighted,
+          delta: weighted - prev.weighted,
+          patches_that_did_not_help: prev.patches.map((p) => ({
+            patch_id: p.patch_id,
+            agent: p.agent,
+            intent: p.intent,
+            ops: p.ops.map((o) => ({ op: o.op, path: o.path })),
+          })),
+        }, null, 2));
+      }
+    }
 
     if (patches.length === 0) {
       stoppedReason = 'no_patches';

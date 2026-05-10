@@ -14,6 +14,28 @@ export interface CritiqueInput {
   graph: SessionGraph;
   features: AnalyzerFeatures;
   iteration?: number;
+  /**
+   * G6: optional section-level diagnostics from analyzer/section-diagnostics.
+   * When supplied, critic emits per-section targets (silence in expected loud
+   * sections, band imbalance, etc.).
+   */
+  sectionDiagnostics?: SectionDiagnosticsLite[];
+  /**
+   * G6: optional spectrogram path (PNG). When supplied, critic attaches it to
+   * targets' evidence.spectrogram_path so reviewers can see the spectrum
+   * directly from the critique JSON.
+   */
+  spectrogramPath?: string;
+}
+
+/** Subset of SectionDiagnostic the critic actually uses. Avoids hard analyzer dep. */
+export interface SectionDiagnosticsLite {
+  section_id: string;
+  section_name?: string;
+  non_silent_ratio: number;
+  rms_db?: number;
+  band_rms?: Record<string, number>;
+  active_layers?: number;
 }
 
 export async function critique(input: CritiqueInput): Promise<CritiqueEntry> {
@@ -30,6 +52,19 @@ export async function critique(input: CritiqueInput): Promise<CritiqueEntry> {
 
   const scores = scoreVector(graph, features, genre);
   const targets = revisionTargets(graph, features, genre);
+  // G6: per-section targets when analyzer ran computeSectionDiagnostics.
+  if (input.sectionDiagnostics) {
+    targets.push(...sectionTargets(graph, input.sectionDiagnostics));
+  }
+  // G6: per-band targets from spectral.band_rms (always available).
+  targets.push(...bandTargets(graph, features));
+  // G6: attach spectrogram path to every target evidence so reviewers can
+  // jump straight from critique.json to the picture.
+  if (input.spectrogramPath) {
+    for (const t of targets) {
+      (t.evidence as Record<string, unknown>).spectrogram_path = input.spectrogramPath;
+    }
+  }
   return {
     iteration,
     scores,
@@ -218,6 +253,78 @@ function revisionTargets(graph: SessionGraph, f: AnalyzerFeatures, genre?: Genre
   }
 
   return targets;
+}
+
+/**
+ * G6: per-section targets. Emits a target when:
+ * - a section that should be loud (drop / main / build) has non_silent_ratio < 0.5
+ * - a non-intro/outro section has rms_db < -45 dB (effectively silent in the mix)
+ */
+function sectionTargets(graph: SessionGraph, diags: SectionDiagnosticsLite[]): CritiqueTarget[] {
+  const out: CritiqueTarget[] = [];
+  for (const d of diags) {
+    const sec = graph.song.sections.find((s) => s.id === d.section_id);
+    if (!sec) continue;
+    const expectsLoud = sec.function === 'drop' || sec.function === 'main' || sec.function === 'build';
+    if (expectsLoud && d.non_silent_ratio < 0.5) {
+      out.push({
+        target_id: uuid(),
+        severity: Math.min(1, (0.5 - d.non_silent_ratio) * 2),
+        agent: 'producer-arranger',
+        graph_paths: [`/song/sections/${graph.song.sections.indexOf(sec)}/energy`, `/song/layer_activation`],
+        problem: `section "${sec.name}" (${sec.function}) is mostly silent (non_silent_ratio=${d.non_silent_ratio.toFixed(2)})`,
+        evidence: {
+          section_id: sec.id,
+          section_name: sec.name,
+          section_function: sec.function,
+          non_silent_ratio: d.non_silent_ratio,
+        },
+        revision_instruction: `activate at least 3 layers in section "${sec.name}" or raise its energy ≥ 0.6`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * G6: per-band targets. Emits a target when band_rms shows imbalance:
+ * - low+sub overpower mid+high by >12 dB (mud)
+ * - high band starved (presence missing)
+ */
+function bandTargets(graph: SessionGraph, f: AnalyzerFeatures): CritiqueTarget[] {
+  const out: CritiqueTarget[] = [];
+  const bands = f.spectral?.band_rms;
+  if (!bands) return out;
+  const lowEnergy = (bands.low ?? 0) + (bands.sub ?? 0);
+  const midEnergy = bands.mid ?? 0;
+  const highEnergy = bands.high ?? 0;
+  const lowDb = lowEnergy > 0 ? 20 * Math.log10(lowEnergy) : -100;
+  const midDb = midEnergy > 0 ? 20 * Math.log10(midEnergy) : -100;
+  const highDb = highEnergy > 0 ? 20 * Math.log10(highEnergy) : -100;
+  if (lowDb - Math.max(midDb, highDb) > 12) {
+    const chordLayer = graph.layers.find((l) => l.role === 'chord' || l.role === 'pad');
+    out.push({
+      target_id: uuid(),
+      severity: Math.min(1, (lowDb - Math.max(midDb, highDb) - 12) / 12),
+      agent: 'producer-mix-engineer',
+      graph_paths: chordLayer ? ['/sound_palette/layers'] : ['/mix_graph/orbits'],
+      problem: `low/sub band ${lowDb.toFixed(1)} dB overpowers mid/high by >12 dB — mud`,
+      evidence: { low_db: lowDb, mid_db: midDb, high_db: highDb },
+      revision_instruction: 'reduce bass orbit gain by 2 dB OR add HPF at 80 Hz to non-bass layers',
+    });
+  }
+  if (highDb < midDb - 18 && midDb > -60) {
+    out.push({
+      target_id: uuid(),
+      severity: Math.min(1, (midDb - 18 - highDb) / 12),
+      agent: 'producer-sound-designer',
+      graph_paths: ['/sound_palette/layers'],
+      problem: `high band ${highDb.toFixed(1)} dB starved relative to mid (${midDb.toFixed(1)} dB) — track lacks presence`,
+      evidence: { low_db: lowDb, mid_db: midDb, high_db: highDb },
+      revision_instruction: 'add hat layer or boost existing hat orbit gain by 2 dB; widen high-band',
+    });
+  }
+  return out;
 }
 
 function targetsNote(targets: CritiqueTarget[]): string | undefined {
