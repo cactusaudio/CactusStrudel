@@ -43,6 +43,7 @@ pnpm cactus -- audit --suite genre-core --seeds 3 # full 150-render audit
 | `cactus sketch` | N-candidate parallel sketches at different seeds. |
 | `cactus revise` | Apply natural-language feedback to an existing session. |
 | `cactus stems` | Per-orbit stem export for an existing session. |
+| `cactus bundle` | G10: package latest iter (graph + code + wav + features + critique + spectrogram + stems + manifest) into bundle-iter_NNNN/ + optional .zip. |
 | `cactus explain` | Dump iteration history for a session. |
 | `cactus taste` | Inspect preference memory across sessions. |
 | `cactus audit` | Run an adversarial audit suite (smoke / genre-core / custom). |

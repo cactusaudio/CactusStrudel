@@ -356,6 +356,30 @@ program
     console.log(JSON.stringify({ ok: true, mode: 'taste', total_decisions: decisions.length, decisions }, null, 2));
   });
 
+program
+  .command('bundle')
+  .description('G10: package the latest iteration into bundle-iter_NNNN/ + manifest (+ optional bundle-iter_NNNN.zip)')
+  .requiredOption('-s, --session <id>', 'session id (uuid)')
+  .option('--iter <n>', 'iteration to bundle (default: latest)')
+  .option('--no-zip', 'skip the .zip step (always writes the bundle directory)')
+  .option('--root <dir>', 'sessions directory root', './sessions')
+  .action(async (opts: { session: string; iter?: string; zip: boolean; root: string }) => {
+    const sessionDir = path.resolve(opts.root, opts.session);
+    const { bundleSession } = await import('./bundle.js');
+    const r = await bundleSession({
+      sessionDir,
+      ...(opts.iter !== undefined ? { iteration: Number(opts.iter) } : {}),
+      makeZip: opts.zip,
+    });
+    console.log(JSON.stringify({
+      ok: true, mode: 'bundle', session: opts.session, iteration: r.iteration,
+      bundle_dir: r.bundleDir, zip: r.zipPath ?? null,
+      file_count: r.files.length,
+      bytes_total: r.files.reduce((acc, f) => acc + f.bytes, 0),
+      manifest: r.manifestPath, warnings: r.warnings,
+    }, null, 2));
+  });
+
 async function listIters(dir: string): Promise<number[]> {
   let entries: string[] = [];
   try { entries = await fs.readdir(dir); } catch { return []; }

@@ -13,6 +13,9 @@ coverage/
 sessions/*/
 !sessions/.gitkeep
 apps/cli/sessions/
+
+# G7 learning ledger — append-only per-machine; not part of source.
+docs/learning-ledger.jsonl
 refs/*
 !refs/README.md
 !refs/.gitkeep
