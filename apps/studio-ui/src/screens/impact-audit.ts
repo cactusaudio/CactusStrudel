@@ -3,7 +3,7 @@
 // (minimal) is the comparison anchor.
 
 import { h, render, pill, fmt, missingEvidence } from '../dom.js';
-import { listImpactAudits, loadImpactReport, suggestCommandForMissing, browserFetcher } from '../data/loaders.js';
+import { listImpactAudits, loadImpactReport, loadLatestCompleteImpactReport, suggestCommandForMissing, browserFetcher } from '../data/loaders.js';
 import type { ImpactReportRow, ImpactReport } from '../data/types.js';
 
 export async function renderImpactAudits(host: HTMLElement): Promise<void> {
@@ -17,22 +17,25 @@ export async function renderImpactAudits(host: HTMLElement): Promise<void> {
     return;
   }
   const tsList = list.data.sort().reverse(); // newest first
-  // Load each report eagerly — they're small.
+  // The headline is the latest COMPLETE audit (skips an in-flight dir
+  // that has no report yet — single source of that logic in loaders).
+  const latestComplete = await loadLatestCompleteImpactReport(browserFetcher);
+  // History list: every dir whose report parses.
   const reports: Array<{ ts: string; report: ImpactReport }> = [];
   for (const ts of tsList) {
     const r = await loadImpactReport(browserFetcher, ts);
     if (r.ok) reports.push({ ts, report: r.data });
   }
 
-  if (reports.length === 0) {
+  if (!latestComplete.ok || reports.length === 0) {
     render(host, h('div', { class: 'panel' },
       missingEvidence('no readable impact audit reports', '(check audit output dir)'),
     ));
     return;
   }
 
-  // Show the latest report by default; older runs in a sidebar table.
-  const latest = reports[0]!;
+  // Show the latest COMPLETE report as the headline; older runs below.
+  const latest = { ts: latestComplete.data.ts, report: latestComplete.data.report };
   render(host,
     h('div', { class: 'panel' },
       h('h2', {}, h('span', { class: 'accent' }, 'Cookbook-impact (smoke-real)'), ` — ${latest.report.suite}`),

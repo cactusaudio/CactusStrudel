@@ -137,6 +137,31 @@ export async function loadImpactReport(fetcher: Fetcher, ts: string): Promise<Ev
   return getJson<ImpactReport>(fetcher, `/api/audits/cookbook-impact-real/${ts}/cookbook-impact-real-report.json`);
 }
 
+/**
+ * Gap4 robustness: "the latest verdict" must mean the latest COMPLETE
+ * audit. An in-flight `audit:cookbook-impact` creates its output dir
+ * before writing the report, so the lexicographically-newest dir may
+ * have no report yet. Walk newest-first and return the first dir whose
+ * report parses — the studio inspector should never show (or crash on)
+ * a half-written audit.
+ */
+export async function loadLatestCompleteImpactReport(
+  fetcher: Fetcher,
+): Promise<Evidence<{ ts: string; report: ImpactReport }>> {
+  const list = await listImpactAudits(fetcher);
+  if (!list.ok) return list;
+  const newestFirst = [...list.data].sort().reverse();
+  for (const ts of newestFirst) {
+    const rep = await loadImpactReport(fetcher, ts);
+    if (rep.ok) return { ok: true, data: { ts, report: rep.data } };
+  }
+  return {
+    ok: false, reason: 'missing',
+    missing_path: '/api/audits/cookbook-impact-real/*/cookbook-impact-real-report.json',
+    suggested_command: 'pnpm cactus audit:cookbook-impact --suite smoke-real --seeds 3',
+  };
+}
+
 export async function loadLedger(fetcher: Fetcher): Promise<Evidence<LedgerSummary>> {
   const subs: Array<keyof LedgerSummary> = ['promoted', 'candidates', 'rejected', 'regressions'];
   const dirNames: Record<keyof LedgerSummary, string> = {

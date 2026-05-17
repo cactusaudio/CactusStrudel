@@ -101,6 +101,18 @@ export function decideVerdict(
     notes.push(`diversity mean overlap: minimal=${divA.toFixed(3)} enabled=${divB.toFixed(3)} (lower=more diverse)`);
   }
 
+  // Gap4: ceiling-awareness. Post-Gap1 the gate is trustworthy and every
+  // genre passes, so gate-pass-rate saturates at 1.00/1.00 and passDelta
+  // is structurally ~0 — it CANNOT be the discriminant. Pre-Gap4 the
+  // function silently fell through to "neutral" while ignoring the only
+  // remaining signal (critic-issue load + diversity). Now: detect the
+  // ceiling, say so, and reason from critic-issue-per-prompt delta.
+  const CEILING = 0.95;
+  const atCeiling = passRateA >= CEILING && passRateB >= CEILING;
+  const criticA = minimal.prompts_total > 0 ? minimal.critic_issue_count / minimal.prompts_total : 0;
+  const criticB = enabled.prompts_total > 0 ? enabled.critic_issue_count / enabled.prompts_total : 0;
+  const criticDelta = criticB - criticA; // negative = enabled has FEWER issues = better
+
   if (passDelta < -0.05) {
     return { verdict: 'cookbook_regresses_quality', notes };
   }
@@ -108,6 +120,30 @@ export function decideVerdict(
     notes.push('diversity dropped >0.10 when enabling cookbook — sign of template collapse');
     return { verdict: 'cookbook_neutral_diversity_drop', notes };
   }
+
+  if (atCeiling) {
+    notes.push(
+      `gate-pass at ceiling (both ≥${CEILING}) — gate-pass-rate is saturated and ` +
+      `NOT a usable discriminant; reasoning from critic-issue load instead`,
+    );
+    notes.push(`critic issues/prompt: minimal=${criticA.toFixed(2)} enabled=${criticB.toFixed(2)} (delta=${criticDelta.toFixed(2)}, negative=cookbook reduces load)`);
+    // A meaningful critic reduction at the gate ceiling is the only way
+    // cookbook can demonstrate a quality LIFT once gates can't go higher.
+    if (criticDelta <= -0.5) {
+      return { verdict: 'cookbook_improves_quality', notes };
+    }
+    if (criticDelta >= 0.5) {
+      notes.push('cookbook increases critic load at the gate ceiling without a gate gain — net negative');
+      return { verdict: 'cookbook_regresses_quality', notes };
+    }
+    // -0.5 < delta < 0.5: honest answer is "safe + mildly beneficial",
+    // NOT a lift. This is the truthful Gap4 conclusion for the current
+    // cookbook: it does not hurt, mildly reduces critic load, preserves
+    // diversity — worth keeping, not a headline quality win.
+    notes.push('cookbook is gate-safe at the ceiling, mildly critic-reducing, diversity-preserving — keep, but not a quality lift');
+    return { verdict: 'cookbook_neutral_preserves_diversity', notes };
+  }
+
   if (passDelta >= 0.05) {
     return { verdict: 'cookbook_improves_quality', notes };
   }

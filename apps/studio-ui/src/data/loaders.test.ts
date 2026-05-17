@@ -10,7 +10,7 @@ import path from 'node:path';
 import {
   listSessions, loadSessionInventory, loadSessionSummary,
   loadCookbookTrace, loadCompiledCode, loadQualityGates,
-  listImpactAudits, loadImpactReport, loadLedger,
+  listImpactAudits, loadImpactReport, loadLatestCompleteImpactReport, loadLedger,
   buildReproCommand, suggestCommandForMissing,
   type Fetcher,
 } from './loaders.js';
@@ -120,17 +120,19 @@ describe('artifact loader (G11A §10)', () => {
     expect(r.ok).toBe(false);
   });
 
-  it('listImpactAudits + loadImpactReport returns the latest verdict', async () => {
+  it('loadLatestCompleteImpactReport returns the latest COMPLETE verdict, skipping in-flight audit dirs', async () => {
     const list = await listImpactAudits(F);
     expect(list.ok).toBe(true);
     if (!list.ok || list.data.length === 0) return;
-    const ts = list.data.sort().reverse()[0]!;
-    const rep = await loadImpactReport(F, ts);
-    expect(rep.ok).toBe(true);
-    if (!rep.ok) return;
-    expect(rep.data.modes.length).toBeGreaterThan(0);
+    // Must not crash on a half-written audit dir (in-flight
+    // `audit:cookbook-impact` creates its dir before the report). Walks
+    // newest-first to the first parseable report.
+    const r = await loadLatestCompleteImpactReport(F);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.report.modes.length).toBeGreaterThan(0);
     expect(['cookbook_positive', 'cookbook_neutral_preserves_diversity', 'cookbook_negative_regression', 'cookbook_inconclusive_insufficient_signal'])
-      .toContain(rep.data.verdict);
+      .toContain(r.data.report.verdict);
   });
 
   it('loadLedger returns at least the promoted_priors entry from G9C', async () => {

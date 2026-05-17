@@ -290,45 +290,28 @@ export async function runRealRenderImpactAudit(opts: RealImpactOptions): Promise
     perModeSums.get(m)!.diversity_mean_overlap = pairs === 0 ? 0 : total / pairs;
   }
 
-  // Verdict: extend the existing decideVerdict (gate-pass-rate based) with a
-  // critic-issue-delta tiebreak, since real renders generate different
-  // critic_issue_count even when gates all pass.
+  // Gap4: decideVerdict is the SINGLE owner of verdict reasoning — it is
+  // now ceiling-aware (when gate-pass saturates it reasons from
+  // critic-issue-per-prompt delta and says so in its notes). The runner
+  // used to duplicate that critic tiebreak here; that was double-handling.
+  // The runner now only (a) maps decideVerdict's enum to the real-render
+  // enum and (b) applies the render-failure insufficiency guard below.
   const summaries = Array.from(perModeSums.values());
   const v = decideVerdict(summaries);
-  const baseNotes: string[] = [...v.notes];
+  const notes: string[] = [...v.notes];
   let verdict: RealImpactResult['verdict'];
   if (v.verdict === 'inconclusive') {
     verdict = 'cookbook_inconclusive_insufficient_signal';
-    baseNotes.push('verdict downgraded: too few prompts to draw a conclusion');
+    notes.push('verdict downgraded: too few prompts to draw a conclusion');
   } else if (v.verdict === 'cookbook_improves_quality') {
     verdict = 'cookbook_positive';
   } else if (v.verdict === 'cookbook_regresses_quality') {
     verdict = 'cookbook_negative_regression';
   } else if (v.verdict === 'cookbook_neutral_diversity_drop') {
     verdict = 'cookbook_negative_regression';
-    baseNotes.push('diversity drop detected — counted as regression');
+    notes.push('diversity drop detected — counted as regression');
   } else {
     verdict = 'cookbook_neutral_preserves_diversity';
-  }
-  const notes: string[] = baseNotes;
-
-  if (verdict === 'cookbook_neutral_preserves_diversity') {
-    // Tiebreak via critic-issue delta when gate pass rates are equal.
-    const minimal = summaries.find((s) => s.mode === 'minimal');
-    const enabled = summaries.find((s) => s.mode === 'enabled');
-    if (minimal && enabled && minimal.prompts_total > 0 && enabled.prompts_total > 0) {
-      const minIssuesPerPrompt = minimal.critic_issue_count / minimal.prompts_total;
-      const enIssuesPerPrompt = enabled.critic_issue_count / enabled.prompts_total;
-      const delta = enIssuesPerPrompt - minIssuesPerPrompt;
-      notes.push(`critic_issues_per_prompt: minimal=${minIssuesPerPrompt.toFixed(2)} enabled=${enIssuesPerPrompt.toFixed(2)} (delta=${delta.toFixed(2)})`);
-      if (delta < -0.5) {
-        verdict = 'cookbook_positive';
-        notes.push('verdict upgraded: cookbook reduced critic issues per prompt by >0.5');
-      } else if (delta > 0.5) {
-        verdict = 'cookbook_negative_regression';
-        notes.push('verdict downgraded: cookbook increased critic issues per prompt by >0.5');
-      }
-    }
   }
 
   // Insufficient signal: any mode failed to render every prompt.
