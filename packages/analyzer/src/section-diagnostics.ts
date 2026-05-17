@@ -3,6 +3,7 @@
 // section is responsible when a global gate (e.g. non_silent_ratio) fails.
 
 import { readWav, mixToMono } from './wav-io.js';
+import { nonSilentRatio as hysteresisNonSilentRatio } from './silence.js';
 import type { SessionGraph } from '@cactus/ir';
 
 export interface SectionDiagnostic {
@@ -29,8 +30,6 @@ export interface SectionDiagnosticsReport {
   /** Sections defined in the graph but past the rendered audio horizon. */
   unrendered_sections: Array<{ section_id: string; name: string; function: string; start_sec: number; end_sec: number }>;
 }
-
-const SILENCE_DB_FLOOR = -55;
 
 const BAND_EDGES: Array<[string, number, number]> = [
   ['sub', 20, 60],
@@ -111,20 +110,11 @@ function rmsDb(slice: Float32Array): number {
   return 20 * Math.log10(Math.max(1e-12, rms(slice)));
 }
 
+// Gap1 fix: delegate to the shared hysteresis implementation so section
+// diagnostics and the global gate agree on what "non-silent" means and
+// inherit the same noise-immunity.
 function nonSilentRatio(slice: Float32Array, sr: number): number {
-  if (slice.length === 0) return 0;
-  const win = Math.max(64, Math.floor(sr * 0.05));
-  let nonSilent = 0;
-  let total = 0;
-  for (let i = 0; i + win <= slice.length; i += win) {
-    let s = 0;
-    for (let j = 0; j < win; j++) s += slice[i + j]! * slice[i + j]!;
-    const r = Math.sqrt(s / win);
-    const db = 20 * Math.log10(Math.max(1e-12, r));
-    if (db > SILENCE_DB_FLOOR) nonSilent++;
-    total++;
-  }
-  return total > 0 ? nonSilent / total : 0;
+  return hysteresisNonSilentRatio(slice, sr);
 }
 
 function bandRms(slice: Float32Array, sr: number): Record<string, number> {

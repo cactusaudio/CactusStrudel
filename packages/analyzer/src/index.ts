@@ -40,6 +40,12 @@ export { computeSpectralFeatures, computeRhythmFeatures, computeStereoFeatures, 
 export { generateSpectrogram } from './spectrogram.js';
 export { readWav, mixToMono, resample } from './wav-io.js';
 export {
+  nonSilentRatio, classifyNonSilent,
+  SILENCE_FLOOR_LOW_DB, SILENCE_FLOOR_HIGH_DB,
+  BROKEN_RENDERER_NSR, SPARSE_OK_NSR,
+  type NonSilentTier,
+} from './silence.js';
+export {
   computeSectionFeatures,
   type SectionAnalysis,
   type SectionFeatures,

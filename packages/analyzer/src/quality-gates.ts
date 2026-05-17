@@ -4,6 +4,12 @@
 
 import { readWav, mixToMono } from './wav-io.js';
 import { computeSectionFeatures, type SectionFeatures } from './section-features.js';
+import {
+  nonSilentRatio as hysteresisNonSilentRatio,
+  classifyNonSilent,
+  BROKEN_RENDERER_NSR,
+  SPARSE_OK_NSR,
+} from './silence.js';
 import type { AnalyzerFeatures, SessionGraph } from '@cactus/ir';
 
 /**
@@ -79,8 +85,6 @@ export interface QualityGatesInput {
   confidence?: GateConfidence;
 }
 
-const SILENCE_DB_FLOOR = -55;
-
 export async function runQualityGates(input: QualityGatesInput): Promise<QualityGatesReport> {
   const audio = await readWav(input.wavPath);
   const mono = mixToMono(audio.channels);
@@ -124,28 +128,29 @@ export async function runQualityGates(input: QualityGatesInput): Promise<Quality
 // ---- gate implementations ----
 
 function gateNonSilentRatio(mono: Float32Array, sr: number): QualityGateResult {
-  const win = Math.max(256, Math.floor(sr * 0.05));
-  let nonSilent = 0;
-  let total = 0;
-  for (let i = 0; i + win <= mono.length; i += win) {
-    let sumSq = 0;
-    for (let j = 0; j < win; j++) sumSq += mono[i + j]! * mono[i + j]!;
-    const rms = Math.sqrt(sumSq / win);
-    const db = 20 * Math.log10(Math.max(1e-12, rms));
-    if (db > SILENCE_DB_FLOOR) nonSilent++;
-    total++;
-  }
-  const ratio = total > 0 ? nonSilent / total : 0;
-  const threshold = 0.6;
+  // Gap1 fix: hysteresis-based ratio (noise-immune by construction) +
+  // semantic split. The gate's stated intent is "a silent renderer is a
+  // broken renderer" — a near-total-silence check, NOT a density check.
+  // hard_fail only when the renderer produced essentially nothing
+  // (nsr < 0.15, e.g. the G9B dnb nsr=0.000 regression). Sparse-but-real
+  // output (0.15 ≤ nsr < 0.6, legitimate for dub_techno / ambient) is a
+  // calibration_warning that does NOT block overall_pass.
+  const ratio = hysteresisNonSilentRatio(mono, sr);
+  const { tier, passed } = classifyNonSilent(ratio);
+  const note = tier === 'hard_fail'
+    ? `renderer produced near-silence (${(ratio * 100).toFixed(1)}% non-silent < ${BROKEN_RENDERER_NSR * 100}%) — broken render`
+    : tier === 'calibration_warning'
+      ? `sparse output (${(ratio * 100).toFixed(1)}% non-silent, below ${SPARSE_OK_NSR * 100}% density) — legitimate for sparse genres, not a render failure`
+      : `${(ratio * 100).toFixed(1)}% of windows non-silent (hysteresis ${'-57..-53'} dB)`;
   return {
     name: 'non_silent_ratio',
-    passed: ratio >= threshold,
+    passed,
     value: ratio,
-    threshold,
-    severity: ratio < threshold ? Math.min(1, (threshold - ratio) * 2) : 0,
-    severity_tier: 'hard_fail', // a silent renderer is a broken renderer
+    threshold: BROKEN_RENDERER_NSR,
+    severity: ratio < BROKEN_RENDERER_NSR ? Math.min(1, (BROKEN_RENDERER_NSR - ratio) * 4) : 0,
+    severity_tier: tier === 'ok' ? 'informational' : tier,
     confidence: 'real_wav',
-    notes: `${(ratio * 100).toFixed(1)}% of windows above ${SILENCE_DB_FLOOR} dB`,
+    notes: note,
   };
 }
 
