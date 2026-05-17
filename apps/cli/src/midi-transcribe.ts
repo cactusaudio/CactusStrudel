@@ -14,10 +14,16 @@ const { Midi } = midiPkg;
 type Midi = InstanceType<typeof Midi>;
 
 // GM percussion (MIDI note → Strudel sample). Only the common kit.
+// Mapped to samples the offline renderer actually loads. The renderer
+// lacks oh/cr/rd/lt/mt/ht (verified: 398× "sound oh not found") — same
+// class as the earlier `piano not found`. Approximate to available
+// samples (Tier-B: rhythmic hit preserved, timbre color lost) rather
+// than emit silent/un-found hits.
 const GM_DRUM: Record<number, string> = {
   35: 'bd', 36: 'bd', 37: 'rim', 38: 'sd', 39: 'cp', 40: 'sd',
-  42: 'hh', 44: 'hh', 46: 'oh', 49: 'cr', 57: 'cr', 51: 'rd', 59: 'rd',
-  41: 'lt', 43: 'lt', 45: 'mt', 47: 'mt', 48: 'ht', 50: 'ht',
+  42: 'hh', 44: 'hh', 46: 'hh',          // open hat → closed (renderer has no oh)
+  49: 'cp', 57: 'cp', 51: 'hh', 59: 'hh', // crash/ride → cp/hh approx
+  41: 'sd', 43: 'sd', 45: 'sd', 47: 'sd', 48: 'sd', 50: 'sd', // toms → sd approx
 };
 
 export interface MidiTrackPlan {
