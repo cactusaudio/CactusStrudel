@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
 // Extract function/control names from installed @strudel/* packages and rewrite
 // packages/strudel-validator/src/registry.ts. Run after upgrading Strudel.
+//
+// SCOPE: only captures `register(Control)?(...)` registrations, only rewrites
+// REGISTRY_LIST. It does NOT see @strudel/tonal `export const` names or
+// Pattern-class methods (scale/struct/layer/...). Those are hand-curated in
+// registry.ts → TONAL_AND_COMBINATORS and guarded by registry-harmony.test.ts,
+// which cross-checks the installed packages — so the miss-class that hid
+// `scale` fails loudly on a Strudel upgrade instead of silently recurring.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';

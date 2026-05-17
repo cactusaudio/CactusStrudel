@@ -64,9 +64,34 @@ const CORE_TOP_LEVEL: ReadonlyArray<string> = [
   'initAudioOnFirstClick','initAudio','getAudioContext','panic','gap',
 ];
 
+// P0 (2026-05-17): the harmonic-spine redesign compiles to these
+// functions. The auto-extractor only greps `register(Control)?(...)`
+// calls, so it MISSED everything in @strudel/tonal exported as
+// `export const NAME` and every Pattern-class METHOD (e.g.
+// `layer(...e){`, `struct(...){`). Each name was verified present in
+// the INSTALLED packages (not assumed) — provenance per name:
+//   scale              @strudel/tonal: `export const scale`
+//   add, sub           @strudel/core:  `export const add` / `sub`
+//   struct             @strudel/core:  `Pattern.prototype.struct =`
+//   layer              @strudel/core:  Pattern method `layer(...e){` (index.mjs:1122)
+//   superimpose        @strudel/core:  `export const superimpose`
+//   run                @strudel/core:  `export const run`
+//   rootNotes          @strudel/tonal: `export const rootNotes`
+//   setDefaultVoicings @strudel/tonal: `export const setDefaultVoicings`
+//   transpose          @strudel/tonal: `export function transpose`
+//   arp, ply           @strudel/core:  `export const arp` / `ply`
+// (`chord`/`voicing`/`anchor`/`mode` are already in REGISTRY_LIST.)
+// Hand-curated like CORE_TOP_LEVEL; extract-registry only rewrites
+// REGISTRY_LIST so a regen will NOT clobber this list.
+export const TONAL_AND_COMBINATORS: ReadonlyArray<string> = [
+  'scale', 'add', 'sub', 'struct', 'layer', 'superimpose', 'run',
+  'rootNotes', 'setDefaultVoicings', 'transpose', 'arp', 'ply',
+];
+
 export const STRUDEL_FUNCTIONS: ReadonlySet<string> = new Set([
   ...REGISTRY_LIST,
   ...CORE_TOP_LEVEL,
+  ...TONAL_AND_COMBINATORS,
 ]);
 
 // Single-value scalar effects that should not appear twice in the same chain.
