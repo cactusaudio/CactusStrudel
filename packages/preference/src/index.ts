@@ -23,6 +23,11 @@ export function weightedScore(scores: ScoreVector, weights: ScoreVector): number
 
 export { parseFeedback, applyFeedback, type ParsedFeedback } from './feedback.js';
 export {
+  simulateTasteConvergence, REACHABLE_AXES, DEFAULT_PHRASE_FOR,
+  DEFAULT_START_WEIGHTS,
+  type TasteConvergenceInput, type TasteConvergenceResult, type ReachableAxis,
+} from './taste-convergence.js';
+export {
   appendLedgerEntry, readLedger, buildLedgerEntryFromClosedLoop,
   DEFAULT_LEDGER_PATH,
   type LedgerEntry, type LedgerMode, type AppendLedgerOptions,

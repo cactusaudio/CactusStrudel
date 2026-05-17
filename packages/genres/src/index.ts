@@ -44,6 +44,11 @@ export {
 } from './loader.js';
 export { bridgeGenres } from './bridge.js';
 export {
+  GENRE_MATURITY, genreMaturity, productionGenres,
+  isProductionGrade, maturityLabel,
+  type GenreTier, type GenreMaturity,
+} from './maturity.js';
+export {
   getCoverageConstraints,
   type SectionCoverage,
   type GenreCoverageConstraints,

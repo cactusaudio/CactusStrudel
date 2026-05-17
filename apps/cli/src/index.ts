@@ -356,6 +356,33 @@ program
     console.log(JSON.stringify({ ok: true, mode: 'taste', total_decisions: decisions.length, decisions }, null, 2));
   });
 
+// Gap2: single-source genre maturity. `cactus genres` is the one place an
+// operator/user reads what's actually production-grade — every claim is
+// evidence-cited from the registry, not scattered prose.
+program
+  .command('genres')
+  .description('List genres with evidence-cited maturity tier (Gap2 single source of truth)')
+  .option('--production-only', 'list only production-grade genres')
+  .option('--json', 'machine-readable output')
+  .action(async (opts: { productionOnly?: boolean; json?: boolean }) => {
+    const { GENRE_MATURITY, productionGenres } = await import('@cactus/genres');
+    if (opts.productionOnly) {
+      const list = productionGenres();
+      console.log(opts.json ? JSON.stringify(list, null, 2) : list.join('\n'));
+      return;
+    }
+    const rows = Object.values(GENRE_MATURITY);
+    if (opts.json) {
+      console.log(JSON.stringify(rows, null, 2));
+      return;
+    }
+    for (const r of rows) {
+      const tag = r.tier === 'production' ? 'production ' : `${r.tier.padEnd(11)}`;
+      console.log(`${r.slug.padEnd(12)} [${tag}] ${r.evidence}`);
+      if (r.next_blocker) console.log(`${' '.repeat(14)}↳ next: ${r.next_blocker}`);
+    }
+  });
+
 program
   .command('bundle')
   .description('G10: package the latest iteration into bundle-iter_NNNN/ + manifest (+ optional bundle-iter_NNNN.zip)')
