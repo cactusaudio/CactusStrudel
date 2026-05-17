@@ -15,7 +15,7 @@ import {
   lookupActivation, DEFAULT_POLICY,
   type CookbookEntry, type Role as CookbookRole, type SectionFunction,
   type SoundPaletteTag, type EnergyBand,
-  type ActivationPolicy,
+  type ActivationPolicy, type RoleActivationPolicy,
 } from '@cactus/cookbook';
 import type { Role as IrRole } from '@cactus/ir';
 
@@ -123,6 +123,32 @@ export function ifSection(fn: string): SectionFunction {
   return fn as SectionFunction;
 }
 
+/**
+ * Eval-only activation override (Bowei-approved 2026-05-17 via
+ * CACTUS_KEYGEN_EVAL). Returns an augmented COPY of `policy` where
+ * every (genre,role) holding ≥1 imported_public_domain (keygen) entry
+ * is forced to `enabled_default`, so the keygen ear-test render
+ * actually exercises the corpus. DEFAULT_POLICY is NOT mutated. This
+ * is provisional evidence-GATHERING (Bowei's ear is the verifier),
+ * NOT a promotion — legitimate promotion goes through the §5 oracle
+ * loop + a documented DEFAULT_POLICY entry. No-op unless the env flag
+ * is set (zero impact on normal/production runs).
+ */
+export function applyKeygenEvalOverride(
+  policy: ActivationPolicy,
+  entries: CookbookEntry[],
+): ActivationPolicy {
+  const per: Record<string, RoleActivationPolicy> = { ...policy.per_genre_role };
+  for (const e of entries) {
+    if (e.source_type !== 'imported_public_domain') continue;
+    per[`${e.genre}/${e.role}`] = {
+      level: 'enabled_default',
+      reason: 'KEYGEN-EVAL PROVISIONAL (CACTUS_KEYGEN_EVAL) — unpromoted, NOT DEFAULT_POLICY; pending §5 oracle + Bowei ear verdict',
+    };
+  }
+  return { ...policy, per_genre_role: per };
+}
+
 let cachedEntries: CookbookEntry[] | null = null;
 
 export async function loadCookbookOnce(): Promise<CookbookEntry[]> {
@@ -199,7 +225,10 @@ export async function selectPrior(input: SelectPriorInput): Promise<SelectPriorR
   // G9C: activation policy gate — even if the cookbook has entries for this
   // (genre, role), the policy may say "not yet evidence-safe" and we fall
   // back to default behavior. Trace records the reason.
-  const policy = input.policy ?? DEFAULT_POLICY;
+  let policy = input.policy ?? DEFAULT_POLICY;
+  if (process.env.CACTUS_KEYGEN_EVAL) {
+    policy = applyKeygenEvalOverride(policy, await loadCookbookOnce());
+  }
   const lookup = lookupActivation(policy, input.genre, cookbookRole);
   if (!shouldUseCookbook(policy, input.genre, cookbookRole)) {
     return {

@@ -112,8 +112,15 @@ export function inferRole(s: ReturnType<typeof channelStats>): CbRole | null {
   return 'chord_stab';                                          // mid ground
 }
 
-function clampBpm(b: number): [number, number] {
-  return [Math.max(40, b - 6), Math.min(220, b + 6)];
+function clampBpm(_b: number): [number, number] {
+  // Transcribed melodic/harmonic content is tempo-AGNOSTIC: it is pitch
+  // material that the compiler re-times to the consuming demo's BPM
+  // (the genre tag already decouples it from the keygen's own tempo).
+  // A narrow ±6 (copied from bpm-calibrated drum-groove entries) was
+  // wrong modelling — it hard-excluded the entry from retrieve()'s bpm
+  // filter for any demo at a different tempo (dnb 174 / idm 110 / …).
+  // Wide range = "usable across the electronic tempo span".
+  return [60, 200];
 }
 function energyFor(density: number): CookbookEntry['energy_range'] {
   if (density < 0.3) return ['low', 'mid'];
