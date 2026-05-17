@@ -7,7 +7,10 @@ import type {
   Effect,
   OrbitMix,
   SidechainEdge,
+  HarmonyGraph,
+  HarmonicDerivation,
 } from '@cactus/ir';
+import { HarmonicDerivationSchema } from '@cactus/ir';
 import { CodeBuilder, quoteJsString } from './code-builder.js';
 
 export interface CompileOptions {
@@ -40,6 +43,13 @@ export function compileSessionGraph(
   cb.emit(`// session ${graph.session_id}\n`);
   cb.emit(`// brief: ${oneLine(graph.brief.text)}\n`);
   cb.emit(`setcps(${cps})\n`, '/brief/bpm');
+  // Harmonic spine (schema 1.1.0): pin the voicing dictionary so
+  // chord().voicing() is byte-deterministic (design §5). Emitted ONLY
+  // when /harmony exists — pre-harmony 1.0.0 graphs compile byte-
+  // identically, preserving back-compat + the determinism rule.
+  if (graph.harmony) {
+    cb.emit(`setDefaultVoicings(${quoteJsString('legacy')})\n`, '/harmony');
+  }
   cb.newline();
 
   const sortedSections = [...graph.song.sections].sort((a, b) => a.start_bar - b.start_bar);
@@ -94,7 +104,7 @@ function compileLayer(
     if (!active || !pattern) {
       cb.emit('silence', `/song/sections/${section.id}`);
     } else {
-      emitPatternForLayer(cb, layer, pattern, graph.sound_palette.layers[layer.id], `/pattern_bank/patterns/${layer.id}/${section.id}`);
+      emitPatternForLayer(cb, layer, pattern, graph.sound_palette.layers[layer.id], graph.harmony, warnings, `/pattern_bank/patterns/${layer.id}/${section.id}`);
     }
     cb.emit(']');
   }
@@ -139,8 +149,28 @@ function emitPatternForLayer(
   layer: LayerGraph,
   pattern: PatternEntry,
   decoration: SoundDecoration | undefined,
+  harmony: HarmonyGraph | undefined,
+  warnings: string[],
   graphPath: string,
 ): void {
+  // 0) Harmonic spine (schema 1.1.0). HIGHEST precedence: a layer that
+  // derives from the shared progression overrides raw/mini/euclid —
+  // that derivation IS the point (it's what makes layers share a key).
+  // Gated on BOTH /harmony existing AND a valid /harmonic entry, so
+  // pre-harmony graphs are byte-identical. pattern.harmonic is typed
+  // `unknown` (zod-default annotation), narrow via safeParse — verify,
+  // don't assume.
+  if (harmony) {
+    const parsed = HarmonicDerivationSchema.safeParse(pattern.harmonic);
+    if (parsed.success) {
+      emitHarmonicSource(cb, layer, parsed.data, harmony, decoration, warnings, graphPath);
+      return;
+    }
+    if (pattern.harmonic !== undefined) {
+      warnings.push(`layer ${layer.id}: /harmonic present but invalid; fell back to literal pattern`);
+    }
+  }
+
   // 1) raw mode bypasses all source/effects logic — caller takes responsibility.
   if (pattern.raw) {
     cb.emit(pattern.raw, graphPath);
@@ -170,9 +200,97 @@ function emitPatternForLayer(
         cb.emit(`.n(${opts.n})`);
       }
     }
-  } else if (kind === 'synth' || kind === 'soundfont' || kind === 'csound') {
-    // For synth/soundfont, treat mini as note pattern.
+  } else if (kind === 'synth' || kind === 'soundfont' || kind === 'csound' || kind === 'gm') {
+    // synth/soundfont/csound/gm: treat mini as a note pattern. `gm`
+    // (General MIDI soundfont, schema 1.1.0) routes here too — Strudel
+    // plays `gm_*` instruments via the same note().s() form.
     cb.emit(`note(${quoteJsString(mini)}).s(${quoteJsString(source)})`, graphPath);
+  }
+}
+
+// Expand `harmony.progression_rhythm` (mini-notation over the
+// progression INDEX space, e.g. "<0 1 2 3>/4") into a chord-symbol
+// pattern ("<Am F C G>/4") by substituting each integer token with
+// progression[idx]. Deterministic: the `/N` slow-suffix and `@weight`
+// digits are NOT indices and are left intact; an out-of-range index is
+// modulo-clamped (musical + deterministic) with a warning.
+function compileProgressionPattern(
+  harmony: HarmonyGraph,
+  warnings: string[],
+  graphPath: string,
+): string {
+  const prog = harmony.progression;
+  const m = harmony.progression_rhythm.match(/^(.*?)(\/\d+)?$/s);
+  const body = m?.[1] ?? harmony.progression_rhythm;
+  const slow = m?.[2] ?? '';
+  // Replace integer tokens not part of a `@weight` and not mid-number.
+  const expanded = body.replace(/(^|[^@\d])(\d+)/g, (_full, pre: string, dig: string) => {
+    const i = Number(dig);
+    if (i < 0 || i >= prog.length) {
+      warnings.push(
+        `${graphPath}: progression index ${i} out of range (len ${prog.length}); modulo-clamped`,
+      );
+    }
+    const idx = ((i % prog.length) + prog.length) % prog.length;
+    return pre + prog[idx];
+  });
+  return expanded + slow;
+}
+
+// Map a `(harmony, role_derivation)` pair to a deterministic Strudel
+// pitch-source expression per design doc §4. Emits ONLY the pitched
+// source (chord()/n() + voicing/mode/anchor/add + .s(source)); the
+// existing pipeline appends palette effects + orbit mix downstream.
+function emitHarmonicSource(
+  cb: CodeBuilder,
+  layer: LayerGraph,
+  h: HarmonicDerivation,
+  harmony: HarmonyGraph,
+  decoration: SoundDecoration | undefined,
+  warnings: string[],
+  graphPath: string,
+): void {
+  const prog = compileProgressionPattern(harmony, warnings, graphPath);
+  const src = decoration?.source.name ?? defaultSourceForRole(layer.role);
+  const sQ = quoteJsString(src);
+  // Octave for arp/degree_line is applied in scale-degree space: one
+  // diatonic octave = 7 degrees (design §4 `.add(octShift*7)`).
+  // chord_voiced/root carry octave in the anchor note instead.
+  const addOct = h.octave_shift !== 0 ? `.add(${h.octave_shift * 7})` : '';
+
+  switch (h.role_derivation) {
+    case 'chord_voiced': {
+      const anchor = layer.role === 'pad' ? harmony.anchors.pad : harmony.anchors.chord;
+      cb.emit(
+        `chord(${quoteJsString(prog)}).voicing().anchor(${quoteJsString(anchor)}).s(${sQ})`,
+        graphPath,
+      );
+      return;
+    }
+    case 'root': {
+      cb.emit(
+        `chord(${quoteJsString(prog)}).mode("root").anchor(${quoteJsString(harmony.anchors.bass)}).s(${sQ})`,
+        graphPath,
+      );
+      return;
+    }
+    case 'arp': {
+      const degrees = h.degrees ?? '0';
+      const struct = h.rhythm ? `.struct(${quoteJsString(h.rhythm)})` : '';
+      cb.emit(
+        `n(${quoteJsString(degrees)})${struct}.chord(${quoteJsString(prog)}).voicing()${addOct}.s(${sQ})`,
+        graphPath,
+      );
+      return;
+    }
+    case 'degree_line': {
+      const degrees = h.degrees ?? '0';
+      cb.emit(
+        `n(${quoteJsString(degrees)}).chord(${quoteJsString(prog)}).voicing()${addOct}.s(${sQ})`,
+        graphPath,
+      );
+      return;
+    }
   }
 }
 
