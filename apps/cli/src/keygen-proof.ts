@@ -59,7 +59,10 @@ const r = await render({ code, durationCycles: 1, outputPath: outWav });
 await shutdown();
 if (r.warnings.length) console.log('render warnings:', r.warnings.slice(0, 3));
 
-const [ours, ref] = await Promise.all([analyzeWav(outWav), analyzeWav(ORACLE)]);
+// Diagnostic harness: AnalyzerFeatures types every field optional,
+// but analyzeWav populates them at run time. `any` is the right tool
+// for a proof script — don't whack-a-mole optional chains.
+const [ours, ref]: [any, any] = await Promise.all([analyzeWav(outWav), analyzeWav(ORACLE)]);
 const od = (f: any) => (f.rhythmic.onset_density.low + f.rhythmic.onset_density.mid + f.rhythmic.onset_density.high);
 console.log('\n=== Tier-A (rhythm/structure — MUST track) ===');
 console.log(`onset_density Σ : ours=${od(ours).toFixed(2)}  oracle=${od(ref).toFixed(2)}`);
@@ -67,6 +70,7 @@ console.log(`bpm            : ours=${ours.rhythmic.bpm.toFixed(1)}  oracle=${ref
 console.log(`grid_regularity: ours=${ours.rhythmic.grid_regularity.toFixed(3)}  oracle=${ref.rhythmic.grid_regularity.toFixed(3)}`);
 console.log(`syncopation    : ours=${ours.rhythmic.syncopation_proxy.toFixed(3)}  oracle=${ref.rhythmic.syncopation_proxy.toFixed(3)}`);
 console.log('=== Tier-B (timbre — expected to diverge: osc vs samples) ===');
-console.log(`centroid Hz    : ours=${ours.spectral.centroid.toFixed(0)}  oracle=${ref.spectral.centroid.toFixed(0)}`);
+const cen = (f: any) => (f.spectral?.centroid ?? NaN).toFixed(0);
+console.log(`centroid Hz    : ours=${cen(ours)}  oracle=${cen(ref)}`);
 const lufs = (f: any) => (f.loudness?.lufs_integrated ?? NaN).toFixed(1);
 console.log(`LUFS           : ours=${lufs(ours)}  oracle=${lufs(ref)}`);
