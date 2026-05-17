@@ -43,13 +43,17 @@ export function compileSessionGraph(
   cb.emit(`// session ${graph.session_id}\n`);
   cb.emit(`// brief: ${oneLine(graph.brief.text)}\n`);
   cb.emit(`setcps(${cps})\n`, '/brief/bpm');
-  // Harmonic spine (schema 1.1.0): pin the voicing dictionary so
-  // chord().voicing() is byte-deterministic (design §5). Emitted ONLY
-  // when /harmony exists — pre-harmony 1.0.0 graphs compile byte-
-  // identically, preserving back-compat + the determinism rule.
-  if (graph.harmony) {
-    cb.emit(`setDefaultVoicings(${quoteJsString('legacy')})\n`, '/harmony');
-  }
+  // NOTE (2026-05-17): design §5 proposed a `setDefaultVoicings(...)`
+  // preamble to pin the voicing dictionary for determinism. Render
+  // evidence FALSIFIED that sign-off item: in @strudel/tonal@1.2.6 any
+  // user-code setDefaultVoicings('legacy' OR 'ireal') routes voicing()
+  // through voicingRegistry[name] — which has no 'ireal' key and a
+  // bare-triad-free 'legacy' dict — so voicing() throws → returns
+  // `silence` → 0 haps (every voiced chord went silent; that was the
+  // ambient-demo regression). Unpinned, voicing() uses the library's
+  // constant internal default (voicings.mjs sets it once at load) and
+  // works (-1.5 dB). That internal default is fixed per build, so
+  // determinism holds WITHOUT the pin. Therefore: emit no preamble.
   cb.newline();
 
   const sortedSections = [...graph.song.sections].sort((a, b) => a.start_bar - b.start_bar);

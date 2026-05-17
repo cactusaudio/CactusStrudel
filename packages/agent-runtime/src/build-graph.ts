@@ -21,6 +21,7 @@ import {
 } from '@cactus/genres';
 import { applyGainStaging, applyBandBalance } from '@cactus/mix';
 import { tryMutate } from '@cactus/cookbook';
+import { genreHarmony, roleDerivation } from './harmony-spine.js';
 import { createRng, hashStringToSeed } from './seed-rng.js';
 import {
   selectPrior, getCookbookMode,
@@ -93,6 +94,11 @@ export async function buildSessionGraphFromBrief(
     session_id: uuid(),
     created_at: new Date().toISOString(),
     brief: briefFinal,
+    // Shared harmonic spine (schema 1.1.0) derived from the genre's
+    // OWN harmonic_palette — the fix for the corpus study's root cause
+    // (pitched layers were never in the same key). Additive: optional
+    // field, pitched layers reference it via pattern_bank /harmonic.
+    harmony: genreHarmony(genre),
     song,
     layers,
     pattern_bank: patternBank,
@@ -430,6 +436,21 @@ async function buildPatternBank(
       });
     }
   }
+  // Harmonic spine post-pass (schema 1.1.0): pitched layers DERIVE
+  // from the shared progression. Additive + role-driven — the literal
+  // mini_notation/raw stays as a fallback (the compiler prefers
+  // /harmonic); drums (roleDerivation → undefined) are untouched. One
+  // surgical pass so no pattern-selection logic above is perturbed.
+  for (const layer of layers) {
+    const deriv = roleDerivation(layer.role);
+    if (!deriv) continue;
+    const bySec = patterns[layer.id];
+    if (!bySec) continue;
+    for (const secId of Object.keys(bySec)) {
+      bySec[secId] = { ...bySec[secId]!, harmonic: deriv };
+    }
+  }
+
   return { patterns };
 }
 

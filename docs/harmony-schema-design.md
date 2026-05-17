@@ -217,3 +217,32 @@ violates the SessionGraph determinism rule.
 On sign-off, implementation order is: **P0 (registry+test) →
 schema+zod+migration test → compiler change → re-render demos for the
 ear test.** No compiler line before P0 + schema are green.
+
+---
+
+## 9. Post-implementation correction — §5 FALSIFIED by render evidence (2026-05-17)
+
+§5 (and sign-off via "全部批准") proposed emitting a
+`setDefaultVoicings('legacy')` preamble to pin the voicing dictionary
+for determinism. **Implementation + render evidence falsified this.**
+The original §5 text is left intact above for provenance; this section
+records the correction (verifiers/evidence own truth).
+
+Finding (probe renders, @strudel/tonal@1.2.6):
+- `chord("<Am F C G>").voicing()...` unpinned → **−1.5 dB, audible.**
+- Same + `setDefaultVoicings("legacy")` → **0 haps, silent.**
+- Same + `setDefaultVoicings("ireal")` → **0 haps, silent.**
+
+Mechanism: `voicing()` reads `voicingRegistry[defaultDict]`. Any
+user-code `setDefaultVoicings(x)` sets `defaultDict=x`; the registry
+has keys `lefthand/triads/guidetones/legacy` only (no `ireal`) and
+`legacy`'s dictionary lacks bare triads — so `renderVoicing` throws
+and `voicing()` returns `silence`. The library's INTERNAL default
+(set once at module load) works and is constant per build, so
+determinism — §5's actual goal — holds **without** any pin.
+
+Resolution: the compiler emits **no** `setDefaultVoicings` preamble.
+This was the ambient-demo total-silence regression (pure voiced pads,
+no drums to mask it). Sign-off item §5 is **withdrawn**; the other
+four sign-off items stand. Determinism rule still satisfied (library
+internal default is build-constant).

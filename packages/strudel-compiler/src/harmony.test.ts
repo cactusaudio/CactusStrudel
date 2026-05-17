@@ -56,13 +56,18 @@ describe('harmony → Strudel (design §4)', () => {
     expect(again).toBe(before);
   });
 
-  it('emits the setDefaultVoicings("legacy") determinism preamble once', async () => {
+  it('NEVER emits setDefaultVoicings — render evidence falsified §5', async () => {
+    // @strudel/tonal@1.2.6: any user-code setDefaultVoicings() makes
+    // voicing() return silence (0 haps). The unpinned library default
+    // works and is itself constant per build, so determinism holds
+    // without the pin. Emitting it at all is fatal — assert it is gone
+    // even WITH a full harmonic graph.
     const g = harmonized(await rawTechno(),
       { source: 'progression', role_derivation: 'root' },
       { source: 'progression', role_derivation: 'chord_voiced' });
     const code = compileSessionGraph(g).code;
-    expect(code.match(/setDefaultVoicings\("legacy"\)/g)).toHaveLength(1);
-    expect(code.indexOf('setDefaultVoicings')).toBeLessThan(code.indexOf('stack('));
+    expect(code).not.toContain('setDefaultVoicings');
+    expect(code).toContain('.voicing()'); // the spine is still emitted
   });
 
   it('root → chord(prog).mode("root").anchor(bass).s(src)', async () => {
