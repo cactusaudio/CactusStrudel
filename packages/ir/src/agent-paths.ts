@@ -1,7 +1,7 @@
 export const AGENT_WRITE_PATHS: Record<string, string[]> = {
   'producer-brief-interpreter': ['/brief/'],
   'producer-reference-decomposer': ['/brief/references/', '/brief/modifiers/'],
-  'producer-arranger': ['/song/', '/layers/'],
+  'producer-arranger': ['/song/', '/layers/', '/harmony/'],
   'producer-composer': ['/pattern_bank/'],
   'producer-sound-designer': ['/sound_palette/'],
   'producer-mix-engineer': ['/mix_graph/'],

@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { FIXTURE_GENRES, fixturePath, loadFixture } from './fixtures.js';
-import { SessionGraphSchema, SCHEMA_VERSION } from './schema.js';
+import { SessionGraphSchema, SUPPORTED_SCHEMA_VERSIONS } from './schema.js';
 
 describe('fixtures', () => {
   for (const slug of FIXTURE_GENRES) {
     it(`${slug} parses against SessionGraphSchema`, async () => {
       const g = await loadFixture(slug);
-      expect(g.schema_version).toBe(SCHEMA_VERSION);
+      // Fixtures stay at 1.0.0 on purpose — they are the back-compat
+      // corpus proving pre-harmony graphs still validate. The contract
+      // is "a supported version", not "the latest version".
+      expect(SUPPORTED_SCHEMA_VERSIONS).toContain(g.schema_version);
     });
 
     it(`${slug} round-trips parse → serialize → parse`, async () => {

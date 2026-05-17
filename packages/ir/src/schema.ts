@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = '1.0.0' as const;
+// 1.1.0 adds the optional `harmony` block + PatternEntry.harmonic +
+// SoundDecoration source.kind 'gm'. ALL additive/optional → a 1.0.0
+// graph (no harmony) still validates and compiles via the legacy path.
+// Per the approved docs/harmony-schema-design.md §6 this is an
+// additive-minor bump with no destructive migration. New graphs are
+// written at SCHEMA_VERSION; old persisted iter_*.json keep '1.0.0'
+// and remain readable (schema_version accepts the supported range).
+export const SCHEMA_VERSION = '1.1.0' as const;
+export const SUPPORTED_SCHEMA_VERSIONS = ['1.0.0', '1.1.0'] as const;
 
 export const RoleEnum = z.enum([
   'kick',
@@ -88,6 +96,72 @@ export const BriefGraphSchema = z.object({
 });
 export type BriefGraph = z.infer<typeof BriefGraphSchema>;
 
+// ---- harmony (schema 1.1.0) ----
+// The shared harmonic spine. Per docs/harmony-schema-design.md: one
+// progression for the song; every pitched layer derives from it
+// (the coherence the reference corpus has and our 1.0.0 output lacked).
+// Owned by producer-arranger (/harmony/* write boundary).
+
+// Plain chord symbols the corpus passes to chord("Dm A Bb Eb").
+// Voicing is NOT in the symbol — derived per layer.
+export const ChordSymbolSchema = z
+  .string()
+  .regex(/^[A-G][b#]?(m|maj7|m7|7|dim|aug|sus2|sus4|add9|6|9|11|13)?$/);
+export type ChordSymbol = z.infer<typeof ChordSymbolSchema>;
+
+export const HarmonyModulationSchema = z.object({
+  at_bar: z.number().int().nonnegative(),
+  key: z.object({
+    tonic: z.string().regex(/^[A-Ga-g][b#]?$/),
+    mode: ModeEnum,
+  }),
+});
+export type HarmonyModulation = z.infer<typeof HarmonyModulationSchema>;
+
+export const HarmonyGraphSchema = z
+  .object({
+    key: z.object({
+      tonic: z.string().regex(/^[A-Ga-g][b#]?$/),
+      mode: ModeEnum,
+    }),
+    progression: z.array(ChordSymbolSchema).min(1),
+    // Mini-notation over the progression INDEX space, expanded against
+    // progression[] by the compiler — not free-text. e.g. "<0 1 2 3>/4".
+    progression_rhythm: z.string().min(1).default('<0>/1'),
+    modulation: z.array(HarmonyModulationSchema).default([]),
+    anchors: z
+      .object({
+        // Strudel note literals are LOWERCASE (`note("c2")`), so the
+        // octave-bearing anchor regex must accept a-g — same casing
+        // policy as the `tonic` regex above. Uppercase-only here would
+        // reject the very defaults it ships with.
+        bass: z.string().regex(/^[A-Ga-g][b#]?[0-9]$/).default('c2'),
+        chord: z.string().regex(/^[A-Ga-g][b#]?[0-9]$/).default('c4'),
+        lead: z.string().regex(/^[A-Ga-g][b#]?[0-9]$/).default('c5'),
+        pad: z.string().regex(/^[A-Ga-g][b#]?[0-9]$/).default('c4'),
+      })
+      .default({}),
+  })
+  .strict();
+export type HarmonyGraph = z.infer<typeof HarmonyGraphSchema>;
+
+// PatternEntry.harmonic: a layer realizes the shared spine instead of
+// carrying a literal pattern. The compiler maps role_derivation →
+// chord()/voicing()/n().chord() per the design doc §4 mapping table.
+export const HarmonicDerivationSchema = z.object({
+  source: z.literal('progression'),
+  role_derivation: z.enum([
+    'chord_voiced', // chord(prog).voicing()              — pad/chord
+    'root', // chord(prog).mode('root').anchor(oct)        — bass
+    'arp', // n(arpPattern).chord(prog).voicing()          — arp/pluck
+    'degree_line', // n(degrees).chord(prog).voicing()     — lead/melody
+  ]),
+  degrees: z.string().optional(),
+  rhythm: z.string().optional(),
+  octave_shift: z.number().int().min(-3).max(3).default(0),
+});
+export type HarmonicDerivation = z.infer<typeof HarmonicDerivationSchema>;
+
 export const SectionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -121,6 +195,13 @@ export const LayerGraphSchema = z.object({
 });
 export type LayerGraph = z.infer<typeof LayerGraphSchema>;
 
+// `harmonic` (1.1.0) is additive-optional alongside the existing
+// literal forms. The design doc §2 floated a hard "exactly one of {...}"
+// refinement; we deliberately do NOT add it — the 1.0.0 schema is
+// all-optional and a hard refinement could reject already-valid
+// persisted graphs, violating the approved "no destructive migration"
+// constraint. Selection precedence (harmonic ▸ mini_notation ▸ raw ▸
+// role-default) is enforced compiler-side, not by schema rejection.
 export const PatternEntrySchema: z.ZodType<{
   mini_notation?: string;
   notes?: string;
@@ -128,6 +209,10 @@ export const PatternEntrySchema: z.ZodType<{
   raw?: string;
   density?: number;
   syncopation?: number;
+  // typed `unknown` in the annotation (zod .default() makes the inferred
+  // output type diverge from the input type) — same precedent as
+  // `variations` below. The real shape is HarmonicDerivationSchema.
+  harmonic?: unknown;
   variations?: unknown;
 }> = z.object({
   mini_notation: z.string().optional(),
@@ -136,6 +221,7 @@ export const PatternEntrySchema: z.ZodType<{
   raw: z.string().optional(),
   density: z.number().min(0).max(1).optional(),
   syncopation: z.number().min(0).max(1).optional(),
+  harmonic: HarmonicDerivationSchema.optional(),
   variations: z.lazy(() => z.array(PatternEntrySchema).optional()),
 });
 export type PatternEntry = z.infer<typeof PatternEntrySchema>;
@@ -154,7 +240,7 @@ export type Effect = z.infer<typeof EffectSchema>;
 
 export const SoundDecorationSchema = z.object({
   source: z.object({
-    kind: z.enum(['sample', 'synth', 'soundfont', 'csound']),
+    kind: z.enum(['sample', 'synth', 'soundfont', 'csound', 'gm']),
     name: z.string(),
     options: z.record(z.unknown()).default({}),
   }),
@@ -396,10 +482,13 @@ export const IterationSchema = z.object({
 export type Iteration = z.infer<typeof IterationSchema>;
 
 export const SessionGraphSchema = z.object({
-  schema_version: z.literal(SCHEMA_VERSION),
+  schema_version: z.enum(SUPPORTED_SCHEMA_VERSIONS),
   session_id: Uuid,
   created_at: Iso,
   brief: BriefGraphSchema,
+  // 1.1.0 shared harmonic spine. Optional → 1.0.0 graphs validate +
+  // compile via the legacy path. producer-arranger owns /harmony/*.
+  harmony: HarmonyGraphSchema.optional(),
   song: SongGraphSchema,
   layers: z.array(LayerGraphSchema).default([]),
   pattern_bank: PatternBankSchema,

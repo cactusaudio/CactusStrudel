@@ -7,6 +7,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { produce } from '@cactus/agent-runtime';
+import { SCHEMA_VERSION } from '@cactus/ir';
 import { bundleSession } from './bundle.js';
 
 const TMP = path.join(os.tmpdir(), 'cactus-bundle-tests');
@@ -39,7 +40,11 @@ describe('bundleSession (G10)', () => {
     expect(manifest.bundle_version).toBe('1.0.0');
     expect(manifest.session_id).toMatch(/^[0-9a-f-]{36}$/);
     expect(manifest.iteration).toBe(0);
-    expect(manifest.schema_version).toBe('1.0.0');
+    // Manifest faithfully reflects the PRODUCED graph's schema_version
+    // (bundle.ts copies graphRaw.schema_version). produce() stamps the
+    // current SCHEMA_VERSION, so track the constant — not a frozen
+    // literal that re-breaks on every additive bump.
+    expect(manifest.schema_version).toBe(SCHEMA_VERSION);
     expect(Array.isArray(manifest.files)).toBe(true);
     expect(manifest.files.length).toBeGreaterThanOrEqual(2);
     for (const f of manifest.files) {
