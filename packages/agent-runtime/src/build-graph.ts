@@ -323,6 +323,13 @@ async function buildPatternBank(
 ): Promise<PatternBank> {
   const bpm = brief.bpm ?? 120;
   const patterns: PatternBank['patterns'] = {};
+  // Spine-bypass set (keygen-transcription contract §1, signed-off
+  // 2026-05-17): a (layer,section) cell whose pattern came from a
+  // transcribed `imported_public_domain` entry is REAL human music,
+  // already harmonically coherent. The step-4 synthetic spine must
+  // NOT override it — that would discard the entire keygen value.
+  // Key = `${layerId} ${secId}`.
+  const transcribedCells = new Set<string>();
 
   // G9B: in enabled / enabled_mutating modes, route through the typed
   // retrieval API + trace. minimal mode preserves the legacy pickSnippet
@@ -390,6 +397,13 @@ async function buildPatternBank(
         }
         if (entry.mini_notation) chosenPattern = { mini_notation: entry.mini_notation };
         else if (entry.raw) chosenPattern = { raw: entry.raw };
+        // Final (post-mutation) source_type: a mutated import is no
+        // longer a faithful transcription (tryMutate → 'transformed'),
+        // so it correctly does NOT bypass the spine; only an untouched
+        // imported_public_domain pick does.
+        if (entry.source_type === 'imported_public_domain') {
+          transcribedCells.add(`${layer.id} ${sec.id}`);
+        }
         seenIds.push(result.entry.id);
       }
 
@@ -447,6 +461,9 @@ async function buildPatternBank(
     const bySec = patterns[layer.id];
     if (!bySec) continue;
     for (const secId of Object.keys(bySec)) {
+      // Spine-bypass (contract §1): never override a faithfully
+      // transcribed keygen cell with the synthetic spine.
+      if (transcribedCells.has(`${layer.id} ${secId}`)) continue;
       bySec[secId] = { ...bySec[secId]!, harmonic: deriv };
     }
   }
