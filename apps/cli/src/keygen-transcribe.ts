@@ -22,6 +22,8 @@ export interface XmModule {
   patterns: XmCell[][][]; // [pattern][row][channel]
 }
 
+import type { CookbookEntry } from '@cactus/cookbook';
+
 const NOTE_NAMES = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
 
 /** XM note number (1 = C-0) → Strudel note literal ("c4"); '' for none/keyoff. */
@@ -84,6 +86,95 @@ export function parseXM(buf: Buffer): XmModule {
     off = end; // packedSize==0 ⇒ empty pattern, off stays put correctly
   }
   return { name, numChannels, numPatterns, numInstruments, speed, bpm, order, patterns };
+}
+
+// XM note# reference: 1=C-0, +12/octave. C-2=25 C-3=37 C-4=49 C-5=61.
+export type CbRole = CookbookEntry['role'];
+
+/**
+ * Channel → cookbook role. Heuristic over channelStats (the proven
+ * signal: pitch-range + density + single-pitch detection). The
+ * transcriber PROPOSES; curation/ear confirms (contract §4). Returns
+ * null for an empty channel.
+ */
+export function inferRole(s: ReturnType<typeof channelStats>): CbRole | null {
+  if (s.notes === 0) return null;
+  const range = s.hi - s.lo;
+  // Fixed-pitch channel = a drum/sample trigger. SKIP: the cookbook
+  // already has kick/hat/perc, a single-pitch trigger does not
+  // transcribe as a useful *pitched* entry, and keygen's value (the
+  // contract's precision budget) is the melodic/harmonic content the
+  // cookbook is MISSING — not drums.
+  if (range <= 2) return null;
+  if (s.meanNote < 49) return 'bass';                          // below C-4
+  if (s.density < 0.22) return 'pad_atmo';                      // sparse, sustained
+  if (s.meanNote >= 56 && s.density >= 0.45) return 'lead_hook'; // high + busy
+  return 'chord_stab';                                          // mid ground
+}
+
+function clampBpm(b: number): [number, number] {
+  return [Math.max(40, b - 6), Math.min(220, b + 6)];
+}
+function energyFor(density: number): CookbookEntry['energy_range'] {
+  if (density < 0.3) return ['low', 'mid'];
+  if (density < 0.6) return ['mid'];
+  if (density < 0.8) return ['mid', 'high'];
+  return ['high', 'peak'];
+}
+function slug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 28) || 'mod';
+}
+
+/**
+ * One channel → a schema-valid CookbookEntry (NOT yet validated here;
+ * the caller validates against CookbookEntrySchema before writing).
+ * mini_notation = the channel's busiest ordered pattern (most
+ * representative), capped at 64 rows (≤4 bars — the cookbook unit).
+ * Tier-A faithful; timbre is the renderer's job (source_type records
+ * provenance; validation_status starts `candidate`).
+ */
+export function toCookbookEntry(
+  m: XmModule, ch: number, genre: string,
+): CookbookEntry | null {
+  const s = channelStats(m, ch);
+  const role = inferRole(s);
+  if (!role) return null;
+  // Most representative pattern for this channel = max note count.
+  let bestPat = m.order[0] ?? 0, bestNotes = -1;
+  for (const pi of new Set(m.order)) {
+    const pat = m.patterns[pi];
+    if (!pat) continue;
+    let n = 0;
+    for (const row of pat) { const v = row[ch]?.note ?? 0; if (v > 0 && v < 97) n++; }
+    if (n > bestNotes) { bestNotes = n; bestPat = pi; }
+  }
+  const patRows = m.patterns[bestPat]?.length ?? 16;
+  const mini = channelBarMiniNotation(m, ch, bestPat, 0, Math.min(patRows, 64));
+  if (!mini || /^[~\s]*$/.test(mini)) return null;
+  const busy = s.density >= 0.5 ? 'busy' : 'sparse';
+  return {
+    schema_version: '2.0.0',
+    id: `kg-${genre}-${role}-${slug(m.name)}-c${ch}`.slice(0, 60),
+    genre,
+    role,
+    mini_notation: mini,
+    energy_range: energyFor(s.density),
+    bpm_range: clampBpm(m.bpm),
+    bar_intent: `keygen ${role} from "${m.name}" ch${ch}: ${s.notes}-note ${busy} line, ${s.hi - s.lo}-semitone range`.slice(0, 200),
+    compatible_sections: s.density < 0.25 ? ['intro', 'main'] : ['main'],
+    incompatible_sections: [],
+    required_layers: [],
+    forbidden_constraints: [],
+    sound_palette_tags: [],
+    free_tags: ['keygen', 'tracker', slug(m.name)],
+    mix_implications: {},
+    expected_movement: {},
+    revision_affordances: [],
+    validation_status: 'candidate',
+    source_type: 'imported_public_domain',
+    provenance_note: `CORE keygen pack — "${m.name}" ch${ch}; inferred ${role} (meanNote ${s.meanNote.toFixed(0)}, density ${s.density.toFixed(2)}); XM v1.04 Tier-A pitch/rhythm, timbre Tier-B`,
+    known_failure_modes: [],
+  } as CookbookEntry;
 }
 
 /** Per-channel note presence + pitch stats — drives role inference. */
