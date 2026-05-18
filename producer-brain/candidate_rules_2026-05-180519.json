@@ -1,0 +1,27 @@
+[
+  {
+    "symptom_heard": "A 'boxy' or 'muffled' sound where the melody gets buried by the chords.",
+    "root_cause": "Excessive filtering on mid-range elements masking the lead melody.",
+    "avoid_rule": "Do not apply aggressive low-pass filtering to both chords and bass simultaneously; ensure at least one melodic element remains in the high-mid frequency spectrum."
+  },
+  {
+    "symptom_heard": "Piercing, unnatural metallic chirping in the high frequency spectrum.",
+    "root_cause": "Applying an extreme high-pass filter (6kHz+) to standard hi-hat samples, removing all body and leaving only aliased artifacts.",
+    "avoid_rule": "Never high-pass percussion above 3kHz unless attempting a specific 'telephone' or 'lo-fi radio' effect."
+  },
+  {
+    "symptom_heard": "Low-end rumble and loss of definition in the bassline when the kick hits.",
+    "root_cause": "Uncontrolled frequency collision between the fundamental frequencies of the kick and the sub-bass.",
+    "avoid_rule": "Always use sidechain compression or EQ cutting on melodic bass elements when using a heavy kick."
+  },
+  {
+    "symptom_heard": "Rhythm section sounds distant and lacks percussive impact.",
+    "root_cause": "Improper gain staging and lack of dynamic processing (sidechaining) causing the bass to mask the kick.",
+    "avoid_rule": "Never allow the kick drum and bass to occupy the same frequency space without sidechain compression or EQ carving."
+  },
+  {
+    "symptom_heard": "Muddy low-end and digital distortion at the downbeat",
+    "root_cause": "Unchecked frequency masking between the sub-bass and the kick drum",
+    "avoid_rule": "Always apply sidechain ducking or subtractive EQ to the bass when using a prominent kick drum."
+  }
+]

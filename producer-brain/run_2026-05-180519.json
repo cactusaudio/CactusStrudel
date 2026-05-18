@@ -1,0 +1,100 @@
+{
+  "brief": "a warm, formulaic deep-house piece ~16 bars, canonical I-vi-IV-V-family progression, warm filtered timbres, groove + space",
+  "rounds": [
+    {
+      "n": 1,
+      "code": "setcpm(124/4)\n\n$BASS: n(\"<[0 0 2 4] [5 5 4 0]>*2\").scale(\"c2:minor\").s(\"sawtooth\").lpf(400).gain(0.45)\n\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>/2\").scale(\"c3:minor\").s(\"triangle\").lpf(1200).gain(0.18).room(0.4)\n\n$LEAD: n(\"<0 2 3 5 7 5 3 2>\").scale(\"c4:minor\").s(\"square\").lpf(1800).gain(0.22).room(0.3).delay(0.25).delayfeedback(0.2).mask(\"<0@4 1@12>\")\n\n$DRUMS: stack(sound(\"bd*4\").gain(0.95), sound(\"~ cp ~ cp\").gain(0.35), sound(\"[hh hh hh hh]*2\").gain(0.2).hpf(6000))",
+      "renderOk": true,
+      "renderErr": "",
+      "critique": {
+        "score": 4,
+        "good": false,
+        "what_works": "The basic melodic progression is functional, and the sound choices for the bass and lead are genre-appropriate for lo-fi or chiptune styles.",
+        "top_weakness": "The mix is muddy and lacks dynamic separation, specifically because the low-pass filters (LPF) on the bass and chords are competing in the same frequency range, causing frequency masking.",
+        "fix": "Increase the LPF on the chords to 2000Hz+ to add clarity and reduce the bass gain by 20% to allow the kick drum to punch through the mix.",
+        "new_failure_rule": {
+          "symptom_heard": "A 'boxy' or 'muffled' sound where the melody gets buried by the chords.",
+          "root_cause": "Excessive filtering on mid-range elements masking the lead melody.",
+          "avoid_rule": "Do not apply aggressive low-pass filtering to both chords and bass simultaneously; ensure at least one melodic element remains in the high-mid frequency spectrum."
+        },
+        "verdict": "revise"
+      }
+    },
+    {
+      "n": 2,
+      "code": "setcpm(124/4)\n\n$BASS: n(\"<[0 0 2 4] [5 5 4 0]>*2\").scale(\"c2:minor\").s(\"sawtooth\").lpf(400).gain(0.36)\n\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>/2\").scale(\"c3:minor\").s(\"triangle\").lpf(2200).gain(0.18).room(0.4)\n\n$LEAD: n(\"<0 2 3 5 7 5 3 2>\").scale(\"c4:minor\").s(\"square\").lpf(1800).gain(0.22).room(0.3).delay(0.25).delayfeedback(0.2).mask(\"<0@4 1@12>\")\n\n$DRUMS: stack(sound(\"bd*4\").gain(0.95), sound(\"~ cp ~ cp\").gain(0.35), sound(\"[hh hh hh hh]*2\").gain(0.2).hpf(6000))",
+      "renderOk": true,
+      "renderErr": "",
+      "critique": {
+        "score": 5,
+        "good": false,
+        "what_works": "The basic harmonic structure in C minor is coherent, and the bassline provides a decent foundation for a dark, lo-fi aesthetic.",
+        "top_weakness": "The high-hats are extremely thin and harsh due to the excessive high-pass filtering (6000Hz), causing them to sound like digital aliasing noise rather than percussion.",
+        "fix": "Lower the high-pass filter on the hi-hats to 2000Hz and add a slight low-pass filter to soften the transients. Increase the volume of the kick drum or add a compressor to the drum bus to give the rhythm more impact.",
+        "new_failure_rule": {
+          "symptom_heard": "Piercing, unnatural metallic chirping in the high frequency spectrum.",
+          "root_cause": "Applying an extreme high-pass filter (6kHz+) to standard hi-hat samples, removing all body and leaving only aliased artifacts.",
+          "avoid_rule": "Never high-pass percussion above 3kHz unless attempting a specific 'telephone' or 'lo-fi radio' effect."
+        },
+        "verdict": "revise"
+      }
+    },
+    {
+      "n": 3,
+      "code": "setcpm(124/4)\n\n$BASS: n(\"<[0 0 2 4] [5 5 4 0]>*2\").scale(\"c2:minor\").s(\"sawtooth\").lpf(400).gain(0.36)\n\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>/2\").scale(\"c3:minor\").s(\"triangle\").lpf(2200).gain(0.18).room(0.4)\n\n$LEAD: n(\"<0 2 3 5 7 5 3 2>\").scale(\"c4:minor\").s(\"square\").lpf(1800).gain(0.22).room(0.3).delay(0.25).delayfeedback(0.2).mask(\"<0@4 1@12>\")\n\n$DRUMS: stack(sound(\"bd*4\").gain(0.98), sound(\"~ cp ~ cp\").gain(0.35), sound(\"[hh hh hh hh]*2\").gain(0.25).hpf(2000).lpf(8000))",
+      "renderOk": true,
+      "renderErr": "",
+      "critique": {
+        "score": 6,
+        "good": true,
+        "what_works": "The arrangement of the bass and chord progressions creates a solid, cohesive minor-key foundation. The sound design choices for the leads are appropriate, and the rhythmic structure is consistent.",
+        "top_weakness": "The kick drum is completely burying the bassline due to masking in the low-end frequencies.",
+        "fix": "Apply sidechain compression to the $BASS triggered by the $DRUMS kick, and add a subtle high-pass filter (around 100-150Hz) to the $CHORD to clear up the muddy midrange.",
+        "new_failure_rule": {
+          "symptom_heard": "Low-end rumble and loss of definition in the bassline when the kick hits.",
+          "root_cause": "Uncontrolled frequency collision between the fundamental frequencies of the kick and the sub-bass.",
+          "avoid_rule": "Always use sidechain compression or EQ cutting on melodic bass elements when using a heavy kick."
+        },
+        "verdict": "revise"
+      }
+    },
+    {
+      "n": 4,
+      "code": "setcpm(124/4)\n\n$BASS: n(\"<[0 0 2 4] [5 5 4 0]>*2\").scale(\"c2:minor\").s(\"sawtooth\").lpf(300).gain(\"<0.1 0.36 0.1 0.36>\")\n\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>/2\").scale(\"c3:minor\").s(\"triangle\").lpf(2200).hpf(150).gain(0.18).room(0.4)\n\n$LEAD: n(\"<0 2 3 5 7 5 3 2>\").scale(\"c4:minor\").s(\"square\").lpf(1800).gain(0.22).room(0.3).delay(0.25).delayfeedback(0.2).mask(\"<0@4 1@12>\")\n\n$DRUMS: stack(sound(\"bd*4\").gain(0.98), sound(\"~ cp ~ cp\").gain(0.35), sound(\"[hh hh hh hh]*2\").gain(0.25).hpf(2000).lpf(8000))",
+      "renderOk": true,
+      "renderErr": "",
+      "critique": {
+        "score": 6,
+        "good": true,
+        "what_works": "The arrangement has a solid, classic house-inspired rhythm section with a decent groove. The use of the sawtooth bass provides a good foundation, and the chord progression is harmonically coherent.",
+        "top_weakness": "The kick drum is completely buried and lacks punch, while the snare/clap is too quiet, resulting in a weak, hollow rhythmic foundation.",
+        "fix": "Increase the kick drum gain and apply sidechain compression to the bass and chords keyed to the kick. Increase the gain of the clap sample and add a slight transient shaper to add 'snap' to the drums.",
+        "new_failure_rule": {
+          "symptom_heard": "Rhythm section sounds distant and lacks percussive impact.",
+          "root_cause": "Improper gain staging and lack of dynamic processing (sidechaining) causing the bass to mask the kick.",
+          "avoid_rule": "Never allow the kick drum and bass to occupy the same frequency space without sidechain compression or EQ carving."
+        },
+        "verdict": "revise"
+      }
+    },
+    {
+      "n": 5,
+      "code": "setcpm(124/4)\n\n$BASS: n(\"<[0 0 2 4] [5 5 4 0]>*2\").scale(\"c2:minor\").s(\"sawtooth\").lpf(300).gain(\"<0.05 0.3 0.05 0.3>\")\n\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>/2\").scale(\"c3:minor\").s(\"triangle\").lpf(2200).hpf(150).gain(0.12).room(0.4)\n\n$LEAD: n(\"<0 2 3 5 7 5 3 2>\").scale(\"c4:minor\").s(\"square\").lpf(1800).gain(0.22).room(0.3).delay(0.25).delayfeedback(0.2).mask(\"<0@4 1@12>\")\n\n$DRUMS: stack(sound(\"bd*4\").gain(1.1), sound(\"~ cp ~ cp\").gain(0.6), sound(\"[hh hh hh hh]*2\").gain(0.3).hpf(2000).lpf(8000))",
+      "renderOk": true,
+      "renderErr": "",
+      "critique": {
+        "score": 6,
+        "good": true,
+        "what_works": "The arrangement has a solid, classic synthwave foundation. The interplay between the sawtooth bass and the triangle chords creates a nice textural contrast, and the delay on the lead line gives the melody a professional, wide spatial feel.",
+        "top_weakness": "The kick drum (bd) is clipping and lacks punch due to its frequency clashing with the low-passed sawtooth bass.",
+        "fix": "Apply a sidechain compressor to the bass, triggered by the kick, and reduce the gain on the kick sample slightly to eliminate the digital clipping.",
+        "new_failure_rule": {
+          "symptom_heard": "Muddy low-end and digital distortion at the downbeat",
+          "root_cause": "Unchecked frequency masking between the sub-bass and the kick drum",
+          "avoid_rule": "Always apply sidechain ducking or subtractive EQ to the bass when using a prominent kick drum."
+        },
+        "verdict": "revise"
+      }
+    }
+  ]
+}

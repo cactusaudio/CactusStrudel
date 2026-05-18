@@ -1,0 +1,42 @@
+{
+  "brief": "a warm, formulaic deep-house piece ~16 bars, canonical I-vi-IV-V-family progression, warm filtered timbres, groove + space — the proven-strength lane",
+  "rounds": [
+    {
+      "n": 1,
+      "code": "setcpm(120/4)\n$BASS: n(\"<[0 0 2 4] [5 5 7 0]>*2\").scale(\"c2:minor\").s(\"sawtooth\").lpf(500).clip(0.6).gain(0.5)\n$CHORD: n(\"<[0,2,4,6] [5,0,2,4] [3,5,0,2] [4,6,1,3]>\").scale(\"c3:minor\").s(\"triangle\").lpf(1200).clip(0.7).gain(0.2).room(0.4).delay(0.5)\n$LEAD: n(\"<0 2 3 ~ 4 7 5 3>\").scale(\"c4:minor\").s(\"square\").lpf(2000).clip(0.7).gain(0.25).room(0.3).delay(0.25).mask(\"<0@2 1@14>\")\n$DRUMS: stack(sound(\"bd*4\").gain(0.95), sound(\"~ cp ~ cp\").gain(0.4), sound(\"[~ hh]*8\").gain(0.3).hpf(6000)).mask(\"<0@2 1@14>\")",
+      "renderOk": true,
+      "renderErr": "",
+      "critique": {
+        "score": 4,
+        "good": false,
+        "what_works": "The basic harmonic structure of the C minor scale provides a solid, coherent foundation, and the sawtooth bass has a decent, gritty texture.",
+        "top_weakness": "The mix is extremely cluttered and lacks dynamic separation; the clipping on every layer creates an aggressive, harsh digital distortion that masks the melodic content.",
+        "fix": "Reduce the gain on all tracks to eliminate the harsh clipping, and implement sidechain compression on the chords and lead triggered by the kick drum to give the beat space to breathe.",
+        "new_failure_rule": {
+          "symptom_heard": "A wall of sound where everything sounds like it is fighting for the same frequency space, resulting in a 'muddy' and distorted output.",
+          "root_cause": "Aggressive hard-clipping applied to every track simultaneously without headroom management or frequency carving (EQ).",
+          "avoid_rule": "Never clip the master or individual tracks to 'add grit' without first ensuring each element has a clear frequency pocket and sufficient headroom."
+        },
+        "verdict": "revise"
+      }
+    },
+    {
+      "n": 2,
+      "code": "setcpm(120/4)\n\n$BASS: n(\"<[0, -7] [5, -2]>\").scale(\"c2:minor\").s(\"sawtooth\").lpf(400).gain(0.4)\n\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>\").scale(\"c3:minor\").s(\"triangle\").lpf(800).gain(0.15).room(0.4).mask(\"<1@1 0@1 1@1 0@1 1@1 0@1 1@1 0@1 1@1 0@1 1@1 0@1 1@1 0@1 1@1 0@1>\")\n\n$LEAD: n(\"<0 ~ 3 2 4 ~ 2 0>\").scale(\"c4:minor\").s(\"square\").lpf(1200).gain(0.12).room(0.2).delay(0.2).delaytime(0.25).mask(\"<0@4 1@12>\")\n\n$DRUMS: stack(sound(\"bd*4\").gain(0.9), sound(\"~ cp ~ cp\").gain(0.3), sound(\"[~ hh]*4\").gain(0.2).hpf(6000))\n\nstack($BASS, $CHORD, $LEAD, $DRUMS)",
+      "renderOk": false,
+      "renderErr": "page.evaluate: Error: evaluate did not return a Pattern\n    at window.__cactusRender (http://localhost:5173/src/main.ts:134:13)\n    at async eval (eval at evaluate (:302:30), <anonymous>:1:98)\n    at "
+    },
+    {
+      "n": 3,
+      "code": "setcpm(120/4)\n\n$BASS: n(\"<[0,0,7,0] [5,5,4,5]>*2\").scale(\"c2:minor\").s(\"sawtooth\").lpf(400).gain(0.4)\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>\").scale(\"c3:minor\").s(\"triangle\").lpf(1000).gain(0.15).room(0.4).mask(\"<1 1 1 0>\")\n$LEAD: n(\"<0 ~ 3 2 4 ~ 2 0>\").scale(\"c4:minor\").s(\"square\").lpf(1200).gain(0.12).room(0.3).delay(0.25).delayfeedback(0.3).mask(\"<0 0 1 1>\")\n$DRUMS: stack(sound(\"bd*4\").gain(0.85), sound(\"~ cp ~ cp\").gain(0.3), sound(\"[~ hh]*4\").gain(0.2).hpf(5000))\n\nstack($BASS, $CHORD, $LEAD, $DRUMS)",
+      "renderOk": false,
+      "renderErr": "page.evaluate: Error: evaluate did not return a Pattern\n    at window.__cactusRender (http://localhost:5173/src/main.ts:134:13)\n    at async eval (eval at evaluate (:302:30), <anonymous>:1:98)\n    at "
+    },
+    {
+      "n": 4,
+      "code": "setcpm(120/4)\n\n$BASS: n(\"<0 0 7 0 5 5 4 5>\").scale(\"c2:minor\").s(\"sawtooth\").lpf(300).gain(0.5).attack(0.01).release(0.1)\n\n$CHORD: n(\"<[0,2,4] [5,0,2] [3,5,0] [4,6,1]>\").scale(\"c3:minor\").s(\"triangle\").lpf(800).gain(0.15).room(0.4).attack(0.05).release(0.4)\n\n$LEAD: n(\"<0 ~ 3 7 5 ~ 2 0>\").scale(\"c4:minor\").s(\"square\").lpf(1200).gain(0.15).room(0.3).delay(0.2).delayfeedback(0.2).attack(0.02).release(0.2).mask(\"<0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 0>\")\n\n$DRUMS: stack(sound(\"bd*4\").gain(0.95), sound(\"~ cp ~ cp\").gain(0.35), sound(\"hh*8\").gain(0.2).hpf(6000))\n\nstack($BASS, $CHORD, $LEAD, $DRUMS)",
+      "renderOk": false,
+      "renderErr": "page.evaluate: Error: evaluate did not return a Pattern\n    at window.__cactusRender (http://localhost:5173/src/main.ts:134:13)\n    at async eval (eval at evaluate (:302:30), <anonymous>:1:98)\n    at "
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+[
+  {
+    "symptom_heard": "A wall of sound where everything sounds like it is fighting for the same frequency space, resulting in a 'muddy' and distorted output.",
+    "root_cause": "Aggressive hard-clipping applied to every track simultaneously without headroom management or frequency carving (EQ).",
+    "avoid_rule": "Never clip the master or individual tracks to 'add grit' without first ensuring each element has a clear frequency pocket and sufficient headroom."
+  }
+]
