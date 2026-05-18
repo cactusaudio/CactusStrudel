@@ -1,0 +1,44 @@
+[
+  {
+    "i": 1,
+    "rendered": true,
+    "warnN": 0,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern — engine: ReferenceError: pattern is not defined\n    at window.__cactusRender (http://localhost:5173/src/main.ts:174:11)\n    at async eval (eval",
+    "critique": {
+      "score": "6.5",
+      "alive_or_mechanical": "Mechanical",
+      "what_you_were_going_for": "A dramatic, suspenseful cinematic orchestral arrangement with a tense, building narrative arc.",
+      "honest_flaw": "The phrasing and rhythmic spacing feel overly rigid, lacking the subtle organic rubato, breath, and dynamic variation that human performers provide to give a piece true emotional weight."
+    },
+    "url": "https://strudel.cc/#cygiZ21tX2VsZWN0cmljX3BpYW5vIikKICAuYmFuaygiZ20iKQogIC5ub3RlKAogICAgc2NhbGUoImMiLCAiYWVvbGlhbiIpCiAgICAgIC5wYWxpbmRyb21lKCkKICAgICAgLnNsb3coNCkKICAgICAgLmFkZCgwLCA3LCAxMiwgMTkpCiAgICAgIC5zdHV0KDMsIDAuMSwgMC40KQogICkKICAucm9vbSgwLjYpCiAgLmRlbGF5KDAuNCwgMC4yNSwgMC4zKQogIC5scGYoc2luZS5yYW5nZSg1MDAsIDQwMDApLnNsb3coOCkpCiAgLmF0dGFjaygwLjA1KQogIC5yZWxlYXNlKDIpCiAgLnN0YWNrKAogICAgcygiZ21tX3N0cmluZ19lbnNlbWJsZSIpCiAgICAgIC5ub3RlKAogICAgICAgICJjNCIKICAgICAgICAuc2xvdyg4KQogICAgICAgIC5hZGQoMCwgMywgNywgMTAsIDE0KQogICAgICAgIC5hcnAoInVwZG93biIpCiAgICAgICkKICAgICAgLmdhaW4oMC40KQogICAgICAucm9vbSgwLjgpCiAgICAgIC5scGYoMjAwMCksCiAgICAKICAgIHMoImJkOjIsIFt%2BIGhoOjVdKjQiKQogICAgICAuZXZlcnkoNCwgZmFzdCgyKSkKICAgICAgLnJvb20oMC4yKQogICAgICAuZ2FpbigwLjgpLAoKICAgIHMoImdtbV9zeW50aF9wYWQiKQogICAgICAubm90ZSgiYzMiKQogICAgICAuc3VzdGFpbigyKQogICAgICAuZGVsYXkoMC41LCAwLjMzLCAwLjQpCiAgICAgIC5nYWluKDAuMykKICAgICAgLmtydXNoKHBlcmxpbi5yYW5nZSgwLCA1KS5zbG93KDE2KSkKICApCiAgLnN0cnVjdCgKICAgIFsiMSIsICIyIiwgIjMiLCAiNCJdCiAgICAgIC5tYXAocyA9PiBzLnBpY2tSZXN0YXJ0KDQpKQogICkKICAuanV4KHJldik%3D",
+    "codeHead": "s(\"gmm_electric_piano\") /   .bank(\"gm\") /   .note( /     scale(\"c\", \"aeolian\")"
+  },
+  {
+    "i": 2,
+    "rendered": true,
+    "warnN": 0,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern — engine: TypeError: note(...).add(...).arp(...).struct(...).decay(...).jux(...).supermandolin is not a function\n    at window.__cactusRender (h",
+    "critique": {
+      "score": "6.5",
+      "alive_or_mechanical": "Mechanical",
+      "what_you_were_going_for": "Atmospheric, cinematic tension building into a dramatic climax.",
+      "honest_flaw": "The transitions between sections feel rigid and overly rhythmic, lacking the subtle micro-timing variations that give human performances emotional depth."
+    },
+    "url": "https://strudel.cc/#c3RhY2soCiAgbm90ZShzY2FsZSgnRiMnLCAnbWFqb3InLCAnezAsIDIsIDQsIDcsIDl9JykpCiAgICAuYWRkKDApCiAgICAuYXJwKCd1cGRvd24nKQogICAgLnN0cnVjdCgncSo4JykKICAgIC5kZWNheShwZXJsaW4ucmFuZ2UoMC4xLCAwLjgpKQogICAgLmp1eChyZXYpCiAgICAucygnbWFuZG9saW4nKQogICAgLnJvb20oMC40KQogICAgLmRlbGF5KDAuMikKICAgIC5kZWxheXQoMS8zKSwKICAKICBub3RlKHNjYWxlKCdGIycsICdtYWpvcicsICcwIDIgNCA3JykKICAgIC5zbG93KDQpKQogICAgLnBseSgxKQogICAgLmxheWVyKAogICAgICBuID0%2BIG4uYWRkKFswLCAxMl0pLAogICAgICBuID0%2BIG4uYWRkKFswLCA3XSkKICAgICkKICAgIC5zKCdzYXcnKQogICAgLmxwZihzaW5lLnJhbmdlKDIwMCwgMjAwMCkuc2xvdyg4KSkKICAgIC5nYWluKDAuNikKICAgIC5yb29tKDAuNyksCiAgICAKICBzdGFjaygKICAgIG5vdGUoJzAnKS5iYW5rKCdraWNrJykuc3RydWN0KCcxIDAgMCAwIDEgMCAwIDAnKSwKICAgIG5vdGUoJzInKS5iYW5rKCdzbmFyZScpLnN0cnVjdCgnMCAwIDEgMCAwIDAgMSAwJyksCiAgICBub3RlKCc0IDQgNCA0JykuYmFuaygnaGloYXQnKS5zdHJ1Y3QoJzEoMyw4KScpCiAgKS5yb29tKDAuMikuZ2FpbigwLjgpCikuc2xvdygxKQ%3D%3D",
+    "codeHead": "stack( /   note(scale('F#', 'major', '{0, 2, 4, 7, 9}')) /     .add(0) /     .arp('updown')"
+  },
+  {
+    "i": 3,
+    "rendered": true,
+    "warnN": 0,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern — engine: TypeError: stack(...).limit is not a function\n    at window.__cactusRender (http://localhost:5173/src/main.ts:174:11)\n    at async eva",
+    "critique": {
+      "score": "6.5",
+      "alive_or_mechanical": "Mechanical with hints of life",
+      "what_you_were_going_for": "A cinematic, atmospheric tension build-up intended to create a sense of impending mystery or a dark narrative shift.",
+      "honest_flaw": "The rhythmic progression feels slightly too rigid and quantized, which keeps it from feeling like an organic performance, despite the effective composition."
+    },
+    "url": "https://strudel.cc/#c3RhY2soCiAgbm90ZSgKICAgIHJ1big4KS5zbG93KDQpLmFkZChjaG9vc2UoWzAsIDIsIDMsIDddKSkuY2F0KAogICAgICBydW4oOCkuc2xvdygyKS5hZGQoY2hvb3NlKFswLCA1LCA3LCAxMF0pKQogICAgKQogICkuc2NhbGUoJ2Flb2xpYW4nKS5vY3RhdmUoNCkucygnZ21fcGFkX3dhcm0nKS5hdHRhY2soMC41KS5yZWxlYXNlKDIpLnJvb20oMC40KS5zaGFwZSgwLjIpLAogIAogIG5vdGUoCiAgICAiMCAyIDQgNyAwIDIgOSA3Ii5zbG93KDIpCiAgKS5zY2FsZSgnYWVvbGlhbicpLnMoJ3N1cGVybWFuZG9saW4nKS5kZWxheSgwLjI1KS5kZWxheWZlZWRiYWNrKDAuNCkucm9vbSgwLjgpLmxwZihwZXJsaW4ucmFuZ2UoMjAwLCAyMDAwKSksCiAgCiAgc3RhY2soCiAgICBzKCdiZCcpLnN0YWNrKAogICAgICAiMSgzLDgsMCkiLAogICAgICAiezEgMCAwIDEgMCAxIDAgMH0lNCIKICAgICkuaHBmKDEwMCksCiAgICBzKCdoaCcpLnN0YWNrKAogICAgICAidCg1LDgsMC41KSIsCiAgICAgICJ0KDMsOCwwLjIpIgogICAgKS5zKCc4MDhfY2gnKS5yb29tKDAuMikuZ2FpbigwLjcpLAogICAgcygnY3AnKS5tYXNrKCIwIDAgMSAwIikuZXZlcnkoNCwgJ3JldicpCiAgKS5zd2luZygwLjE1KQopLmNsaXAoNCk%3D",
+    "codeHead": "stack( /   note( /     run(8).slow(4).add(choose([0, 2, 3, 7])).cat( /       run(8).slow(2).add(choose([0, 5, 7, 10]))"
+  }
+]

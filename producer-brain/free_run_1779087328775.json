@@ -1,0 +1,29 @@
+[
+  {
+    "i": 1,
+    "rendered": false,
+    "warnN": -1,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern\n    at window.__cactusRender (http://localhost:5173/src/main.ts:",
+    "critique": null,
+    "url": "https://strudel.cc/#bm90ZSgKICBzY2FsZSgnYTQnLCAnYWVvbGlhbicpLmFkZCgKICAgIHNpbmUucmFuZ2UoLTEyLCAxMikuc2xvdyg4KS5yb3VuZCgpCiAgKS5zZWdtZW50KDQpCikKLmFkZCgKICBub3RlKCdhMiwgYzMsIGUzLCBnMycpLmFycCgndXBEb3duJykuc3R1dHRlcigyLCAwLjEpCikKLmxheWVyKAogIChuKSA9PiBuLnJvb20oMC44KS5zaXplKDAuOSkubHBmKHBlcmxpbi5yYW5nZSgyMDAsIDIwMDApLnNsb3coMTYpKQopCi5zdXBlcmltcG9zZSgKICBzdGFjaygKICAgIG5vdGUoJ2ExJykuZXZlcnkoNCwgbiA9PiBuLmFkZCg1KSkucygnYmQnKS5kZWNheSgwLjUpLnJvb20oMC4yKSwKICAgIG5vdGUoJ2EzJykucygnaGgnKS5nYWluKHBlcmxpbi5yYW5nZSgwLjIsIDAuOCkuc2xvdyg0KSkuc3R1dHRlcig0LCAwLjA1KSwKICAgIG5vdGUoJ2EyJykucygnc2QnKS5ldmVyeSg4LCBuID0%2BIG4uZmFzdCgyKSkucm9vbSgwLjQpCiAgKS5iYW5rKCdSb2xhbmRUUjgwOCcpCikKLm1vZCgnbHBmJywgbCA9PiBsLnNpbmUucmFuZ2UoNDAwLCA0MDAwKS5zbG93KDMyKSkKLnMoJ3N1cGVycGlhbm8nKQoudmVsb2NpdHkoc2luZS5yYW5nZSgwLjQsIDAuOSkuc2xvdygxMikpCi5zbG93KDIp",
+    "codeHead": "note( /   scale('a4', 'aeolian').add( /     sine.range(-12, 12).slow(8).round() /   ).segment(4)"
+  },
+  {
+    "i": 2,
+    "rendered": false,
+    "warnN": -1,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern\n    at window.__cactusRender (http://localhost:5173/src/main.ts:",
+    "critique": null,
+    "url": "https://strudel.cc/#c3RhY2soCiAgbm90ZSgiYzMoNywxNiwyKSBhMig1LDE2LDQpIGYyKDMsMTYsMSkgZzIoMywxNiwyKSIpCiAgICAucygiZ21fZWxlY3RyaWNfZ3JhbmRfcGlhbm8iKQogICAgLmp1eChyZXYpCiAgICAucm9vbSgwLjQpLnNpemUoMC44KQogICAgLmxwZihzaW5lLnJhbmdlKDIwMCwgNDAwMCkuc2xvdyg4KSksCgogIHN0YWNrKAogICAgbm90ZSgiYzUgZTUgZzUgYTUiKS5zbG93KDQpCiAgICAgIC5zKCJzdXBlcmZtIikKICAgICAgLmRlY2F5KDAuNSkubHBmKHNpbmUucmFuZ2UoMTAwLCAyMDAwKS5zbG93KDQpKQogICAgICAucm9vbSgwLjMpLmRlbGF5KDAuMikuZGVsYXl0aW1lKDAuNzUpLAogICAgbm90ZSgiYzQgZzQiKS5zbG93KDgpCiAgICAgIC5zKCJzdXBlcmNoaXAiKQogICAgICAuY3J1c2goMikucm9vbSgwLjYpCiAgKS5sYXllcigKICAgIHggPT4geC5zbG93KDEuNSkuc3ViKHgpCiAgKS5tYXNrKCI8MSAwIDEgMT4iKSwKCiAgbm90ZSgiYzIiKS5zKCJiZCIpLnBlbnYoInBlcmMiKS5kZWxheSgwLjEyNSkuZGVsYXlmZWVkYmFjaygwLjIpLAogIAogIHN0YWNrKAogICAgcygiaGgiKS5mYXN0KDE2KS5nYWluKHBlcmxpbi5yYW5nZSgwLjIsIDAuOCkpLAogICAgcygic2QiKS5tYXNrKCI8MCAwIDEgMD4iKS5yb29tKDAuNSkKICApLnN3aW5nKDAuMSkKKS50ZW1wbygxMzAp",
+    "codeHead": "stack( /   note(\"c3(7,16,2) a2(5,16,4) f2(3,16,1) g2(3,16,2)\") /     .s(\"gm_electric_grand_piano\") /     .jux(rev)"
+  },
+  {
+    "i": 3,
+    "rendered": false,
+    "warnN": -1,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern\n    at window.__cactusRender (http://localhost:5173/src/main.ts:",
+    "critique": null,
+    "url": "https://strudel.cc/#c3RhY2soCiAgbm90ZSgKICAgIHNsb3coNCwgIjxjMydtYWo5IGcyJ21hajkgZjInYWRkOSBhMidzdXMyPiIpLAogICkuc3ViZGl2aWRlKCI8MSAxIDEgMj4iKS5hcnAoJ3VwJykucygnc3VwZXJtYW5kb2xpbicpCiAgLnJvb20oMC40KS5zaXplKDAuOCkuZGVsYXkoMC4yNSkuZGVsYXlmZWVkYmFjaygwLjQpLmxwZihwZXJsaW4ucmFuZ2UoNDAwLCA0MDAwKSksCiAgCiAgc3RhY2soCiAgICBzKCdraWNrOjgnKS5zcGVlZCgwLjgpLmV2ZXJ5KDgsIGUgPT4gZS5vZmYoMC4yNSwgeCA9PiB4LnMoJ2tpY2s6NScpLmRlY2F5KDAuMSkpKSwKICAgIHMoJ3NuYXJlOjQnKS5tYXNrKCcwIDAgMSAwJyksCiAgICBzKCdoaDowJykuc3ViZGl2aWRlKDQpLmdhaW4oc2luZS5yYW5nZSgwLjMsIDAuNykpCiAgKS5iYW5rKCdSb2xhbmRUUjgwOCcpLAoKICBub3RlKAogICAgc2NhbGUoJ2MnLCAnbWFqb3InLCAnMCAyIDQgNyA5JykKICAgIC5zZWdtZW50KDgpCiAgICAuYWRkKHNpbmUucmFuZ2UoLTEsIDEpLnNsb3coOCkucXVhbnRpc2UoMSkpCiAgKS5zKCdzdXBlcnNhdycpCiAgLnJvb20oMC42KS5scGYoMTIwMCkuZ2FpbigwLjIpLmF0dGFjaygwLjUpLnJlbGVhc2UoMikKICAuc3VwZXJpbXBvc2UoeCA9PiB4LmRldHVuZSgwLjAxKS5wYW4oc2luZS5yYW5nZSgtMC41LCAwLjUpKSksCgogIG5vdGUoImM2IGc1IGU1IGY1IikucygncGx1Y2snKS5ldmVyeSg0LCB4ID0%2BIHguZmFzdCgyKSkucm9vbSgwLjMpCikuYnBtKDExMCk%3D",
+    "codeHead": "stack( /   note( /     slow(4, \"<c3'maj9 g2'maj9 f2'add9 a2'sus2>\"), /   ).subdivide(\"<1 1 1 2>\").arp('up').s('supermandolin')"
+  }
+]

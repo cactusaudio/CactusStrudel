@@ -12,7 +12,11 @@ import { render, shutdown } from '@cactus/renderer';
 
 const ROOT = '/Users/bowei/CactusStrudel';
 const KEY = readFileSync(`${ROOT}/.env.local`, 'utf8').match(/GEMINI_API_KEY=(.+)/)![1]!.trim();
-const MODEL = 'gemini-3.1-flash-lite';
+// gemini-3.1-flash-lite persistently hallucinated Strudel APIs even on
+// self-heal (gmm_/.stut/.krush). Bowei: stronger model, token-economical
+// → 3-flash (strong + cheaper than 3.1-pro; escalate to pro only if it
+// still hallucinates).
+const MODEL = process.env.PB_MODEL || 'gemini-3-flash-preview';
 
 function gemini(parts: any[], jsonOut = false): string {
   const body: any = { contents: [{ parts }] };
@@ -34,7 +38,14 @@ const strip = (s: string) => s.replace(/^```[a-z]*\n?/im, '').replace(/\n?```\s*
   const N = parseInt(process.argv[2] || '3', 10);
   const PROMPT = `You are a gifted electronic music producer working in Strudel (the strudel.cc live-coding language, a JS port of TidalCycles).
 
-Compose ONE original piece that you genuinely find beautiful and alive — not a formula exercise, not a safe demo. Your complete artistic choice: genre, key, harmony, groove, structure, sound design, length. Use the FULL expressive vocabulary of Strudel — gm_ soundfonts, .bank() drum machines, samples, supersaw, superimpose, perlin/sine/saw signals for modulation, .room/.delay/.lpf envelopes, arrange()/mask/pickRestart, whatever serves the music. Make something with feeling and motion, that breathes, that you would be proud to release.
+Compose ONE original piece that you genuinely find beautiful and alive — not a formula exercise, not a safe demo. Your COMPLETE artistic choice: genre, key, harmony, groove, structure, sound design, length. Make something with feeling and motion, that breathes, that you'd be proud to release.
+
+Use real Strudel APIs only (no invented methods — e.g. there is NO .stutter/.subdivide/.mod/.krush/.stut; "gmm_" is not a prefix). Real, expressive vocabulary you SHOULD use freely:
+- pitch: note("c3 e3 g3"), n("0 2 4").scale("c:minor"), chords note("c'maj7"), .add/.sub, .arp("up"/"updown"), .off(0.25, x=>...)
+- structure: stack(...), $name: , <a b c> alternation, [..] groups, *, !, ~, @weights, .slow/.fast, .every(n,f), .superimpose(x=>...), .jux(rev), .segment(n), .palindrome(), arrange([n,pat]...)
+- modulation: sine/saw/perlin/rand .range(a,b).slow(n) → pass into .lpf()/.gain()/.pan() etc
+- sound: .s("...")/.sound("..."); .gain .lpf .lpq .hpf .room .delay .delaytime .delayfeedback .attack .decay .sustain .release .pan .crush .vib .clip .detune
+- sounds that ACTUALLY make audio in our offline engine: oscillators sawtooth/square/triangle/sine; "piano"; drum samples bd sd hh cp oh rim; drum machines via .bank("RolandTR909"/"RolandTR808"/"RolandTR707"/"LinnDrum"/"AkaiLinn"). NOTE: gm_* / super* soundfonts are SILENT in offline preview (separate fix pending) — you may use them but the preview won't reflect them, so prefer the audible set for the parts that carry the piece.
 
 Output ONLY the Strudel code. No markdown, no explanation.`;
 
@@ -50,6 +61,17 @@ Output ONLY the Strudel code. No markdown, no explanation.`;
     for (let h = 0; h <= 4; h++) {
       try {
         const r = await render({ code, durationCycles: 24, cps: 0.42, outputPath: `/tmp/free${i}.wav` });
+        // SILENCE-IS-FAILURE gate: "render OK" but a silent wav is NOT
+        // success (truth vs harness). Treat near-silence as a failure
+        // → real self-heal signal, not a false pass.
+        let maxDb = -91;
+        try { maxDb = parseFloat(execSync(`ffmpeg -hide_banner -i /tmp/free${i}.wav -af volumedetect -f null - 2>&1|grep -oE 'max_volume: [-0-9.]+'|grep -oE '[-0-9.]+'`).toString().trim() || '-91'); } catch {}
+        if (maxDb <= -55) {
+          rerr = `rendered but SILENT (max ${maxDb}dB). Likely a sound that produces no audio offline (gm_*/super* are silent here) or a pattern with no audible notes. Re-voice the carrying parts with the audible set: sawtooth/square/triangle/sine, "piano", drum samples, .bank("RolandTR909"/"RolandTR808"). Keep the composition; only swap the silent sounds.`;
+          if (h === 4) break;
+          code = strip(gemini([{ text: `Your piece RENDERED but is SILENT.\n${rerr}\nOutput ONLY the corrected full code, keep all artistic intent.\n\n${code}` }]));
+          continue;
+        }
         rendered = true; warnN = r.warnings.length; break;
       } catch (e) {
         rerr = String((e as Error)?.message ?? e).slice(0, 200);

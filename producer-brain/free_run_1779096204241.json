@@ -1,0 +1,25 @@
+[
+  {
+    "i": 1,
+    "rendered": false,
+    "warnN": -1,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern — engine: TypeError: n(...).scale(...).add(...).s(...).lpf(...).quantise is not a function\n    at window.__cactusRender (http://localhost:5173/s",
+    "critique": null,
+    "url": "https://strudel.cc/#c3RhY2soCiAgbigiPGMzIGYzIGczIGMzPiIpCiAgICAuY2hvcmQoIjxtOSBtMTEgN2FsdCBtOT4iKQogICAgLnMoInBpYW5vIikKICAgIC5nYWluKDAuNykKICAgIC5yb29tKDAuOSkKICAgIC5kZWxheSgwLjQ1KQogICAgLmRlbGF5ZmIoMC43KQogICAgLnNsb3coNCkKICAgIC5qdXgocmV2KSwKCiAgbigiMCBbMyAyXSA3IFt%2BIDVdIDggWzEwIDddIDAgW34gMTJdIikKICAgIC5zY2FsZSgiYWVvbGlhbiIpLmFkZCgiYzQiKQogICAgLnMoInNhd3Rvb3RoIikKICAgIC5scGYocGVybGluLnJhbmdlKDQwMCwgNTAwMCkuc2xvdygxMikpCiAgICAucXVhbnRpc2UoMjgpCiAgICAuZ2FpbihzaW5lLnJhbmdlKDAuMSwgMC4zNSkuc2xvdyg4KSkKICAgIC5vZmYoMC4yNSwgeCA9PiB4LmFkZCg3KS5nYWluKDAuMTUpLmxwZig4MDAwKSkKICAgIC5wYW4oc2luZS5zbG93KDEwKSkKICAgIC5wYWxpbmRyb21lKCkKICAgIC5zbG93KDIpLAoKICBuKCI8MCAwIDMgNT4qMiIpCiAgICAuc2NhbGUoImFlb2xpYW4iKS5hZGQoImMxIikKICAgIC5zKCJzcXVhcmUiKQogICAgLmxwZihzaW5lLnJhbmdlKDE1MCwgNjAwKS5zbG93KDE2KSkKICAgIC5nYWluKDAuOCkKICAgIC5hdHRhY2soMC4wNCkKICAgIC5kZWNheSgwLjEpCiAgICAuc3VzdGFpbigwLjA1KQogICAgLnJlbGVhc2UoMC4xKSwKCiAgcygiYmQqMiBbfiBiZF0gW34gYmRdIGJkIikKICAgIC5iYW5rKCJSb2xhbmRUUjkwOSIpCiAgICAuZ2FpbigwLjkpCiAgICAubHBmKDEyMDApCiAgICAuc2hhcGUoMiksCgogIHMoIn4gW2hoITNdIH4gaGgqNCIpCiAgICAuYmFuaygiQWthaUxpbm4iKQogICAgLmdhaW4ocmFuZC5yYW5nZSgwLjIsIDAuNCkuc2VnbWVudCgxNikpCiAgICAucGFuKHBlcmxpbi5yYW5nZSgtMSwgMSkuc2xvdyg0KSksCgogIHMoIn4gW34gc2RdIH4gW3NkQDAuNSB%2BIHNkQDAuNV0iKQogICAgLmJhbmsoIlJvbGFuZFRSODA4IikKICAgIC5nYWluKDAuNikKICAgIC5yb29tKDAuNSkKICAgIC5kZWxheSgwLjI1KQogICAgLmRlbGF5ZmIoMC40KQogICAgLmhwZigxNTAwKSwKCiAgbigiMCAyIDQgNyA5IDEyIikKICAgIC5zY2FsZSgiYWVvbGlhbiIpLmFkZCgiYzUiKQogICAgLnMoInRyaWFuZ2xlIikKICAgIC5nYWluKDAuMTUpCiAgICAucm9vbSgwLjgpCiAgICAucmV2KCkKICAgIC5tYXNrKCI8MCExNiAxITE2PiIpCiAgICAuc2xvdyg4KQopLnNsb3coMik%3D",
+    "codeHead": "stack( /   n(\"<c3 f3 g3 c3>\") /     .chord(\"<m9 m11 7alt m9>\") /     .s(\"piano\")"
+  },
+  {
+    "i": 2,
+    "rendered": true,
+    "warnN": 0,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern — engine: TypeError: stack(...).setcps is not a function\n    at window.__cactusRender (http://localhost:5173/src/main.ts:177:11)\n    at async ev",
+    "critique": {
+      "score": 6.8,
+      "alive_or_mechanical": "Mechanical, but with a jittery, erratic pulse that mimics a nervous system.",
+      "what_you_were_going_for": "An industrial, claustrophobic atmosphere that captures the rhythmic ticking of an automated system under stress.",
+      "honest_flaw": "The composition is highly repetitive and lacks a melodic or harmonic anchor, which may limit its emotional impact over time."
+    },
+    "url": "https://strudel.cc/#c3RhY2soCiAgLy8gVGhlIFB1bHNlOiBIYXJtb25pYyBtb3Rpb24gd2l0aCBtb2R1bGF0ZWQgZmlsdGVyaW5nCiAgbm90ZSgiPGMzbWluOSEyIGFiMm1hajkhMiBiYjJkb203ITIgZjJtaW4xMSEyPiIpCiAgICAucygicGlhbm8iKQogICAgLnZlbG9jaXR5KHBlcmxpbi5yYW5nZSgwLjQsIDAuOCkuc2xvdygyKSkKICAgIC5hcnAoInVwZG93biIpCiAgICAucm9vbSgwLjYpLnNpemUoMC44KQogICAgLmxwZihzaW5lLnJhbmdlKDQwMCwgMzAwMCkuc2xvdygxNikpCiAgICAucSg1KQogICAgLmdhaW4oMC43KSwKCiAgLy8gU3VidGVycmFuZWFuIERlcHRoOiBMb3ctZW5kIHByZXNlbmNlCiAgbm90ZSgiPGMxITIgYWIwITIgYmIwITIgZjAhMj4iKQogICAgLnMoInNhd3Rvb3RoIikKICAgIC5scGYocGVybGluLnJhbmdlKDEwMCwgMjQwKS5zbG93KDgpKQogICAgLnEoMjApCiAgICAuYXR0YWNrKDAuMDIpLnJlbGVhc2UoMC42KQogICAgLmdhaW4oMC44KSwKCiAgLy8gUmh5dGhtaWMgTmVydm91cyBTeXN0ZW0KICBzdGFjaygKICAgIHMoImJkIFt%2BIGJkXSBiZCB%2BIikuYmFuaygiUm9sYW5kVFI4MDgiKS5nYWluKDEuMSksCiAgICBzKCJ%2BIGNwIikuYmFuaygiUm9sYW5kVFI5MDkiKS5yb29tKDAuNSkuZ2FpbigwLjcpLAogICAgcygiaGgqMTYiKS5iYW5rKCJSb2xhbmRUUjgwOCIpCiAgICAgIC5nYWluKHJhbmQucmFuZ2UoMC4zLCAwLjYpKQogICAgICAucGFuKHBlcmxpbi5yYW5nZSgwLjIsIDAuOCkuc2xvdyg0KSkKICAgICAgLmV2ZXJ5KDMsIHggPT4geC5mYXN0KDIpKQogICkuZXZlcnkoNCwgeCA9PiB4Lm9mZigwLjEyNSwgeSA9PiB5LmNydXNoKDgpLmdhaW4oMC40KSkpLAoKICAvLyBHb3NzYW1lciBUaHJlYWRzOiBIaWdoLWZyZXF1ZW5jeSBzaGltbWVyaW5nCiAgbm90ZSgiMCA0IDEgMyA2Iikuc2NhbGUoImM0Om1pbm9yIikKICAgIC5zKCJzaW5lIikKICAgIC5mYXN0KCI8MiA0IDMgNj4iKQogICAgLmp1eChyZXYpCiAgICAuZGVsYXkoMC40KS5kZWxheWZlZWRiYWNrKDAuNikKICAgIC5yb29tKDAuOSkuc2l6ZSgwLjkpCiAgICAuZ2FpbigwLjE1KQogICAgLmxwZig0MDAwKSwKCiAgLy8gR2hvc3RseSBFY2hvZXMKICBub3RlKCI8MCAxIDIgND4iKS5zY2FsZSgiYzU6bWlub3IiKQogICAgLnMoInRyaWFuZ2xlIikKICAgIC5zbG93KDIpCiAgICAuYXR0YWNrKDAuNCkucmVsZWFzZSgxLjUpCiAgICAuZ2FpbihzaW5lLnJhbmdlKDAsIDAuMjUpLnNsb3coMTIpKQogICAgLnBhbihzaW5lLnJhbmdlKDAuMSwgMC45KS5zbG93KDEwKSkKICAgIC5yb29tKDEpCikKLmNwcygxMTgvNjAvNCk%3D",
+    "codeHead": "stack( /   // The Pulse: Harmonic motion with modulated filtering /   note(\"<c3min9!2 ab2maj9!2 bb2dom7!2 f2min11!2>\") /     .s(\"piano\")"
+  }
+]
