@@ -96,17 +96,25 @@ void (async () => {
         // actually renders offline — not just the oscillator subset.
         // Each step is independent + non-fatal so partial CDN failures
         // still leave a working engine.
-        const { samples } = await import('@strudel/webaudio');
+        // EXACT canonical sources from the monorepo's own
+        // website/src/repl/prebake.mjs — strudel.cc serves samples from
+        // its CDN (strudel.b-cdn.net), NOT the stale github: repos
+        // (those 404 → silent renders). gm_*/super* via the dynamic
+        // @strudel/soundfonts import; .bank() via tidal-drum-machines.
+        const wa: any = await import('@strudel/webaudio');
+        const samples = wa.samples;
+        const cdn = 'https://strudel.b-cdn.net';
         const steps: Array<[string, () => Promise<unknown>]> = [
-          ['dirt', () => samples('github:tidalcycles/dirt-samples')],
-          ['dough', () => samples('github:Bubobubobubobubo/dough-samples/main')],
-          ['drum-machines', () => samples('github:ritchse/tidal-drum-machines')],
-          ['soundfonts', async () => {
-            const sf: any = await import('@strudel/soundfonts');
-            const reg = sf.registerSoundfonts ?? sf.default?.registerSoundfonts;
-            if (typeof reg === 'function') return reg();
-            return undefined;
-          }],
+          ['synth', async () => wa.registerSynthSounds?.()],
+          ['zzfx', async () => wa.registerZZFXSounds?.()],
+          ['soundfonts', () => import('@strudel/soundfonts').then((m: any) => (m.registerSoundfonts ?? m.default?.registerSoundfonts)?.())],
+          ['piano', () => samples(`${cdn}/piano.json`, `${cdn}/piano/`, { prebake: true })],
+          ['vcsl', () => samples(`${cdn}/vcsl.json`, `${cdn}/VCSL/`, { prebake: true })],
+          ['drum-machines', () => samples(`${cdn}/tidal-drum-machines.json`, `${cdn}/tidal-drum-machines/machines/`, { prebake: true, tag: 'drum-machines' })],
+          ['uzu-drumkit', () => samples(`${cdn}/uzu-drumkit.json`, `${cdn}/uzu-drumkit/`, { prebake: true, tag: 'drum-machines' })],
+          ['uzu-wavetables', () => samples(`${cdn}/uzu-wavetables.json`, `${cdn}/uzu-wavetables/`, { prebake: true })],
+          ['mridangam', () => samples(`${cdn}/mridangam.json`, `${cdn}/mrid/`, { prebake: true, tag: 'drum-machines' })],
+          ['dirt', () => samples(`${cdn}/EmuSP12.json`, `${cdn}/EmuSP12/`, { prebake: true })],
         ];
         await Promise.all(steps.map(async ([name, fn]) => {
           try { blog('init:load:' + name); await fn(); blog('init:ok:' + name); }
