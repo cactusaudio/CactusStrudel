@@ -1,11 +1,12 @@
-// Producer-brain FREE + self-optimize (Bowei 2026-05-18):
-// "让pro自己听、自己优化，先不要给pro任何约束。先跑通，再调审美."
-// → ZERO upfront constraints. gemini-3.1-pro composes freely, RENDERS
-// on the live strudel.cc engine, LISTENS to its own audio, and
-// REVISES its own work to improve — Pro does compose+heal+listen+
-// optimize. The only feedback fed back is REACTIVE reality (the
-// engine's real error / a silent render) — that is Pro self-
-// correcting, not an upfront cage. Aesthetics are NOT tuned here yet.
+// Producer-brain FREE — FIRST-SHOT DIRECT, NO TUNING (Bowei 2026-05-18:
+// "调多了反而差…干脆不要调…调一次都会有损失").
+// ZERO upfront constraints. gemini-3.1-pro composes freely → renders
+// on the live strudel.cc engine → ONE self-listen for an honest score
+// (ranking only, NEVER triggers an edit). Quality = best-of-N first-
+// shots + pick by ear, not iterative revision (every revise pass is
+// net-lossy on a holistic artifact — feedback_first_shot_beats_revision).
+// Only REACTIVE correctness heal (won't render / silent / real API
+// error) is kept — broken→working, not aesthetic tuning.
 
 import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -69,7 +70,6 @@ async function healToRender(code: string, i: number, maxHeals = 6): Promise<stri
 
 (async () => {
   const N = parseInt(process.argv[2] || '2', 10);
-  const AESTHETIC_ROUNDS = parseInt(process.argv[3] || '2', 10);
   const results: any[] = [];
 
   for (let i = 1; i <= N; i++) {
@@ -82,49 +82,32 @@ async function healToRender(code: string, i: number, maxHeals = 6): Promise<stri
     if (!good) { console.log(`#${i} could not render after heals`); results.push({ i, rendered: false }); continue; }
     code = good;
 
-    // Pro self-listen + self-optimize loop.
-    const trail: any[] = [];
-    let bestCode = code, bestScore = -1;
-    for (let a = 0; a <= AESTHETIC_ROUNDS; a++) {
-      execSync(`ffmpeg -hide_banner -y -i /tmp/free${i}.wav -t 16 -ac 1 -ar 22050 /tmp/free${i}.mp3 2>/dev/null`);
-      const b64 = readFileSync(`/tmp/free${i}.mp3`).toString('base64');
-      let crit: any;
-      try {
-        crit = JSON.parse(gemini([
-          { text: `This is YOUR OWN composition, rendered. Listen to it as a discerning producer. Be honest — is it actually good, or mechanical/dull? Then decide: is it release-worthy as is, or do you want to revise it to make it better music?` },
-          { inlineData: { mimeType: 'audio/mp3', data: b64 } },
-          { text: `JSON: {"score":1-10,"honest_assessment":"what you actually hear","verdict":"keep|improve","improve_how":"if improve: the specific musical change you will make"}` },
-        ], true));
-      } catch (e) { crit = { score: 0, honest_assessment: 'listen failed: ' + String(e).slice(0, 80), verdict: 'keep' }; }
-      trail.push({ round: a, ...crit });
-      const sc = Number(crit.score) || 0;
-      if (sc >= bestScore) { bestScore = sc; bestCode = code; }
-      console.log(`#${i} a${a}: ${sc}/10 ${crit.verdict} — ${(crit.honest_assessment || '').slice(0, 80)}`);
-      if (crit.verdict !== 'improve' || sc >= 8 || a === AESTHETIC_ROUNDS) break;
+    // FIRST-SHOT DIRECT — no aesthetic revision (every revise pass is
+    // net-lossy on a holistic artifact; feedback_first_shot_beats_revision).
+    // One Pro self-listen for an honest SCORE only (ranking the best-of-N
+    // batch / labeling), NOT to trigger any edit. Quality = sample more
+    // first-shots + pick, never tune.
+    execSync(`ffmpeg -hide_banner -y -i /tmp/free${i}.wav -t 16 -ac 1 -ar 22050 /tmp/free${i}.mp3 2>/dev/null`);
+    let crit: any = { score: 0, honest_assessment: '?' };
+    try {
+      crit = JSON.parse(gemini([
+        { text: `This is YOUR OWN first-shot composition, rendered. Listen as a discerning producer and rate it honestly (no revision will happen — this score only ranks a batch).` },
+        { inlineData: { mimeType: 'audio/mp3', data: readFileSync(`/tmp/free${i}.mp3`).toString('base64') } },
+        { text: `JSON: {"score":1-10,"honest_assessment":"what you actually hear","intent":"what you were going for"}` },
+      ], true));
+    } catch (e) { crit = { score: 0, honest_assessment: 'listen failed: ' + String(e).slice(0, 80), intent: '' }; }
+    const sc = Number(crit.score) || 0;
 
-      // Pro revises its OWN work toward its OWN stated improvement.
-      let rev: string;
-      try {
-        rev = strip(gemini([{ text:
-`You listened to your own piece and decided to improve it. Your assessment: "${crit.honest_assessment}". The change you will make: "${crit.improve_how}". Revise the piece accordingly — make it genuinely better music, keep what works. Output ONLY the full revised Strudel code.\n\n${code}` }]));
-      } catch { break; }
-      const revGood = await healToRender(rev, i);
-      if (!revGood) { console.log(`#${i} a${a}: revision broke render — keeping prior best`); await tryRender(bestCode, i); break; }
-      code = revGood;
-    }
-
-    // Deliver the best-scoring audible version.
-    await tryRender(bestCode, i);
     execSync(`ffmpeg -hide_banner -y -i /tmp/free${i}.wav -codec:a libmp3lame -b:a 256k ${process.env.HOME}/Downloads/cactus_gemini_free_${i}.mp3 2>/dev/null`);
-    writeFileSync(`/tmp/free${i}.js`, bestCode);
+    writeFileSync(`/tmp/free${i}.js`, code);
     const enc = execSync(`python3 -c "import base64,urllib.parse;print(urllib.parse.quote(base64.b64encode(open('/tmp/free${i}.js','rb').read()).decode()))"`).toString().trim();
-    results.push({ i, rendered: true, bestScore, trail, url: `https://strudel.cc/#${enc}` });
-    console.log(`#${i} DELIVERED best ${bestScore}/10 → ~/Downloads/cactus_gemini_free_${i}.mp3`);
+    results.push({ i, rendered: true, score: sc, assessment: crit.honest_assessment, intent: crit.intent, url: `https://strudel.cc/#${enc}` });
+    console.log(`#${i} DELIVERED (first-shot, no tuning) self ${sc}/10 — ${(crit.honest_assessment || '').slice(0, 80)} → ~/Downloads/cactus_gemini_free_${i}.mp3`);
   }
   await shutdown();
   writeFileSync(`${ROOT}/producer-brain/free_run_${Date.now()}.json`, JSON.stringify(results, null, 2));
   console.log('\n=== summary ===');
   for (const r of results) console.log(r.rendered
-    ? `#${r.i} ${r.bestScore}/10  ~/Downloads/cactus_gemini_free_${r.i}.mp3`
+    ? `#${r.i} ${r.score}/10  ~/Downloads/cactus_gemini_free_${r.i}.mp3`
     : `#${r.i} failed`);
 })();
