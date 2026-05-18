@@ -6,7 +6,7 @@
 // Strudel. Best-effort render; it self-listens ONLY if it renders;
 // otherwise we deliver the strudel.cc link (the real env) for Bowei.
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { render, shutdown } from '@cactus/renderer';
 
@@ -40,7 +40,7 @@ const strip = (s: string) => s.replace(/^```[a-z]*\n?/im, '').replace(/\n?```\s*
 
 Compose ONE original piece that you genuinely find beautiful and alive — not a formula exercise, not a safe demo. Your COMPLETE artistic choice: genre, key, harmony, groove, structure, sound design, length. Make something with feeling and motion, that breathes, that you'd be proud to release.
 
-Use real Strudel APIs only (no invented methods — e.g. there is NO .stutter/.subdivide/.mod/.krush/.stut; "gmm_" is not a prefix). Real, expressive vocabulary you SHOULD use freely:
+HARD BAN — these do NOT exist, NEVER emit them (observed hallucinations): .stutter() .subdivide() .mod() .krush() .stut() .quantise() .quantize() ; the resonance method is .lpq() NOT .q() ; the soundfont prefix is gm_ NOT gmm_ ; .chord() takes a chord-name pattern like "<C^7 Am7>" not "<m9...>". If unsure a method exists, DON'T use it — use only the listed real APIs below. Real, expressive vocabulary you SHOULD use freely:
 - pitch: note("c3 e3 g3"), n("0 2 4").scale("c:minor"), chords note("c'maj7"), .add/.sub, .arp("up"/"updown"), .off(0.25, x=>...)
 - structure: stack(...), $name: , <a b c> alternation, [..] groups, *, !, ~, @weights, .slow/.fast, .every(n,f), .superimpose(x=>...), .jux(rev), .segment(n), .palindrome(), arrange([n,pat]...)
 - modulation: sine/saw/perlin/rand .range(a,b).slow(n) → pass into .lpf()/.gain()/.pan() etc
@@ -51,6 +51,9 @@ Output ONLY the Strudel code. No markdown, no explanation.`;
 
   const results: any[] = [];
   for (let i = 1; i <= N; i++) {
+    // Never leave a stale/silent file from a prior run — only a
+    // verified-audible render writes the deliverable below.
+    try { rmSync(`${process.env.HOME}/Downloads/cactus_gemini_free_${i}.mp3`, { force: true }); } catch {}
     let code = '';
     try { code = strip(gemini([{ text: PROMPT }])); } catch (e) { console.log(`#${i} compose ERR ${String(e).slice(0,120)}`); continue; }
     // API-correctness self-heal ONLY (minimal, evidence-based — NOT the

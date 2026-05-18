@@ -1,0 +1,34 @@
+[
+  {
+    "i": 1,
+    "rendered": true,
+    "warnN": 0,
+    "rerr": "",
+    "critique": {
+      "score": 6.4,
+      "alive_or_mechanical": "Mechanical",
+      "what_you_were_going_for": "A minimalist industrial soundscape intended to create clinical tension and an atmosphere of sterile, futuristic solitude.",
+      "honest_flaw": "The rhythm is overly quantized and the velocity layers are too uniform, resulting in a 'grid-locked' feel that lacks the organic imperfection and expressive flow of a human performer."
+    },
+    "url": "https://strudel.cc/#c3RhY2soCiAgLy8gVGhlIFB1bHNlOiBPcmdhbmljIFJvbGFuZCByaHl0aG1zIHdpdGggc2hpZnRpbmcgYWNjZW50cwogIHN0YWNrKAogICAgcygiYmQoMyw4LCA8MCAyPikiKS5nYWluKDAuOCksCiAgICBzKCJ%2BIFt%2BIHNkXSIpLmdhaW4oMC42KSwKICAgIHMoImhoKjE2IikuZ2FpbihwZXJsaW4ucmFuZ2UoMC4yLCAwLjcpLmZhc3QoNCkpCiAgICAgIC5wYW4oc2luZS5yYW5nZSgtMC42LCAwLjYpLnNsb3coMTApKSwKICAgIHMoIn4gY3AgfiBbfiBjcF0iKS5nYWluKDAuMykucm9vbSgwLjYpLmRlbGF5KDAuMykKICApLmJhbmsoIlJvbGFuZFRSOTA5IikuaHBmKDIwMCksCgogIC8vIERlZXAgRm91bmRhdGlvbnM6IEEgYnJlYXRoaW5nIHNhd3Rvb3RoIGJhc3MKICBub3RlKCI8ZjEhMyBbZjEgZWIxXT4gPGRiMSEzIFtkYjEgYzFdPiA8YmIwITMgW2JiMCBhYjBdPiA8YzEhMyBbYzEgZWIxXT4iKQogICAgLnMoInNhd3Rvb3RoIikKICAgIC5scGYoc2luZS5yYW5nZSgxNTAsIDgwMCkuc2xvdygxMikpCiAgICAubHBxKDE1KQogICAgLmdhaW4oMC40MikKICAgIC5kZWNheSgwLjE4KS5zdXN0YWluKDAuMDUpLAoKICAvLyBIYXJtb25pYyBNaXN0OiBMdXNoIHBpYW5vIGNob3JkcyBkcmlmdGluZyB0aHJvdWdoIGZpbHRlcnMKICBzKCJwaWFubyIpCiAgICAuY2hvcmQoIjxGbTkgRGJtYWo5IEJibTcgQ203PiIpCiAgICAuZ2FpbihzaW5lLnJhbmdlKDAuMywgMC41KS5zbG93KDE2KSkKICAgIC5yb29tKDAuOSkKICAgIC5scGYoc2luZS5yYW5nZSgxMDAwLCA0NTAwKS5zbG93KDI0KSkKICAgIC5kZWxheSgwLjUpCiAgICAuZGVsYXlmZWVkYmFjaygwLjQ1KQogICAgLnBhbihzaW5lLnJhbmdlKDAuMiwgLTAuMikuc2xvdygxNSkpLAoKICAvLyBUaGUgR2hvc3QgTWVsb2R5OiBEcmlmdCBhbmQgcmVmbGVjdGlvbgogIG5vdGUoIjxjNSBhYjQgZjQgW2c0IGViNF0%2BIi5zbG93KDIpKQogICAgLnMoInNpbmUiKQogICAgLmdhaW4oMC4yOCkKICAgIC5hdHRhY2soMC42KQogICAgLnJlbGVhc2UoMi41KQogICAgLmp1eChyZXYpCiAgICAub2ZmKDAuMjUsIHggPT4geC5hZGQoNykuZ2FpbigwLjEyKSkKICAgIC5kZWxheSgwLjcpCiAgICAuZGVsYXl0aW1lKDAuNSkKICAgIC5kZWxheWZlZWRiYWNrKDAuNikKKS5zbG93KDIp",
+    "codeHead": "stack( /   // The Pulse: Organic Roland rhythms with shifting accents /   stack( /     s(\"bd(3,8, <0 2>)\").gain(0.8),"
+  },
+  {
+    "i": 2,
+    "rendered": false,
+    "warnN": -1,
+    "rerr": "page.evaluate: Error: evaluate did not return a Pattern — engine: TypeError: s(...).bank(...).gain(...).room(...).delay(...).delayFeedback is not a function\n    at window.__cactusRender (http://localh",
+    "critique": null,
+    "url": "https://strudel.cc/#Y29uc3Qga2ljayA9IHMoImJkITQiKS5iYW5rKCJSb2xhbmRUUjkwOSIpLmdhaW4oMC44NSk7Cgpjb25zdCBzbmFyZSA9IHMoIn4gY3AiKS5iYW5rKCJSb2xhbmRUUjgwOCIpLmdhaW4oMC42KS5yb29tKDAuNCkuZGVsYXkoMC4zKS5kZWxheUZlZWRiYWNrKDAuNCk7Cgpjb25zdCBoYXRzID0gcygiaGgqMTYiKS5iYW5rKCJSb2xhbmRUUjkwOSIpLmdhaW4oc2luZSgpLnJhbmdlKDAuMiwgMC42KS5zbG93KDQpKS5wYW4ocGVybGluKCkuc2xvdyg4KSk7Cgpjb25zdCBzdWIgPSBub3RlKCI8YzEqMiBjMSgzLDgpIFtjMSBiYjBdIGYxPiIpLnRyaWFuZ2xlKCkKICAubHBmKHNpbmUoKS5yYW5nZSg4MCwgNTAwKS5zbG93KDYpKS5scHEoMjApCiAgLmdhaW4oMC45KS5kZWNheSgwLjA4KS5zdXN0YWluKDAuMSkucmVsZWFzZSgwLjEpOwoKY29uc3QgcGFkcyA9IG5vdGUoIjxjMzptaW45IGViMzptYWo5IGYzOm1pbjExIGczOm1pbjc%2BIikucygicGlhbm8iKQogIC5zbG93KDIpLmdhaW4oMC40NSkucm9vbSgwLjkpCiAgLmxwZihwZXJsaW4oKS5yYW5nZSg0MDAsIDE4MDApLnNsb3coMTIpKS5scHEoMTUpCiAgLmp1eCh4ID0%2BIHgucmV2KCkuYWRkKG5vdGUoIjEyIikpKTsKCmNvbnN0IG1vdGUgPSBub3RlKCJjNCBkNCBlYjQgZzQgYmI0IGM1IGQ1IGViNSIpLnNlZ21lbnQoMzIpLnN0cnVjdCgieCg5LDMyLDEzKSIpCiAgLnNhd3Rvb3RoKCkuZ2FpbihzaW5lKCkucmFuZ2UoMC4wNSwgMC4yMikuc2xvdygxNCkpCiAgLmF0dGFjaygwLjAyKS5yZWxlYXNlKDAuMTIpCiAgLmxwZihzaW5lKCkucmFuZ2UoMTIwMCwgNTAwMCkuc2xvdygxOCkpLmxwcSgyNSkKICAuZGVsYXkoMC43KS5kZWxheVRpbWUoMC4zNzUpLmRlbGF5RmVlZGJhY2soMC42KQogIC5yb29tKDAuODUpLnBhbihzaW5lKCkuc2xvdygxMCkpOwoKY29uc3QgYWNjZW50ID0gbm90ZSgiYzUgYmI0IGc0IGViNCIpLnNsb3coNCkucGFsaW4oKQogIC5zcXVhcmUoKS5nYWluKDAuMSkuYXR0YWNrKDAuMSkucmVsZWFzZSgwLjUpCiAgLmxwZigyMDAwKS5scHEoMTApLnJvb20oMC42KS5vZmYoMC4yNSwgeCA9PiB4LmFkZChub3RlKCI3IikpLmdhaW4oMC4wNSkpOwoKc3RhY2soa2ljaywgc25hcmUsIGhhdHMsIHN1YiwgcGFkcywgbW90ZSwgYWNjZW50KQ%3D%3D",
+    "codeHead": "const kick = s(\"bd!4\").bank(\"RolandTR909\").gain(0.85); /  / const snare = s(\"~ cp\").bank(\"RolandTR808\").gain(0.6).room(0.4).delay(0.3).delayFeedback(0.4); / "
+  },
+  {
+    "i": 3,
+    "rendered": false,
+    "warnN": -1,
+    "rerr": "rendered but SILENT (max -91dB). Likely a sound that produces no audio offline (gm_*/super* are silent here) or a pattern with no audible notes. Re-voice the carrying parts with the audible set: sawtooth/square/triangle/sine, \"piano\", drum samples, .bank(\"RolandTR909\"/\"RolandTR808\"). Keep the composition; only swap the silent sounds.",
+    "critique": null,
+    "url": "https://strudel.cc/#c3RhY2soCiAgLy8gVGhlIFB1bHNlOiBBIGRyaXZpbmcgYnV0IHNvZnQtZWRnZWQga2ljayBkcnVtIHdpdGggc3VidGxlIHZhcmlhdGlvbgogIHMoImJkKDMsOCkgW2JkKjIgfl0gYmQvMiIpCiAgICAuYmFuaygiUm9sYW5kVFI5MDkiKQogICAgLmdhaW4oMC44NSkKICAgIC5scGYoODAwKSwKCiAgLy8gVGhlIEF0bW9zcGhlcmU6IEV2b2x2aW5nIHNhdyBwYWRzIHdpdGggcGVybGluLW1vZHVsYXRlZCBmaWx0ZXJzCiAgbm90ZSgiPGMzOm05IGYyOjExIGJiMjptYWo5IGcyOjdhbHQ%2BIikKICAgIC5zKCJzYXd0b290aCIpCiAgICAuc2xvdyg0KQogICAgLmxwZihwZXJsaW4ucmFuZ2UoMzAwLCAxNjAwKS5zbG93KDEyKSkKICAgIC5yZXNvbmFuY2UoMC4yKQogICAgLmF0dGFjaygwLjYpCiAgICAucmVsZWFzZSgxLjQpCiAgICAuZ2FpbigwLjMpCiAgICAuanV4KHJldiksCgogIC8vIEtpbmV0aWMgVGV4dHVyZTogU2hpbW1lcmluZyBoaS1oYXRzIHRoYXQgZHJpZnQgYWNyb3NzIHRoZSBzdGVyZW8gZmllbGQKICBzKCJoaCoxNiIpCiAgICAuYmFuaygiUm9sYW5kVFI5MDkiKQogICAgLmdhaW4ocGVybGluLnJhbmdlKDAuMSwgMC42KS5zbG93KDQpKQogICAgLnBhbihzaW5lLnJhbmdlKDAuMSwgMC45KS5zbG93KDgpKQogICAgLmV2ZXJ5KDQsIHggPT4geC5mYXN0KDIpLmdhaW4oMC4zKSksCgogIC8vIFRoZSBHaG9zdCBpbiB0aGUgTWFjaGluZTogT2Zmc2V0IHJpbXNob3RzIGFuZCBjbGFwcwogIHN0YWNrKAogICAgcygifiBbfiByaW0vNF0gfiByaW0vMiIpLmJhbmsoIlJvbGFuZFRSOTA5IikuZ2FpbigwLjQpLAogICAgcygifiBjcCIpLmJhbmsoIlJvbGFuZFRSODA4IikuZ2FpbigwLjUpLnJvb20oMC40KS5kZWxheSgwLjIpCiAgKS5zbG93KDIpLAoKICAvLyBUaGUgSGVhcnQ6IEEgZGVsaWNhdGUsIHdhbmRlcmluZyBtZWxvZGljIGxpbmUgdXNpbmcgdHJpYW5nbGUgd2F2ZXMKICBub3RlKCJjNCBlYjQgZzQgYmI0IGQ1IikKICAgIC5zdHJ1Y3QoIjEoMyw4LDIpIikKICAgIC5zKCJ0cmlhbmdsZSIpCiAgICAuYXJwKCJ1cGRvd24iKQogICAgLnNsb3coMikKICAgIC5nYWluKDAuMzUpCiAgICAuZGVsYXkoMC42KQogICAgLmRlbGF5dGltZSgwLjM3NSkKICAgIC5kZWxheWZlZWRiYWNrKDAuNykKICAgIC5vZmYoMC4yNSwgeCA9PiB4LmFkZCg3KS5nYWluKDAuMTUpLmxwZigxMDAwKSksCgogIC8vIFRoZSBTcGFyazogSGlnaC1mcmVxdWVuY3kgcGlhbm8gYWNjZW50cyB0aGF0IGFwcGVhciBhbmQgZGlzYXBwZWFyCiAgbm90ZSgiZzUgYzYgYmI1IGQ2IikKICAgIC5zKCJwaWFubyIpCiAgICAuc3RydWN0KCJ%2BIDFAMyB%2BIDEvNCB%2BIH4gMS8yIH4iKQogICAgLmdhaW4ocmFuZC5yYW5nZSgwLjIsIDAuNSkpCiAgICAucm9vbSgwLjkpCiAgICAucGFuKHBlcmxpbi5zbG93KDEwKSkKKQ%3D%3D",
+    "codeHead": "stack( /   // The Pulse: A driving but soft-edged kick drum with subtle variation /   s(\"bd(3,8) [bd*2 ~] bd/2\") /     .bank(\"RolandTR909\")"
+  }
+]
