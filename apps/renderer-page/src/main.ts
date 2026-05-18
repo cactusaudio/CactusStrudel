@@ -176,6 +176,13 @@ window.__cactusRender = async (input) => {
   // 1. Evaluate code → pattern. New engine evaluate() returns
   //    { mode, pattern, meta }; older shapes return the Pattern itself.
   let pattern: any;
+  // repl.evaluate swallows eval errors (logs them, returns undefined).
+  // Capture the engine's logged error so callers (producer-brain
+  // self-heal) get the REAL cause, e.g. ".stutter is not a function".
+  const evalErrs: string[] = [];
+  const oErr = console.error, oWarn = console.warn;
+  console.error = (...a: any[]) => { evalErrs.push(a.map(String).join(' ').slice(0, 220)); };
+  console.warn = (...a: any[]) => { evalErrs.push(a.map(String).join(' ').slice(0, 220)); };
   try {
     // autoplay=false: returns the Pattern; true would try to start the
     // live scheduler headlessly, throw internally, and yield undefined.
@@ -183,10 +190,14 @@ window.__cactusRender = async (input) => {
     pattern = ev?.pattern && typeof ev.pattern.queryArc === 'function' ? ev.pattern
       : (ev && typeof ev.queryArc === 'function' ? ev : ev?.pattern ?? ev);
   } catch (e) {
+    console.error = oErr; console.warn = oWarn;
     throw new Error(`evaluate failed: ${e instanceof Error ? e.message : String(e)}`);
+  } finally {
+    console.error = oErr; console.warn = oWarn;
   }
   if (!pattern || typeof pattern.queryArc !== 'function') {
-    throw new Error('evaluate did not return a Pattern (got ' + Object.prototype.toString.call(pattern) + ')');
+    const real = evalErrs.filter((s) => /not a function|is not defined|error|unexpected|cannot/i.test(s)).slice(-2).join(' | ');
+    throw new Error('evaluate did not return a Pattern' + (real ? ` — engine: ${real}` : ` (got ${Object.prototype.toString.call(pattern)})`));
   }
 
   // 2. Run the ENGINE'S OWN renderPatternAudio (current/correct: it
