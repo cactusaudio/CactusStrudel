@@ -53,17 +53,41 @@ async function tryRender(code: string, i: number): Promise<{ ok: boolean; kind: 
   }
 }
 
-// Pro self-corrects against the LIVE engine's REAL feedback (reactive,
-// not an upfront constraint). Returns rendering code or null.
-async function healToRender(code: string, i: number, maxHeals = 6): Promise<string | null> {
-  for (let h = 0; h <= maxHeals; h++) {
+// Claude-as-CODE-AUDITOR (Bowei 2026-05-18): compliance + completeness
+// ONLY, zero aesthetics. Static checks (my engineering judgment, no
+// taste) + the live engine as correctness oracle → a CORRECTNESS+
+// TIMBRE-only fix directive that explicitly FORBIDDEN from changing
+// the composition (notes/rhythm/structure/arrangement) — that's the
+// lossy thing. Looped a few times until compliant (not until "good").
+const SILENT_OFFLINE = /\b(?:s|sound)\(\s*["'`][^"'`]*\b(gm_[a-z0-9_]+|super(?:saw|piano|fm|chip|mandolin|zow|hammond|gong))\b/gi;
+const FAKE_API = /\.(stutter|subdivide|mod|krush|stut|quantise|quantize)\s*\(|\bgmm_|\.q\s*\(/g;
+
+function staticAudit(code: string): string[] {
+  const f: string[] = [];
+  const fake = [...code.matchAll(FAKE_API)].map((m) => m[0]).filter((v, k, a) => a.indexOf(v) === k);
+  if (fake.length) f.push(`INVALID APIs (do not exist in Strudel — replace with the real equivalent): ${fake.join(', ')}`);
+  const sil = [...code.matchAll(SILENT_OFFLINE)].map((m) => m[1]).filter((v, k, a) => a.indexOf(v) === k);
+  if (sil.length) f.push(`SILENT-OFFLINE sounds (these produce NO audio in this engine → that layer is effectively MISSING): ${sil.join(', ')}. Substitute each with an AUDIBLE sound of similar character (oscillators sawtooth/square/triangle/sine, "piano", drum samples, or .bank("RolandTR909"/"RolandTR808"/"LinnDrum")).`);
+  return f;
+}
+
+const NO_COMPOSE_EDIT =
+  `STRICT: this is a CODE-COMPLIANCE fix, NOT a rewrite. Do NOT change the composition — keep every note, rhythm, pattern, structure, arrangement, layer, tempo and effect intent EXACTLY. Only: (a) replace invalid APIs with the correct real Strudel method, (b) substitute SILENT sounds with an audible sound of similar timbral character so no layer goes missing, (c) if a carrying layer is inaudible, only adjust its .gain/filters. Output ONLY the full corrected code.`;
+
+// audit → correctness/timbre-only fix → render → re-audit, a few times.
+async function auditAndFix(code: string, i: number, maxRounds = 4): Promise<string | null> {
+  for (let h = 0; h <= maxRounds; h++) {
     const r = await tryRender(code, i);
-    if (r.ok) return code;
-    if (h === maxHeals) return null;
-    const fix = r.kind === 'api'
-      ? `Your piece failed on the LIVE strudel.cc engine with this REAL error:\n"${r.msg}"\nAn API/method you used does not exist. Fix it (real Strudel equivalent), keep all artistic intent. Output ONLY the corrected full code.`
-      : `Your piece RENDERED but is SILENT.\n${r.msg}\nRe-voice the carrying parts with sounds that produce audio (oscillators sawtooth/square/triangle/sine, "piano", drum samples, .bank("RolandTR909"/"RolandTR808")). Keep the composition; only swap silent sounds. Output ONLY the corrected full code.`;
-    try { code = strip(gemini([{ text: `${fix}\n\n${code}` }])); } catch { return null; }
+    const issues: string[] = [];
+    if (!r.ok) issues.push(r.kind === 'api'
+      ? `LIVE-ENGINE error (an API you used does not exist): "${r.msg}"`
+      : `LIVE-ENGINE: ${r.msg}`);
+    issues.push(...staticAudit(code));        // static audit even if it rendered (silent-offline layers)
+    if (r.ok && issues.length === 0) return code;   // compliant + complete
+    if (h === maxRounds) return r.ok ? code : null;  // out of rounds: keep if at least audible
+    try {
+      code = strip(gemini([{ text: `CODE AUDIT — fix ONLY these compliance/completeness problems:\n- ${issues.join('\n- ')}\n${NO_COMPOSE_EDIT}\n\n${code}` }]));
+    } catch { return r.ok ? code : null; }
   }
   return null;
 }
@@ -78,8 +102,8 @@ async function healToRender(code: string, i: number, maxHeals = 6): Promise<stri
     try { code = strip(gemini([{ text: PROMPT }])); }
     catch (e) { console.log(`#${i} compose ERR ${String(e).slice(0, 120)}`); continue; }
 
-    let good = await healToRender(code, i);
-    if (!good) { console.log(`#${i} could not render after heals`); results.push({ i, rendered: false }); continue; }
+    const good = await auditAndFix(code, i);
+    if (!good) { console.log(`#${i} failed code audit (uncompliant after rounds)`); results.push({ i, rendered: false }); continue; }
     code = good;
 
     // FIRST-SHOT DIRECT — no aesthetic revision (every revise pass is
