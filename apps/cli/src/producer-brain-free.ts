@@ -12,20 +12,21 @@ import { render, shutdown } from '@cactus/renderer';
 
 const ROOT = '/Users/bowei/CactusStrudel';
 const KEY = readFileSync(`${ROOT}/.env.local`, 'utf8').match(/GEMINI_API_KEY=(.+)/)![1]!.trim();
-// gemini-3.1-flash-lite persistently hallucinated Strudel APIs even on
-// self-heal (gmm_/.stut/.krush). Bowei: stronger model, token-economical
-// → 3-flash (strong + cheaper than 3.1-pro; escalate to pro only if it
-// still hallucinates).
-const MODEL = process.env.PB_MODEL || 'gemini-3-flash-preview';
+// Bowei ear-validated the direction ("正常制作人水平") as "有戏只是
+// 不稳" → reliability lever = 3.1-pro for compose+heal (kills the API
+// hallucination that made 3-flash ~1/3). Token-economical: the cheap
+// self-listen critique stays on 3-flash.
+const MODEL = process.env.PB_MODEL || 'gemini-3.1-pro-preview';
+const LISTEN_MODEL = 'gemini-3-flash-preview';
 
-function gemini(parts: any[], jsonOut = false): string {
+function gemini(parts: any[], jsonOut = false, model: string = MODEL): string {
   const body: any = { contents: [{ parts }] };
   if (jsonOut) body.generationConfig = { responseMimeType: 'application/json', temperature: 1.0 };
   else body.generationConfig = { temperature: 1.1 }; // let it roam
   const tmp = `/tmp/_gf_${Date.now()}_${Math.random().toString(36).slice(2)}.json`;
   writeFileSync(tmp, JSON.stringify(body));
   const out = execSync(
-    `curl -s --max-time 120 -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}" -H "Content-Type: application/json" -d @${tmp}`,
+    `curl -s --max-time 180 -X POST "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${KEY}" -H "Content-Type: application/json" -d @${tmp}`,
     { maxBuffer: 64 * 1024 * 1024 }
   ).toString();
   const d = JSON.parse(out);
@@ -36,9 +37,20 @@ const strip = (s: string) => s.replace(/^```[a-z]*\n?/im, '').replace(/\n?```\s*
 
 (async () => {
   const N = parseInt(process.argv[2] || '3', 10);
+  // DeepSeek-Gem-style failure-intelligence spine = LEARNED TASTE (the
+  // v1 memory Bowei chose). Fed as "mistakes you've heard before,
+  // don't repeat" — accumulated learning, NOT a creativity cage.
+  let learned = '';
+  try {
+    const sp = `${ROOT}/producer-brain/failure-spine.jsonl`;
+    if (existsSync(sp)) learned = readFileSync(sp, 'utf8').trim().split('\n').filter(Boolean)
+      .map((l) => { try { return '- ' + JSON.parse(l).avoid_rule; } catch { return ''; } })
+      .filter(Boolean).join('\n');
+  } catch {}
   const PROMPT = `You are a gifted electronic music producer working in Strudel (the strudel.cc live-coding language, a JS port of TidalCycles).
 
 Compose ONE original piece that you genuinely find beautiful and alive — not a formula exercise, not a safe demo. Your COMPLETE artistic choice: genre, key, harmony, groove, structure, sound design, length. Make something with feeling and motion, that breathes, that you'd be proud to release.
+${learned ? `\nLEARNED TASTE — mistakes heard before, do NOT repeat (these make music sound mechanical/bad), but keep full creative freedom otherwise:\n${learned}\n` : ''}
 
 HARD BAN — these do NOT exist, NEVER emit them (observed hallucinations): .stutter() .subdivide() .mod() .krush() .stut() .quantise() .quantize() ; the resonance method is .lpq() NOT .q() ; the soundfont prefix is gm_ NOT gmm_ ; .chord() takes a chord-name pattern like "<C^7 Am7>" not "<m9...>". If unsure a method exists, DON'T use it — use only the listed real APIs below. Real, expressive vocabulary you SHOULD use freely:
 - pitch: note("c3 e3 g3"), n("0 2 4").scale("c:minor"), chords note("c'maj7"), .add/.sub, .arp("up"/"updown"), .off(0.25, x=>...)
@@ -99,7 +111,7 @@ ${code}` }]));
           { text: `This is YOUR own composition (the offline render may be missing samples/soundfonts — judge the MUSIC, not just timbre). Honestly: is it alive or mechanical? score 1-10.` },
           { inlineData: { mimeType: 'audio/mp3', data: b64 } },
           { text: `JSON: {"score":1-10,"alive_or_mechanical":"...","what_you_were_going_for":"...","honest_flaw":"..."}` },
-        ], true);
+        ], true, LISTEN_MODEL);
         try { critique = JSON.parse(j); } catch { critique = { raw: j.slice(0, 300) }; }
       } catch (e) { critique = { note: 'listen step failed: ' + String(e).slice(0, 80) }; }
     }
