@@ -16,6 +16,7 @@ apps/cli/sessions/
 
 # G7 learning ledger — append-only per-machine; not part of source.
 docs/learning-ledger.jsonl
+apps/cli/docs/learning-ledger.jsonl
 refs/*
 !refs/README.md
 !refs/.gitkeep
@@ -44,11 +45,31 @@ playwright/.cache/
 
 # Logs
 *.log
+*.bak.*
+*.bak-*
+*.bak
+__pycache__/
+*.pyc
+
+# Local runtime/private operator state
+.runtime-bak-attic/
+runtime/cc-bridge/.kick
+runtime/cc-bridge/*.jsonl
+runtime/cc-bridge/brain-edit-backups/
+runtime/uploads/
 
 # G9 audit:cookbook-impact output dirs (per-machine scratch)
 apps/cli/audits/
-audits/
+/audits/
 
 # G11A studio-ui build output
 apps/studio-ui/dist/
 
+
+# Generated audio renders — big binary, regenerable from .js sources
+producer-brain/audio/
+producer-brain/archive-v0/
+producer-brain/checkpoints/
+producer-brain/midi/
+producer-brain/dev-mode-audit.jsonl
+producer-brain/*.jsonl.bak.*

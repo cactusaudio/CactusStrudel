@@ -6,6 +6,15 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import wavefilePkg from 'wavefile';
 const { WaveFile } = wavefilePkg;
 
+/**
+ * Generate candidate TCP ports. Do not pre-probe/bind here: a separate
+ * "find free port" probe creates a TOCTOU window before vite binds. Instead
+ * bootRenderer starts vite with --strictPort and retries on startup failure.
+ */
+function candidatePort(start: number, attempt: number): number {
+  return start + attempt * 37;
+}
+
 export interface RenderInput {
   code: string;
   durationCycles: number;
@@ -14,6 +23,10 @@ export interface RenderInput {
   outputPath: string;
   maxPolyphony?: number;
   multiChannelOrbits?: number[];
+  /** Capture the realtime cyclist scheduler (= strudel.cc PLAY) instead of
+   *  the offline renderPatternAudio bounce. Renders in wall-clock time
+   *  (durationCycles/cps seconds) but matches strudel.cc playback. */
+  realtime?: boolean;
 }
 
 export interface RenderResult {
@@ -110,10 +123,20 @@ export function _getLifecycleStateForTests(): { hasHandle: boolean; activeRender
   return { hasHandle: sharedHandle !== null, activeRenders, userWarmed };
 }
 
+export function _candidatePortForTests(start: number, attempt: number): number {
+  return candidatePort(start, attempt);
+}
+
 async function bootRenderer(): Promise<RendererPageHandle> {
   // Start vite dev server (cheap; no build step needed for first run).
-  const port = 5173;
-  const baseUrl = `http://localhost:${port}`;
+  // Unique port per process: spread the search start by PID so concurrent
+  // render subprocesses rarely scan the same range, then let vite's strictPort
+  // bind attempt be the source of truth. No pre-probe, so no TOCTOU gap.
+  // CACTUS_RENDER_PORT overrides (single-render debugging).
+  const envPort = Number.parseInt(process.env.CACTUS_RENDER_PORT ?? '', 10);
+  const startPort = Number.isFinite(envPort) && envPort > 0
+    ? envPort
+    : 5173 + ((process.pid % 500) * 5);
 
   const distExists = await fs
     .stat(path.join(RENDERER_PAGE_DIR, 'dist', 'index.html'))
@@ -121,19 +144,32 @@ async function bootRenderer(): Promise<RendererPageHandle> {
     .catch(() => false);
 
   let serverProcess: ChildProcess | undefined;
-  if (distExists) {
-    serverProcess = spawn('pnpm', ['exec', 'vite', 'preview', '--port', String(port), '--strictPort'], {
+  let baseUrl = '';
+  let lastBootError: unknown;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const port = candidatePort(startPort, attempt);
+    baseUrl = `http://localhost:${port}`;
+    const args = distExists
+      ? ['exec', 'vite', 'preview', '--port', String(port), '--strictPort']
+      : ['exec', 'vite', '--port', String(port), '--strictPort'];
+    serverProcess = spawn('pnpm', args, {
       cwd: RENDERER_PAGE_DIR,
       stdio: 'pipe',
     });
-  } else {
-    serverProcess = spawn('pnpm', ['exec', 'vite', '--port', String(port), '--strictPort'], {
-      cwd: RENDERER_PAGE_DIR,
-      stdio: 'pipe',
-    });
+    try {
+      await waitForServer(baseUrl, 30_000, serverProcess);
+      lastBootError = undefined;
+      break;
+    } catch (e) {
+      lastBootError = e;
+      if (serverProcess && !serverProcess.killed) serverProcess.kill('SIGTERM');
+      serverProcess = undefined;
+      if (process.env.CACTUS_RENDER_PORT) break;
+    }
   }
-
-  await waitForServer(baseUrl, 30_000);
+  if (!serverProcess || lastBootError) {
+    throw new Error(`renderer vite server failed to start after port retries: ${lastBootError instanceof Error ? lastBootError.message : String(lastBootError)}`);
+  }
 
   const browser = await chromium.launch({
     headless: true,
@@ -142,6 +178,14 @@ async function bootRenderer(): Promise<RendererPageHandle> {
       '--use-fake-ui-for-media-stream',
       '--autoplay-policy=no-user-gesture-required',
       '--disable-features=IsolateOrigins,site-per-process',
+      // Realtime cyclist scheduler relies on accurate timer callbacks
+      // (rAF / setInterval) to schedule audio events ahead of ctx clock.
+      // Headless Chromium throttles background/invisible-tab timers (≥1s)
+      // → tick callbacks jitter → realtime audio "in-between-beats / 蹭拍"
+      // (Bowei 2026-05-20). Disable throttling explicitly.
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows',
     ],
   });
   const context = await browser.newContext();
@@ -179,9 +223,12 @@ async function bootRenderer(): Promise<RendererPageHandle> {
   return { browser, context, page, serverProcess, baseUrl };
 }
 
-async function waitForServer(url: string, timeoutMs: number): Promise<void> {
+async function waitForServer(url: string, timeoutMs: number, proc?: ChildProcess): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    if (proc?.exitCode !== null) {
+      throw new Error(`server process exited before ready at ${url} (exit ${proc?.exitCode})`);
+    }
     try {
       const r = await fetch(url);
       if (r.ok || r.status === 404) return;
@@ -195,8 +242,18 @@ export async function render(input: RenderInput): Promise<RenderResult> {
   const handle = await ensureRenderer();
   try {
     const sampleRate = input.sampleRate ?? 48000;
-    const result = (await handle.page.evaluate(
-      async ({ code, durationCycles, cps, sampleRate, maxPolyphony, multiChannelOrbits }) => {
+    const evalInput = {
+      code: input.code,
+      durationCycles: input.durationCycles,
+      cps: input.cps ?? 0.5,
+      sampleRate,
+      maxPolyphony: input.maxPolyphony ?? 128, // match strudel.cc DEFAULT_MAX_POLYPHONY (was 64 → culled voices in dense sections)
+      multiChannelOrbits: input.multiChannelOrbits ?? [],
+      realtime: input.realtime ?? false,
+    };
+    const runPageRender = async () => (await handle.page.evaluate(
+      async ({ code, durationCycles, cps, sampleRate, maxPolyphony, multiChannelOrbits, realtime }) => {
+        if (realtime) return await (window as any).__cactusRenderRealtime({ code, durationCycles, cps });
         return await (window as any).__cactusRender({
           code,
           durationCycles,
@@ -206,14 +263,7 @@ export async function render(input: RenderInput): Promise<RenderResult> {
           multiChannelOrbits,
         });
       },
-      {
-        code: input.code,
-        durationCycles: input.durationCycles,
-        cps: input.cps ?? 0.5,
-        sampleRate,
-        maxPolyphony: input.maxPolyphony ?? 64,
-        multiChannelOrbits: input.multiChannelOrbits ?? [],
-      },
+      evalInput,
     )) as {
       pcmBase64: string;
       sampleRate: number;
@@ -221,10 +271,23 @@ export async function render(input: RenderInput): Promise<RenderResult> {
       durationSec: number;
       warnings: string[];
     };
+    let result = await runPageRender();
+    let pcm = base64ToFloat32(result.pcmBase64);
+    if (input.realtime) {
+      for (let attempt = 1; attempt <= 2 && peakAbs(pcm) < 1e-4; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        const retry = await runPageRender();
+        retry.warnings = [
+          ...(retry.warnings ?? []),
+          `realtime near-silent retry ${attempt}/2 after peak=${peakAbs(pcm).toExponential(2)}`,
+        ];
+        result = retry;
+        pcm = base64ToFloat32(result.pcmBase64);
+      }
+    }
 
     const versions = await handle.page.evaluate(() => (window as any).__cactusVersions);
 
-    const pcm = base64ToFloat32(result.pcmBase64);
     const wav = encodeFloat32ToWav(pcm, result.sampleRate, result.channels);
     await fs.mkdir(path.dirname(input.outputPath), { recursive: true });
     await fs.writeFile(input.outputPath, wav);
@@ -249,6 +312,15 @@ function base64ToFloat32(b64: string): Float32Array {
   return new Float32Array(ab);
 }
 
+function peakAbs(pcm: Float32Array): number {
+  let peak = 0;
+  for (let i = 0; i < pcm.length; i++) {
+    const v = Math.abs(pcm[i] ?? 0);
+    if (v > peak) peak = v;
+  }
+  return peak;
+}
+
 function encodeFloat32ToWav(interleaved: Float32Array, sampleRate: number, channels: number): Uint8Array {
   // Convert interleaved Float32 [-1, 1] to per-channel Float32Array[] for wavefile.
   const length = interleaved.length / channels;
@@ -263,6 +335,36 @@ function encodeFloat32ToWav(interleaved: Float32Array, sampleRate: number, chann
   const wav = new WaveFile();
   wav.fromScratch(channels, sampleRate, '32f', samples as unknown as number[][]);
   return wav.toBuffer();
+}
+
+export interface HapQueryInput {
+  code: string;
+  durationCycles: number;
+  cps?: number;
+}
+export interface HapQueryResult {
+  haps: Array<{ begin: number; end: number; note?: number; vel?: number; ch?: number; s?: string }>;
+  warnings: string[];
+}
+
+/** Query the Strudel pattern's haps (for MIDI export, analysis). No audio. */
+export async function queryHaps(input: HapQueryInput): Promise<HapQueryResult> {
+  const handle = await ensureRenderer();
+  try {
+    const result = (await handle.page.evaluate(
+      async ({ code, durationCycles, cps }) => {
+        return await (window as any).__cactusQueryHaps({ code, durationCycles, cps });
+      },
+      {
+        code: input.code,
+        durationCycles: input.durationCycles,
+        cps: input.cps ?? 0.5,
+      },
+    )) as HapQueryResult;
+    return result;
+  } finally {
+    await releaseRenderer();
+  }
 }
 
 /**

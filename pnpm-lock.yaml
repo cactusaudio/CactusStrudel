@@ -176,6 +176,9 @@ importers:
       wavefile:
         specifier: ^11.0.0
         version: 11.0.0
+      yaml:
+        specifier: ^2.6.1
+        version: 2.8.4
 
   packages/audit:
     dependencies:
@@ -268,6 +271,9 @@ importers:
 
   packages/genres:
     dependencies:
+      '@cactus/cookbook':
+        specifier: workspace:*
+        version: link:../cookbook
       '@cactus/ir':
         specifier: workspace:*
         version: link:../ir

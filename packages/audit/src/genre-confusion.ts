@@ -1,9 +1,15 @@
 // Genre confusion: given a rendered track's features, score how close it sits
-// to each known genre rubric and rank. If the intended genre isn't top-1
-// (or top-3), the audit reports genre_collapse.
+// to each audit-owned holdout genre profile and rank. If the intended genre
+// isn't top-1 (or top-3), the audit reports genre_collapse.
+//
+// Important: this module deliberately does NOT load `@cactus/genres`.
+// Production genre specs are producer inputs; using them as the evaluator
+// rubric makes the audit circular. The holdout profiles live in
+// `packages/audit/genre-holdout-profiles.yaml` and are coarse observable
+// ranges only.
 
-import { loadGenre, listGenres, type GenreSpec } from '@cactus/genres';
 import type { AnalyzerFeatures, SessionGraph } from '@cactus/ir';
+import { loadHoldoutGenreProfiles, type HoldoutGenreProfile } from './genre-holdout-profiles.js';
 
 export interface GenreDistance {
   genre: string;
@@ -29,12 +35,10 @@ export interface GenreConfusionReport {
 }
 
 export async function scoreGenreConfusion(input: GenreConfusionInput): Promise<GenreConfusionReport> {
-  const slugs = await listGenres();
+  const profiles = await loadHoldoutGenreProfiles();
   const distances: GenreDistance[] = [];
-  for (const slug of slugs) {
-    let spec: GenreSpec;
-    try { spec = await loadGenre(slug); } catch { continue; }
-    distances.push(distanceToGenre(spec, input.graph, input.features));
+  for (const [slug, profile] of Object.entries(profiles)) {
+    distances.push(distanceToGenre(slug, profile, input.graph, input.features));
   }
   distances.sort((a, b) => a.distance - b.distance);
   const top1 = distances[0]?.genre ?? input.intended_genre;
@@ -55,76 +59,54 @@ export async function scoreGenreConfusion(input: GenreConfusionInput): Promise<G
   };
 }
 
-function distanceToGenre(spec: GenreSpec, graph: SessionGraph, f: AnalyzerFeatures): GenreDistance {
+function distanceToGenre(slug: string, profile: HoldoutGenreProfile, graph: SessionGraph, f: AnalyzerFeatures): GenreDistance {
   const reasons: string[] = [];
   let dist = 0;
 
-  // 1. BPM proximity to genre's range (50% weight).
-  const bpm = f.rhythmic?.bpm ?? graph.brief.bpm ?? 0;
-  const [lo, hi] = spec.bpm_range;
-  let bpmDist = 0;
-  if (bpm > 0) {
-    if (bpm < lo) bpmDist = (lo - bpm) / lo;
-    else if (bpm > hi) bpmDist = (bpm - hi) / hi;
-    else bpmDist = 0;
-  } else {
-    bpmDist = 0.5;
-  }
+  // 1. BPM proximity to genre's range. Use analyzer evidence only; falling
+  // back to graph.brief.bpm lets a producer self-report the very feature the
+  // audit is supposed to measure.
+  const bpm = f.rhythmic?.bpm ?? 0;
+  const [lo, hi] = profile.bpm_range;
+  const bpmDist = bpm > 0 ? rangeDistance(bpm, lo, hi) : 0.5;
   dist += bpmDist * 5;
   if (bpmDist > 0.05) reasons.push(`bpm ${bpm.toFixed(0)} vs ${lo}-${hi}`);
 
-  // 2. LUFS proximity to genre target (20%).
-  const target = spec.mix_targets.lufs;
+  // 2. LUFS proximity to audit-owned holdout range (20%).
+  const [lufsLo, lufsHi] = profile.lufs_range;
   const integrated = f.loudness?.lufs_integrated ?? -30;
   let lufsDist = 0;
   if (Number.isFinite(integrated)) {
-    lufsDist = Math.min(1, Math.abs(integrated - target) / 12);
+    lufsDist = rangeDistance(integrated, lufsLo, lufsHi, 12);
   } else {
     lufsDist = 1;
   }
   dist += lufsDist * 2;
-  if (lufsDist > 0.3) reasons.push(`lufs ${integrated.toFixed(1)} vs ${target}`);
+  if (lufsDist > 0.3) reasons.push(`lufs ${integrated.toFixed(1)} vs ${lufsLo}-${lufsHi}`);
 
-  // 3. Onset density floor (15%) — ambient/drone wants near zero, dnb wants high.
-  const totalOnsets = Object.values(f.rhythmic?.onset_density ?? {}).reduce((a, b) => a + b, 0);
-  // Genre-specific expected ranges:
-  const expectedOnsets = ((): [number, number] => {
-    switch (spec.slug) {
-      case 'ambient': return [0, 1];
-      case 'dub_techno': return [1, 4];
-      case 'house':
-      case 'techno': return [3, 8];
-      case 'dnb': return [5, 14];
-      case 'idm': return [3, 12];
-      default: return [1, 8];
-    }
-  })();
-  let onsetDist = 0;
-  if (totalOnsets < expectedOnsets[0]) onsetDist = (expectedOnsets[0] - totalOnsets) / Math.max(1, expectedOnsets[0]);
-  else if (totalOnsets > expectedOnsets[1]) onsetDist = (totalOnsets - expectedOnsets[1]) / Math.max(1, expectedOnsets[1]);
+  // 3. Onset density (15%) — use strongest band to avoid triple-counting
+  // broadband transients.
+  const onsetValues = Object.values(f.rhythmic?.onset_density ?? {}).filter((v) => Number.isFinite(v));
+  const totalOnsets = onsetValues.length > 0 ? Math.max(...onsetValues) : 0;
+  const expectedOnsets = profile.onset_density_range;
+  const onsetDist = rangeDistance(totalOnsets, expectedOnsets[0], expectedOnsets[1]);
   dist += onsetDist * 1.5;
   if (onsetDist > 0.3) reasons.push(`onsets ${totalOnsets.toFixed(1)}/s vs ${expectedOnsets.join('-')}`);
 
-  // 4. Spectral centroid (15%) — dub_techno + ambient lean dark, dnb leans bright.
-  const expectedCentroid = ((): [number, number] => {
-    switch (spec.slug) {
-      case 'ambient':
-      case 'dub_techno': return [600, 1800];
-      case 'house':
-      case 'techno': return [1000, 2800];
-      case 'dnb':
-      case 'idm': return [1500, 3500];
-      default: return [800, 3000];
-    }
-  })();
+  // 4. Spectral centroid (15%).
+  const expectedCentroid = profile.centroid_range_hz;
   const centroid = f.spectral?.centroid ?? 0;
-  let centroidDist = 0;
-  if (centroid < expectedCentroid[0]) centroidDist = (expectedCentroid[0] - centroid) / Math.max(1, expectedCentroid[0]);
-  else if (centroid > expectedCentroid[1]) centroidDist = (centroid - expectedCentroid[1]) / Math.max(1, expectedCentroid[1]);
+  const centroidDist = rangeDistance(centroid, expectedCentroid[0], expectedCentroid[1]);
   dist += centroidDist * 1.5;
   if (centroidDist > 0.3) reasons.push(`centroid ${centroid.toFixed(0)} Hz vs ${expectedCentroid.join('-')}`);
 
-  return { genre: spec.slug, distance: dist, reasons };
+  return { genre: slug, distance: dist, reasons };
+}
+
+function rangeDistance(value: number, lo: number, hi: number, denom = Math.max(1, Math.abs(lo), Math.abs(hi))): number {
+  if (value < lo) return (lo - value) / denom;
+  if (value > hi) return (value - hi) / denom;
+  return 0;
 }
 
 export interface GenreConfusionMatrix {

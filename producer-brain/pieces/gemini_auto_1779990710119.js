@@ -1,0 +1,66 @@
+setcpm(126/4);
+
+const kick = s("bd bd bd bd")
+  .bank("RolandTR909")
+  .gain(0.9)
+  .decay(0.11)
+  .shape(0.08)
+  .duckorbit(1);
+
+const click = s("~ rim ~ ~")
+  .bank("RolandTR808")
+  .gain(0.24)
+  .hpf(5200)
+  .decay(0.035)
+  .pan(0.58);
+
+const sub = note("~ <a1 a1 c2 a1> ~ ~")
+  .s("sine")
+  .attack(0.002)
+  .decay(0.16)
+  .sustain(0)
+  .release(0.035)
+  .gain(0.62)
+  .lpf(120)
+  .orbit(1)
+  .duckattack(0.03)
+  .duckdepth(0.22);
+
+const blip = n("~ ~ [~ <0 7>] ~")
+  .scale("A:minor")
+  .add(12)
+  .s("sine")
+  .fm(5)
+  .attack(0.001)
+  .decay(0.055)
+  .sustain(0)
+  .release(0.025)
+  .gain(0.16)
+  .lpf(perlin.range(650, 1300).slow(8))
+  .delay(0.18)
+  .delaytime(0.25)
+  .delayfeedback(0.28)
+  .pan(sine.range(0.42, 0.62).slow(6))
+  .orbit(1)
+  .duckattack(0.02)
+  .duckdepth(0.12);
+
+const dub = chord("<Am7 ~ ~ Em7>")
+  .voicing()
+  .s("gm_epiano1")
+  .attack(0.006)
+  .decay(0.18)
+  .sustain(0)
+  .release(0.12)
+  .gain(0.13)
+  .lpf(850)
+  .room(0.18)
+  .delay(0.22)
+  .delaytime(0.5)
+  .delayfeedback(0.32)
+  .pan(0.38)
+  .orbit(1)
+  .duckattack(0.04)
+  .duckdepth(0.18);
+
+stack(kick, click, sub, blip, dub)

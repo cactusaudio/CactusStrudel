@@ -8,7 +8,18 @@
   "references": [
     { "path": "../../packages/ir" },
     { "path": "../../packages/session-store" },
+    { "path": "../../packages/strudel-validator" },
+    { "path": "../../packages/strudel-compiler" },
+    { "path": "../../packages/renderer" },
+    { "path": "../../packages/analyzer" },
+    { "path": "../../packages/critic" },
     { "path": "../../packages/agent-runtime" },
-    { "path": "../../packages/cookbook" }
+    { "path": "../../packages/cookbook" },
+    { "path": "../../packages/genres" },
+    { "path": "../../packages/preference" },
+    { "path": "../../packages/mastering" },
+    { "path": "../../packages/revision" },
+    { "path": "../../packages/orchestrator" },
+    { "path": "../../packages/audit" }
   ]
 }

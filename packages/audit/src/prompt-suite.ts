@@ -26,6 +26,8 @@ export type PromptEntry = z.infer<typeof PromptEntrySchema>;
 
 export const PromptSuiteSchema = z.object({
   genre: z.string(),
+  suite_source: z.enum(['holdout_human', 'cookbook_derived']).default('holdout_human'),
+  contamination_policy: z.enum(['holdout_only', 'allow_cookbook_derived']).default('holdout_only'),
   prompts: z.array(PromptEntrySchema).min(1),
 });
 export type PromptSuite = z.infer<typeof PromptSuiteSchema>;
@@ -74,4 +76,11 @@ export function expandPrompts(suites: PromptSuite[], seedsPerPrompt: number, see
     }
   }
   return out;
+}
+
+export function assertNoEvalContamination(suites: PromptSuite[]): void {
+  const bad = suites.filter((s) => s.suite_source === 'cookbook_derived' && s.contamination_policy === 'holdout_only');
+  if (bad.length > 0) {
+    throw new Error(`audit suite contamination: cookbook-derived suite(s) cannot run as holdout eval: ${bad.map((s) => s.genre).join(', ')}`);
+  }
 }

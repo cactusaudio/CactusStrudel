@@ -42,6 +42,7 @@ export function applyArrangementCoverage(graph: SessionGraph): ArrangementCovera
 
     const effectivelyForbidden = new Set<string>(cov.forbidden);
     if (briefConstraints.no_kick) effectivelyForbidden.add('kick');
+    const suppressCoverageKick = briefConstraints.no_four_on_floor === true;
     if (briefConstraints.no_rhythmic_grid) {
       effectivelyForbidden.add('kick');
       effectivelyForbidden.add('snare');
@@ -52,6 +53,7 @@ export function applyArrangementCoverage(graph: SessionGraph): ArrangementCovera
 
     for (const role of cov.mandatory) {
       if (effectivelyForbidden.has(role)) continue;
+      if (role === 'kick' && suppressCoverageKick) continue;
       for (const id of layersByRole.get(role) ?? []) {
         if (!setActivation(graph, id, sectionId, true)) continue;
         activated.push(id);
@@ -70,6 +72,7 @@ export function applyArrangementCoverage(graph: SessionGraph): ArrangementCovera
     if (sec.energy >= 0.6) {
       for (const role of cov.recommended) {
         if (effectivelyForbidden.has(role)) continue;
+        if (role === 'kick' && suppressCoverageKick) continue;
         for (const id of layersByRole.get(role) ?? []) {
           if (!setActivation(graph, id, sectionId, true)) continue;
           activated.push(id);

@@ -1,0 +1,35 @@
+schema_version: 1
+evidence:
+  calibration_doc: docs/adr/0005-quality-gate-calibration.md
+  gap_closeout: docs/gaps-1234-closeout.md
+  intent: "Central threshold registry for analyzer quality gates; code must read from this file rather than re-declare drift-prone magic numbers."
+
+silence:
+  floor_low_db: -57
+  floor_high_db: -53
+  broken_renderer_nsr: 0.15
+  sparse_ok_nsr: 0.6
+
+spectral:
+  active_band_rms_floor: 0.005
+  active_band_count_min: 3
+  low_band_energy_floor: 0.01
+  ambient_low_band_relax_multiplier: 0.3
+
+rhythm:
+  default_onset_density_floor: 0.5
+
+arrangement:
+  short_track_min_bars: 12
+  section_energy_delta_db: 3
+  feature_novelty_per_8_bars_cv: 0.05
+  arrangement_arc_db: 1
+  loop_fatigue_similarity_max: 0.95
+
+mix:
+  default_stereo_mono_low_compliance_min: 0.85
+  default_true_peak_max_dbtp: -1
+  true_peak_hard_fail_margin_db: 0.5
+  default_lufs_target: -10
+  lufs_distance_warning_lu: 4
+  lufs_distance_hard_fail_lu: 8

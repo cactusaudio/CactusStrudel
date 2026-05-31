@@ -8,11 +8,11 @@
 //
 // Run: tsx src/producer-brain.ts "<governor brief>" [rounds]
 
-import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { render, shutdown } from '@cactus/renderer';
 
-const ROOT = '/Users/bowei/CactusStrudel';
+const ROOT = process.env.CACTUS_ROOT || '/Users/bowei/CactusStrudel';
 const KEY = readFileSync(`${ROOT}/.env.local`, 'utf8').match(/GEMINI_API_KEY=(.+)/)![1]!.trim();
 const SPINE = `${ROOT}/producer-brain/failure-spine.jsonl`;
 const MODEL = 'gemini-3.1-flash-lite';
@@ -47,16 +47,19 @@ const IDIOMS = `LEARNED CRAFT (from 149-song corpus + human verdicts):
 
 interface Round { n: number; code: string; renderOk: boolean; renderErr?: string; critique?: any; }
 
-function gemini(parts: any[], jsonOut = false): any {
+async function gemini(parts: any[], jsonOut = false): Promise<string> {
   const body: any = { contents: [{ parts }] };
   if (jsonOut) body.generationConfig = { responseMimeType: 'application/json', temperature: 0.7 };
-  const req = JSON.stringify(body);
-  const tmp = `/tmp/_gem_${Date.now()}.json`; writeFileSync(tmp, req);
-  const out = execSync(
-    `curl -s --max-time 120 -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}" -H "Content-Type: application/json" -d @${tmp}`,
-    { maxBuffer: 64 * 1024 * 1024 }
-  ).toString();
-  const d = JSON.parse(out);
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': KEY,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000),
+  });
+  const d = await res.json() as any;
   if (!d.candidates) throw new Error('gemini: ' + JSON.stringify(d).slice(0, 300));
   return d.candidates[0].content.parts.map((p: any) => p.text).join('');
 }
@@ -101,7 +104,7 @@ ${lastGoodCode}
 Apply ONLY this fix you decided from listening: "${lastFix}".
 Change as LITTLE as possible (mostly gain/lpf/hpf/rests/mask — never add unsupported constructs). Keep what works. Output the full corrected code only.`
       : fresh;
-    let code = stripFences(gemini([{ text: composePrompt }]));
+    let code = stripFences(await gemini([{ text: composePrompt }]));
     // render with up to 2 self-heal retries on render error
     let renderOk = false, renderErr = '';
     for (let h = 0; h < 3; h++) {
@@ -112,15 +115,23 @@ Change as LITTLE as possible (mostly gain/lpf/hpf/rests/mask — never add unsup
         renderErr = String((e as Error)?.message ?? e).slice(0, 200);
         if (h < 2) {
           const hint = `RENDER FAILED ("${renderErr}"). Almost always one of: (1) a .sine()/.sawtooth()/.triangle()/.square()/.struct() method call — DELETE it, set waveform only via .s("sine"); (2) the program's final value is not a Pattern — END with a bare Pattern expression OR use $NAME: blocks for every layer; (3) an unsupported function (cat/apply/perlin/superimpose/bank/gm_). Rewrite to match the WORKING SKELETON exactly.`;
-          code = stripFences(gemini([{ text: `${composePrompt}\n\n${hint}\n\nYOUR FAILED CODE:\n${code}` }]));
+          code = stripFences(await gemini([{ text: `${composePrompt}\n\n${hint}\n\nYOUR FAILED CODE:\n${code}` }]));
         }
       }
     }
     const r: Round = { n: i, code, renderOk, renderErr };
     if (renderOk) {
-      execSync(`ffmpeg -hide_banner -y -i /tmp/pb.wav -t 13 -ac 1 -ar 22050 /tmp/pb.mp3 2>/dev/null`);
+      execFileSync('ffmpeg', [
+        '-hide_banner',
+        '-y',
+        '-i', '/tmp/pb.wav',
+        '-t', '13',
+        '-ac', '1',
+        '-ar', '22050',
+        '/tmp/pb.mp3',
+      ], { stdio: ['ignore', 'ignore', 'ignore'] });
       const b64 = readFileSync('/tmp/pb.mp3').toString('base64');
-      const judge = gemini([
+      const judge = await gemini([
         { text: `This is the audio of YOUR OWN composition (~13s) + its code. Judge honestly as a producer with ears. Be specific about what you HEAR. Code:\n${code}` },
         { inlineData: { mimeType: 'audio/mp3', data: b64 } },
         { text: `Respond JSON: {"score":1-10,"good":bool,"what_works":"...","top_weakness":"the single most important concrete audible flaw","fix":"specific actionable fix","new_failure_rule":{"symptom_heard":"...","root_cause":"...","avoid_rule":"..."},"verdict":"keep|revise"}` }
@@ -143,7 +154,7 @@ Change as LITTLE as possible (mostly gain/lpf/hpf/rests/mask — never add unsup
   writeFileSync(`${ROOT}/producer-brain/run_${ts}.json`, JSON.stringify({ brief, rounds }, null, 2));
   if (bestCode) {
     writeFileSync(`${ROOT}/producer-brain/last_best.strudel.js`, bestCode);
-    const enc = execSync(`python3 -c "import base64,urllib.parse,sys;print(urllib.parse.quote(base64.b64encode(open('${ROOT}/producer-brain/last_best.strudel.js','rb').read()).decode()))"`).toString().trim();
+    const enc = encodeURIComponent(Buffer.from(bestCode).toString('base64'));
     console.log(`\nstrudel.cc/#${enc.slice(0,60)}…  (full link in run json)`);
     writeFileSync(`${ROOT}/producer-brain/last_best.url`, `https://strudel.cc/#${enc}`);
   }

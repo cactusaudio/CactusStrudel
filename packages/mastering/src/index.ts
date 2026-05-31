@@ -26,7 +26,7 @@ export interface MasteringResult {
 /**
  * Two-stage master:
  * 1. Linear gain to bring integrated LUFS to target.
- * 2. Soft true-peak limiter (no lookahead — hard cap with tanh-soft top 10%).
+ * 2. Continuous tanh soft true-peak limiter over the top 10%.
  *    Adequate for a producer-tool baseline, not lookahead-grade transparency.
  */
 export async function masterTrack(input: MasteringInput): Promise<MasteringResult> {
@@ -49,19 +49,23 @@ export async function masterTrack(input: MasteringInput): Promise<MasteringResul
     for (let i = 0; i < ch.length; i++) {
       const v = ch[i]!;
       const abs = Math.abs(v);
-      if (abs > ceilingLin) {
-        limited = true;
-        const sign = v < 0 ? -1 : 1;
-        ch[i] = sign * (ceilingLin - 1e-6);
-      } else if (abs > ceilingLin * 0.9) {
-        const x = (abs - ceilingLin * 0.9) / (ceilingLin * 0.1);
-        const softened = ceilingLin * 0.9 + ceilingLin * 0.1 * Math.tanh(x);
-        ch[i] = (v < 0 ? -1 : 1) * softened;
+      if (abs > ceilingLin * 0.9) {
+        if (abs > ceilingLin) limited = true;
+        ch[i] = softLimitSample(v, ceilingLin);
       }
     }
   }
 
-  const post = computeLoudness({ channels, sampleRate: audio.sampleRate });
+  let post = computeLoudness({ channels, sampleRate: audio.sampleRate });
+  if (post.truePeakDb > input.targets.true_peak_max) {
+    limited = true;
+    const trimDb = input.targets.true_peak_max - post.truePeakDb - 0.1;
+    const trimLin = Math.pow(10, trimDb / 20);
+    for (const ch of channels) {
+      for (let i = 0; i < ch.length; i++) ch[i] = (ch[i] ?? 0) * trimLin;
+    }
+    post = computeLoudness({ channels, sampleRate: audio.sampleRate });
+  }
 
   const wav = new WaveFile();
   wav.fromScratch(
@@ -86,6 +90,20 @@ export async function masterTrack(input: MasteringInput): Promise<MasteringResul
     postLoudness: { lufs: post.integratedLufs, truePeakDb: post.truePeakDb },
     truePeakLimited: limited,
   };
+}
+
+function softLimitSample(v: number, ceilingLin: number): number {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? -1 : 1;
+  const knee = ceilingLin * 0.9;
+  if (abs <= knee) return v;
+  const span = Math.max(1e-12, ceilingLin - knee);
+  const softened = knee + span * Math.tanh((abs - knee) / span);
+  return sign * Math.min(ceilingLin - 1e-9, softened);
+}
+
+export function _softLimitSampleForTests(v: number, ceilingLin: number): number {
+  return softLimitSample(v, ceilingLin);
 }
 
 export async function listBundleFiles(sessionDir: string): Promise<{ manifest: string; files: string[] }> {

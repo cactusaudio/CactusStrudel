@@ -2,7 +2,7 @@
 // section how silent / band-balanced / onset-heavy it is. Identifies which
 // section is responsible when a global gate (e.g. non_silent_ratio) fails.
 
-import { readWav, mixToMono } from './wav-io.js';
+import { readWav, mixToMono, type DecodedAudio } from './wav-io.js';
 import { nonSilentRatio as hysteresisNonSilentRatio } from './silence.js';
 import type { SessionGraph } from '@cactus/ir';
 
@@ -46,10 +46,17 @@ export async function computeSectionDiagnostics(
   graph: SessionGraph,
 ): Promise<SectionDiagnosticsReport> {
   const audio = await readWav(wavPath);
+  return computeSectionDiagnosticsFromAudio(audio, graph);
+}
+
+export async function computeSectionDiagnosticsFromAudio(
+  audio: DecodedAudio,
+  graph: SessionGraph,
+): Promise<SectionDiagnosticsReport> {
   const mono = mixToMono(audio.channels);
   const totalSec = mono.length / audio.sampleRate;
   const cps = (graph.brief.bpm ?? 120) / 240;
-  const barsToSec = (b: number) => b / cps;
+  const barsToSec = (b: number) => (b * graph.song.cycles_per_bar) / cps;
 
   const rendered: SectionDiagnostic[] = [];
   const unrendered: SectionDiagnosticsReport['unrendered_sections'] = [];

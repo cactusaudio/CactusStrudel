@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# spine-list [status] — list spine entries, optional status filter
+# status options: VALIDATED VALIDATED-marginal REJECTED FIXED CLOSED candidate
+set -euo pipefail
+FILTER="${1:-}"
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+ROOT="$ROOT" FILTER="$FILTER" python3 -c "
+import json
+import os
+filt=os.environ.get('FILTER','')
+with open(os.path.join(os.environ['ROOT'], 'producer-brain/failure-spine.jsonl')) as f:
+    for line in f:
+        if not line.strip(): continue
+        d=json.loads(line)
+        if filt and d.get('status','') != filt: continue
+        print(f\"{d['id']:>7} {d.get('status','?'):>20}  {d.get('symptom_heard','')[:90]}\")
+"

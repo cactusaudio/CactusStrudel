@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadSuite, expandPrompts } from './index.js';
+import { loadSuite, expandPrompts, assertNoEvalContamination } from './index.js';
 
 describe('loadSuite — smoke', () => {
   it('loads the smoke suite as a single PromptSuite', async () => {
@@ -7,6 +7,8 @@ describe('loadSuite — smoke', () => {
     expect(suites.length).toBe(1);
     expect(suites[0]!.prompts.length).toBeGreaterThan(0);
     expect(suites[0]!.prompts[0]!.intent_genre).toBe('techno');
+    expect(suites[0]!.suite_source).toBe('holdout_human');
+    expect(suites[0]!.contamination_policy).toBe('holdout_only');
   });
 });
 
@@ -56,5 +58,17 @@ describe('expandPrompts', () => {
     const suites = await loadSuite('genre-core');
     const expanded = expandPrompts(suites, 3);
     expect(expanded.length).toBe(150);
+  });
+});
+
+describe('assertNoEvalContamination', () => {
+  it('rejects cookbook-derived suites under the default holdout policy', async () => {
+    const suites = await loadSuite('smoke');
+    suites[0] = {
+      ...suites[0]!,
+      suite_source: 'cookbook_derived',
+      contamination_policy: 'holdout_only',
+    };
+    expect(() => assertNoEvalContamination(suites)).toThrow(/cookbook-derived/);
   });
 });

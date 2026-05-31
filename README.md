@@ -1,65 +1,144 @@
-# Cactus Strudel
+# CactusStrudel
 
-Autonomous Strudel-centered music producer substrate. Talk → audio.
+A live Strudel music studio: real-time generation through 7 model backends, a
+listener-grade catalog GUI, and an action-capable Opus brain — all running
+local on the LAN.
 
 ```
-brief → BriefGraph → SongGraph IR → PatternBank/MixGraph
-      → deterministic Strudel compiler
-      → headless render
-      → MIR/audio analysis + spectrogram critic
-      → targeted revisions
-      → master + stems + editable SessionGraph + Strudel code
+Advanced panel ─→ /api/generate ─→ backend slot ─→ render ─→ corpus.jsonl
+                                       │
+       Chat ─→ /api/brain-chat ─→ Opus brain (tool-use) ─┘
+                                       │
+                                       └─→ Data page (catalog, search, filter)
 ```
 
-The product is a closed-loop producer, not "LLM writes Strudel code". Generation,
-render, analysis, and critique are all required for an artifact to count.
+## Current state (milestone — 2026-05-28, ckpt-25)
 
-## Status
+- **Runtime**: `runtime/serve.py` (Python stdlib, threaded HTTP) + `runtime/main.html`
+  (workbench) + `runtime/data.html` (catalog GUI). Port 8765.
+- **Backend registry**: 7 slots (1 subprocess + 6 HTTP-API), single source of truth
+  in `serve.py` `BACKEND_REGISTRY`. UI never sees model IDs / effort suffixes.
 
-Active build. Phase 15 (champion baseline repair + rubric calibration) is the
-latest committed milestone. Phase 14 introduced the adversarial audit harness;
-Phase 15 repaired the deterministic rules champion against the failures the
-harness surfaced. See `docs/architecture.md` for the architecture and
-`docs/audits/` for audit findings + ADR-recorded calibration decisions.
+  | Slot | Backend | Model | Color |
+  |---|---|---|---|
+  | GPT 5.5 (default) | CLIProxy API | `gpt-5.5(high)` | purple `#a855f7` |
+  | GPT 5.5x | CLIProxy API | `gpt-5.5(xhigh)` | deep purple `#6d28d9` |
+  | AGY CLI | subprocess | Antigravity OAuth | turquoise `#2dd4bf` |
+  | Opus 4.7 | CLIProxy API | `claude-opus-4-7(xhigh)` | orange `#fb923c` |
+  | Gemini Flash | CLIProxy API | `gemini-3-flash-agent(high)` | sky `#38bdf8` |
+  | Gemini Pro | CLIProxy API | `gemini-pro-agent(high)` | deep blue `#1d4ed8` |
+  | Grok Build | CLIProxy API | `grok-build-0.1(high)` | silver `#94a3b8` |
 
-## Quick start
+- **Producer-brain corpus** (`producer-brain/corpus.jsonl`, schema_v2):
+  per-piece `name` (`<CODE>-NNN`), `source` (slot key), `genre_code/preset/label/category`,
+  `score_bowei`, `note_bowei`, `note_ts`, `archived_at`, plus standard `js/mp3/prompt/sha/dur`.
+- **Archive-v0** (`producer-brain/archive-v0/`): 104 legacy pieces, frozen. Not counted.
+- **Genre code registry** (`producer-brain/genre-codes.json`): 32 codes × 6 categories
+  drive both the Advanced preset dropdown and the catalog grouping.
+- **Kernel** (`producer-brain/kernel/*.md`): 6 fragments compiled fresh per generation;
+  editable in-UI via the Kernel disclosure.
+- **Opus brain with tool-use**: `/api/brain-chat` uses OpenAI function-calling
+  (CLIProxy → Anthropic tool_use). 5 tools: `generate_piece`, `list_recent`,
+  `get_piece_code`, `search_corpus`, `score_piece`. Repo source files are locked off.
+- **Data page**: catalog grid + 2 rows of trajectory cards (7 category +
+  7 model, clickable filters), free-text search, archived/render-failed visibility,
+  inline note editor, archive/delete flow with 2-stage confirm.
+
+## Quick start (fresh Mac)
+
+1. Download `cactus-strudel-bundle.tar.gz` + `install-cactus-strudel.command`.
+2. Put both in the same folder (e.g. `~/Downloads/`).
+3. Double-click `install-cactus-strudel.command`.
+4. After install completes, the workbench opens. Open the
+   **Settings** tab and configure at least one backend:
+   - **CLIProxy** (if you run a local multi-vendor gateway) — URL + key, or
+   - **Direct vendor APIs** — paste your OpenAI / Anthropic / Google / xAI key, or
+   - **AGY CLI** — already auto-detected if `~/.local/bin/agy` exists.
+5. Done. Pick a backend in the dropdown and click Fast Gen.
+
+## Manual start
 
 ```bash
-pnpm install
-pnpm exec tsc -b        # project-references build
-pnpm test               # unit suite (~250 tests; 6 E2E gated behind CACTUS_RENDER_E2E)
-pnpm cactus -- audit:repair                       # real-WAV smoke audit
-pnpm cactus -- produce -b 'dark dub techno 130 BPM, haunted'
-pnpm cactus -- audit --suite genre-core --seeds 3 # full 150-render audit
+cd ~/CactusStrudel
+python3 runtime/serve.py
+open http://localhost:8765/runtime/main.html
 ```
 
-`scripts/verify-repo.sh` runs the full G0 reproducibility gate (install + tsc + test + audit:repair).
+The `pnpm` toolchain is required for the render pipeline (Playwright Chromium):
 
-## CLI commands
+```bash
+brew install node pnpm
+pnpm install                                          # main repo
+(cd refs/strudel-monorepo && pnpm install)            # strudel monorepo
+(cd apps/renderer-page && pnpm exec playwright install chromium)
+```
 
-| Command | Purpose |
-|---|---|
-| `cactus produce` | Generate a full track from a brief; writes session bundle. |
-| `cactus sketch` | N-candidate parallel sketches at different seeds. |
-| `cactus revise` | Apply natural-language feedback to an existing session. |
-| `cactus stems` | Per-orbit stem export for an existing session. |
-| `cactus bundle` | G10: package latest iter (graph + code + wav + features + critique + spectrogram + stems + manifest) into bundle-iter_NNNN/ + optional .zip. |
-| `cactus explain` | Dump iteration history for a session. |
-| `cactus taste` | Inspect preference memory across sessions. |
-| `cactus audit` | Run an adversarial audit suite (smoke / genre-core / custom). |
-| `cactus audit:repair` | Champion baseline repair audit (smoke + real WAV + diagnostics). |
+## Dependencies
 
-Run `pnpm cactus -- <cmd> --help` for full options.
+- **Python**: stdlib only (Python 3.10+). No pip deps needed.
+- **Node + pnpm**: required for the render pipeline (Playwright Chromium).
+- **Backend** (at least one of):
+  - **CLIProxy gateway** (optional): a local multi-vendor proxy. URL + key in Settings.
+  - **Direct vendor APIs**: OpenAI / Anthropic / Google / xAI keys, each in Settings.
+  - **AGY CLI**: `~/.local/bin/agy` (Antigravity OAuth) — auto-detected if installed.
 
-## Backends
+See `docs/SETTINGS.md` for the full schema.
 
-| Name | Status |
-|---|---|
-| `rules` | Permanent champion. Deterministic build-graph + compile + render. |
-| `claude-shadow` | Seam in place; requires injected Claude dispatcher to actually run. Throws `ClaudeBackendNotConfigured` otherwise. |
-| `hybrid` | Rules baseline + Claude JSON Patch overlays. Same dispatcher requirement. |
+## Configuration
+
+Open `http://localhost:8765/runtime/settings.html` in-app to edit. The
+underlying config file lives at `~/.cactus-strudel/config.json` (mode 0600,
+machine-local, survives reinstalls).
+
+For scripted overrides, see env vars in `docs/SETTINGS.md` (CLIPROXY_*, OPENAI_API_KEY,
+ANTHROPIC_API_KEY, GOOGLE_API_KEY, XAI_API_KEY, AGY_BIN, etc.).
+
+## Endpoints
+
+```
+GET  /api/version           → {main_html_build, serve_py_build, server_started}
+GET  /api/backends          → {slots: [{key, label, available, reason}]}
+GET  /api/recent?n=20       → corpus tail
+GET  /api/archive           → archive-v0 index
+GET  /api/genre-codes       → registry
+GET  /api/revisions         → revision log
+GET  /api/gen-status        → in-flight generation jobs
+GET  /api/piece?name=X      → {entry, code}
+GET  /api/kernel/fragments  → list
+GET  /api/kernel/fragment   → content
+POST /api/generate          → {slot, extra}  (SSE stream: start/log/error/done)
+POST /api/score             → set score+note
+POST /api/save-piece        → save edited code as new EDIT-* piece
+POST /api/update-piece-code → overwrite existing piece, render, record revision
+POST /api/midi              → MIDI export
+POST /api/render            → re-render a .js
+POST /api/rename-piece      → atomic rename + file moves
+POST /api/brain-chat        → Opus brain with 5 tools
+POST /api/piece/archive     → set archived_at
+PUT  /api/piece/note        → update note_bowei + note_ts
+PUT  /api/kernel/fragment   → write fragment + .bak
+DELETE /api/piece           → permanent delete + file removal (requires confirm token)
+```
+
+## Checkpoints
+
+`producer-brain/checkpoints/`. Each ckpt has `snapshot.tar.gz` + `manifest.md` +
+`rollback.sh`. Latest = `25-brain-tool-use`.
+
+Roll back:
+
+```bash
+bash producer-brain/checkpoints/<name>/rollback.sh
+```
+
+## Older substrate (research)
+
+The `apps/` + `packages/` + `genres/` + `cookbook/` tree from the earlier
+"closed-loop producer" research phase is still on disk and importable from the
+CLI (`pnpm cactus -- produce -b '...'`). It is not the active path; the current
+UX is `serve.py` + Advanced panel + brain. See `docs/architecture.md` for the
+research-substrate design.
 
 ## License
 
-AGPL-3.0-or-later (matches Strudel + essentia.js to keep license boundaries
-clean — see ADR 0001).
+AGPL-3.0-or-later.

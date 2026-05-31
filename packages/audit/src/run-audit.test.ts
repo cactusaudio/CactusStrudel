@@ -15,6 +15,14 @@ describe('runAudit (skipRender)', () => {
     expect(await fs.stat(path.join(out, 'champion-challenger.json'))).toBeDefined();
   }, 30_000);
 
+  it('marks skipRender as static diagnostics instead of audio evidence', async () => {
+    const out = path.join(os.tmpdir(), `cactus-audit-static-${Date.now()}`);
+    const r = await runAudit({ suite: 'smoke', seeds: 1, outDir: out, skipRender: true });
+    expect(r.champion_fail).toBe(1);
+    const failure = JSON.parse(await fs.readFile(path.join(out, 'failures', 'smoke-001__seed1.json'), 'utf8'));
+    expect(failure.hard_failures).toContain('skipRender: audio render/analyzer evidence unavailable; static diagnostics only');
+  }, 30_000);
+
   it('genre-core × 1 seed = 50 prompts, all classify into the failure taxonomy structure', async () => {
     const out = path.join(os.tmpdir(), `cactus-audit-gc-${Date.now()}`);
     const r = await runAudit({ suite: 'genre-core', seeds: 1, outDir: out, skipRender: true });

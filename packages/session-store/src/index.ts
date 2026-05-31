@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { SessionGraphSchema, type SessionGraph } from '@cactus/ir';
+import { migrateToCurrent, type SessionGraph } from '@cactus/ir';
 
 export interface StoreConfig {
   rootDir: string;
@@ -16,9 +16,9 @@ export class SessionStore {
   async createSession(graph: SessionGraph): Promise<void> {
     const dir = this.sessionDir(graph.session_id);
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(
+    await writeJsonAtomic(
       path.join(dir, 'iter_0000.json'),
-      JSON.stringify(graph, null, 2),
+      graph,
     );
   }
 
@@ -28,16 +28,19 @@ export class SessionStore {
       `iter_${String(iter).padStart(4, '0')}.json`,
     );
     const raw = await fs.readFile(file, 'utf8');
-    return SessionGraphSchema.parse(JSON.parse(raw));
+    return migrateToCurrent(JSON.parse(raw));
   }
 
   async appendIteration(graph: SessionGraph): Promise<number> {
-    const next = (graph.iteration_log.at(-1)?.iteration_n ?? -1) + 1;
+    const existing = await this.listIterations(graph.session_id);
+    const nextFromDisk = existing.length > 0 ? Math.max(...existing) + 1 : 0;
+    const nextFromGraph = (graph.iteration_log.at(-1)?.iteration_n ?? -1) + 1;
+    const next = Math.max(nextFromDisk, nextFromGraph);
     const file = path.join(
       this.sessionDir(graph.session_id),
       `iter_${String(next).padStart(4, '0')}.json`,
     );
-    await fs.writeFile(file, JSON.stringify(graph, null, 2));
+    await writeJsonAtomic(file, graph);
     return next;
   }
 
@@ -53,5 +56,21 @@ export class SessionStore {
       if ((e as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw e;
     }
+  }
+}
+
+async function writeJsonAtomic(file: string, value: unknown): Promise<void> {
+  const dir = path.dirname(file);
+  await fs.mkdir(dir, { recursive: true });
+  const tmp = path.join(
+    dir,
+    `.${path.basename(file)}.${process.pid}.${Date.now()}.tmp`,
+  );
+  try {
+    await fs.writeFile(tmp, JSON.stringify(value, null, 2));
+    await fs.rename(tmp, file);
+  } catch (e) {
+    await fs.unlink(tmp).catch(() => undefined);
+    throw e;
   }
 }

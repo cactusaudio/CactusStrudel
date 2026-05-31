@@ -18,6 +18,21 @@ describe('critique', () => {
       expect(c.scores[k]).toBeGreaterThanOrEqual(0);
       expect(c.scores[k]).toBeLessThanOrEqual(1);
     }
+    expect(c.scores.user_taste_fit).toBe(0.5);
+  });
+
+  it('uses preference decisions for user_taste_fit instead of a hardwired zero', async () => {
+    const brief = parseBrief('techno 130 BPM');
+    const graph = await buildSessionGraphFromBrief(brief);
+    graph.preference_graph.decisions.push({
+      decision_id: '00000000-0000-4000-8000-000000000000',
+      timestamp: '2026-06-01T00:00:00.000Z',
+      kind: 'accept',
+      iteration_a: 0,
+      inferred_attributes: {},
+    });
+    const c = await critique({ graph, features: { loudness: { lufs_integrated: -9, true_peak_db: -1 } } });
+    expect(c.scores.user_taste_fit).toBeGreaterThan(0.5);
   });
 
   it('emits a true-peak target when peak > -0.5 dBTP', async () => {
@@ -38,6 +53,19 @@ describe('critique', () => {
     };
     const c = await critique({ graph, features });
     expect(c.targets.some((t) => /LUFS/i.test(t.problem))).toBe(true);
+  });
+
+  it('still emits a generic LUFS target when the genre cannot be loaded', async () => {
+    const brief = parseBrief('techno 130 BPM');
+    const graph = await buildSessionGraphFromBrief(brief);
+    graph.brief.primary_genre = 'unknown_future_genre' as never;
+    const c = await critique({
+      graph,
+      features: { loudness: { lufs_integrated: -22, true_peak_db: -3 } },
+    });
+    const target = c.targets.find((t) => /LUFS/i.test(t.problem));
+    expect(target).toBeDefined();
+    expect(target?.evidence.target_source).toBe('generic');
   });
 
   it('emits arrangement target when energy is too flat', async () => {

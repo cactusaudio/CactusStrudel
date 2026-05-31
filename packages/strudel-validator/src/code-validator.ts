@@ -2,6 +2,7 @@ import * as acorn from 'acorn';
 import { simple as walkSimple } from 'acorn-walk';
 import type { ValidationIssue, ValidationResult } from './types.js';
 import { STRUDEL_FUNCTIONS, SINGLE_USE_EFFECTS } from './registry.js';
+import { validateMiniNotation } from './mini-notation.js';
 
 export interface CodeValidatorOptions {
   allowJsGlobals?: boolean; // Math, parseFloat, Number, Boolean, Array, etc.
@@ -12,10 +13,12 @@ const JS_GLOBALS = new Set([
   'Math','Number','Boolean','Array','Object','String','JSON','console','parseFloat','parseInt',
   'Map','Set','isNaN','isFinite','undefined','NaN','Infinity','Symbol','Date',
 ]);
+const MINI_NOTATION_CALLS = new Set(['s', 'note', 'n', 'struct', 'mask', 'arp']);
+const MERGED_ALLOWED_CACHE = new WeakMap<ReadonlySet<string>, ReadonlySet<string>>();
 
 export function validateStrudelCode(code: string, options: CodeValidatorOptions = {}): ValidationResult {
   const issues: ValidationIssue[] = [];
-  const allowed = new Set<string>([...STRUDEL_FUNCTIONS, ...(options.extraFunctions ?? [])]);
+  const allowed = getAllowedFunctions(options.extraFunctions);
 
   let ast: acorn.Node;
   try {
@@ -32,13 +35,15 @@ export function validateStrudelCode(code: string, options: CodeValidatorOptions 
     return { ok: false, issues };
   }
 
+  const localFunctionAliases = collectLocalFunctionAliases(ast, allowed);
+
   // 1. Walk identifiers used in CallExpression callee positions and member expressions.
   walkSimple(ast, {
     CallExpression(node: any) {
       const callee = node.callee;
       if (callee.type === 'Identifier') {
         const name = callee.name as string;
-        if (allowed.has(name)) return;
+        if (allowed.has(name) || localFunctionAliases.has(name)) return;
         if (options.allowJsGlobals && JS_GLOBALS.has(name)) return;
         issues.push({
           code: 'UNKNOWN_FUNCTION',
@@ -46,8 +51,9 @@ export function validateStrudelCode(code: string, options: CodeValidatorOptions 
           span: { start: callee.start, end: callee.end },
           hint: didYouMean(name, allowed),
         });
-      } else if (callee.type === 'MemberExpression' && callee.property.type === 'Identifier') {
-        const name = callee.property.name as string;
+      } else if (callee.type === 'MemberExpression') {
+        const name = memberPropertyName(callee);
+        if (!name) return;
         if (!allowed.has(name)) {
           issues.push({
             code: 'UNKNOWN_METHOD',
@@ -63,7 +69,10 @@ export function validateStrudelCode(code: string, options: CodeValidatorOptions 
   // 2. Detect duplicate single-use effects in the same chain.
   detectChainDuplicates(ast, issues);
 
-  // 3. Tempo / cycle sanity.
+  // 3. Validate string mini-notation at the call sites that actually carry it.
+  validateMiniNotationLiterals(ast, issues);
+
+  // 4. Tempo / cycle sanity.
   walkSimple(ast, {
     CallExpression(node: any) {
       const callee = node.callee;
@@ -99,6 +108,79 @@ export function validateStrudelCode(code: string, options: CodeValidatorOptions 
   });
 
   return { ok: issues.length === 0, issues };
+}
+
+function getAllowedFunctions(extraFunctions?: ReadonlySet<string>): ReadonlySet<string> {
+  if (!extraFunctions || extraFunctions.size === 0) return STRUDEL_FUNCTIONS;
+  const cached = MERGED_ALLOWED_CACHE.get(extraFunctions);
+  if (cached) return cached;
+  const merged = new Set<string>([...STRUDEL_FUNCTIONS, ...extraFunctions]);
+  MERGED_ALLOWED_CACHE.set(extraFunctions, merged);
+  return merged;
+}
+
+function collectLocalFunctionAliases(root: acorn.Node, allowed: ReadonlySet<string>): Set<string> {
+  const aliases = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    walkSimple(root, {
+      VariableDeclarator(node: any) {
+        if (node.id?.type !== 'Identifier' || node.init?.type !== 'Identifier') return;
+        const from = node.init.name as string;
+        if (allowed.has(from) || aliases.has(from)) {
+          const before = aliases.size;
+          aliases.add(node.id.name as string);
+          changed ||= aliases.size !== before;
+        }
+      },
+      AssignmentExpression(node: any) {
+        if (node.left?.type !== 'Identifier' || node.right?.type !== 'Identifier') return;
+        const from = node.right.name as string;
+        if (allowed.has(from) || aliases.has(from)) {
+          const before = aliases.size;
+          aliases.add(node.left.name as string);
+          changed ||= aliases.size !== before;
+        }
+      },
+    });
+  }
+  return aliases;
+}
+
+function memberPropertyName(callee: any): string | undefined {
+  if (!callee.computed && callee.property.type === 'Identifier') return callee.property.name as string;
+  if (callee.computed && callee.property.type === 'Literal' && typeof callee.property.value === 'string') return callee.property.value;
+  return undefined;
+}
+
+function validateMiniNotationLiterals(root: acorn.Node, issues: ValidationIssue[]): void {
+  walkSimple(root, {
+    CallExpression(node: any) {
+      const callee = node.callee;
+      const calleeName =
+        callee.type === 'Identifier'
+          ? callee.name
+          : callee.type === 'MemberExpression'
+            ? memberPropertyName(callee)
+            : null;
+      if (!calleeName || !MINI_NOTATION_CALLS.has(calleeName)) return;
+      const arg = node.arguments[0];
+      if (!arg || arg.type !== 'Literal' || typeof arg.value !== 'string') return;
+      const r = validateMiniNotation(arg.value);
+      if (r.ok) return;
+      for (const issue of r.issues) {
+        issues.push({
+          code: `MINI_${issue.code}`,
+          message: `${calleeName}(...) mini-notation error: ${issue.message}`,
+          span: issue.span
+            ? { start: arg.start + 1 + issue.span.start, end: arg.start + 1 + issue.span.end }
+            : { start: arg.start, end: arg.end },
+          hint: issue.hint,
+        });
+      }
+    },
+  });
 }
 
 function detectChainDuplicates(root: acorn.Node, issues: ValidationIssue[]): void {

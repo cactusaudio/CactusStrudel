@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CactusStrudel · Settings</title>
+<style>
+  :root {
+    --bg:#1e1e1e; --panel:#252525; --border:#3f3f3f; --text:#ffffff; --muted:#98989d;
+    --gold:#d4af37; --gold-dim:#8b7523; --gold-bright:#f4d03f;
+    --green:#22c55e; --red:#ef4444; --amber:#fbbf24;
+    --mono: ui-monospace, SF Mono, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, SF Pro Text, Helvetica Neue, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 13px; line-height: 1.5;
+  }
+  /* Top nav — identical structure/style to main.html so user has same anchor */
+  nav.top {
+    display:flex; align-items:center;
+    padding:clamp(20px,2.5vh,27px) 0 clamp(16px,2vh,24px);
+    background:linear-gradient(180deg, rgba(37,37,37,0.98) 0%, rgba(30,30,30,0.95) 100%);
+    border-bottom:1px solid rgba(255,255,255,0.12);
+    backdrop-filter:blur(40px);
+    -webkit-backdrop-filter:blur(40px);
+    box-shadow:0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    position:sticky; top:0; z-index:100;
+  }
+  nav.top .row {
+    margin: 0; padding: 0 clamp(12px,2vw,32px); width: 100%;
+    display: flex; align-items: center; gap: clamp(12px,2.5vw,40px);
+  }
+  nav.top .brand { display:flex; align-items:center; gap:clamp(8px,1vw,12px); flex-shrink:1; min-width:0; }
+  nav.top .brand-mark {
+    width:clamp(28px,3vw,36px); height:clamp(28px,3vw,36px);
+    border-radius:8px; display:grid; place-items:center; flex-shrink:0;
+  }
+  nav.top .brand-mark img { width:100%; height:100%; object-fit:contain; }
+  nav.top .brand-wordmark { display:flex; flex-direction:column; line-height:1; }
+  nav.top .brand-name {
+    font-size:14px; font-weight:600; color:var(--text); letter-spacing:.02em;
+  }
+  nav.top .brand-name b { font-weight:600; }
+  nav.top .brand-name .dot { color:var(--gold); }
+  nav.top .brand-sub {
+    font-size:9.5px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.24em; margin-top:5px;
+  }
+  nav.top .tabs {
+    display:flex; gap:8px; margin:0 0 0 clamp(80px,10vw,160px);
+    align-items:center;
+  }
+  nav.top .tab {
+    padding:7px 16px; border-radius:8px; color:var(--muted);
+    text-decoration:none; font-size:13px;
+    transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  nav.top .tab:hover {
+    background:rgba(255,255,255,0.08); color:var(--text);
+    transform:translateY(-1px);
+  }
+  nav.top .tab.active {
+    background:linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.1) 100%);
+    color:var(--gold); font-weight:600;
+    box-shadow:0 2px 8px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+    border-bottom:2px solid var(--gold);
+  }
+  nav.top .grow { flex:1; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px; }
+  .section {
+    background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px 20px; margin-bottom: 16px;
+  }
+  .section h2 {
+    margin: 0 0 4px; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--gold);
+  }
+  .section .desc { font-size: 11px; color: var(--muted); margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row label { width: 110px; flex-shrink: 0; font-size: 11px; color: var(--muted); }
+  .row input[type=text], .row input[type=password], .row input[type=url] {
+    flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 10px; border-radius: 4px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .row input:focus { outline: none; border-color: var(--gold-dim); }
+  .row input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--gold); }
+  button {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 12px; border-radius: 4px;
+    font-family: var(--mono); font-size: 11px; cursor: pointer;
+    text-transform: uppercase; letter-spacing: .04em;
+    transition: background .12s, border-color .12s;
+  }
+  button:hover { background: rgba(212,175,55,0.08); border-color: var(--gold-dim); }
+  button.primary { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 600; }
+  button.primary:hover { background: var(--gold-bright); }
+  button:disabled { opacity: .5; cursor: wait; }
+  .test-row { display: flex; gap: 8px; align-items: center; }
+  .test-result {
+    font-family: var(--mono); font-size: 11px;
+    padding: 3px 8px; border-radius: 3px; flex: 1;
+  }
+  .test-result.ok { background: rgba(34,197,94,0.1); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .test-result.err { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .test-result.idle { color: var(--muted); }
+  .status-grid {
+    display: grid; grid-template-columns: 100px 1fr;
+    gap: 8px 16px; align-items: center;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .status-grid .slot { color: var(--text); font-weight: 600; }
+  .status-grid .v { display: flex; align-items: center; gap: 6px; }
+  .status-grid .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-grid .ok  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-grid .err { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+  .status-grid .mode { color: var(--muted); font-size: 11px; }
+  .status-grid .reason { color: var(--red); font-size: 11px; font-style: italic; }
+  .actions {
+    position: sticky; bottom: 0; background: var(--bg);
+    padding: 16px 0; margin-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: center;
+  }
+  .actions .grow { flex: 1; }
+  .actions .saved {
+    color: var(--green); font-size: 11px; font-family: var(--mono);
+    opacity: 0; transition: opacity .15s;
+  }
+  .actions .saved.show { opacity: 1; }
+  .vendor-block {
+    border-left: 2px solid var(--border); padding-left: 12px; margin-bottom: 14px;
+  }
+  .vendor-block h3 {
+    margin: 0 0 6px; font-size: 11px; font-weight: 600;
+    color: var(--text); text-transform: uppercase; letter-spacing: .06em;
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="row">
+    <div class="brand">
+      <span class="brand-mark">
+        <img src="uploads/logo green.png" alt="🌵">
+      </span>
+      <span class="brand-wordmark">
+        <span class="brand-name"><b>cactus</b><span class="dot">·</span><b>strudel</b></span>
+        <span class="brand-sub">runtime <span style="color:rgba(255,255,255,0.1);">/</span> producer-brain</span>
+      </span>
+    </div>
+    <div class="tabs">
+      <a class="tab" href="main.html">Main</a>
+      <a class="tab" href="data.html">Data</a>
+      <a class="tab" href="spine.html">Spine</a>
+      <span class="tab active">Settings</span>
+    </div>
+    <span class="grow"></span>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ── Backend status (live, top) ──────────────────────────── -->
+  <section class="section">
+    <h2>Backend status</h2>
+    <p class="desc">Live availability of all 7 generation slots. <button id="refreshStatus" style="float:right; padding:3px 8px; font-size:9px;">↻ refresh</button></p>
+    <div class="status-grid" id="statusGrid"></div>
+  </section>
+
+  <!-- ── CLIProxy gateway ──────────────────────────────────────── -->
+  <section class="section">
+    <h2>CLIProxy gateway</h2>
+    <p class="desc">Optional. If you run a local CLIProxy gateway (multi-vendor proxy), enable it and provide the URL + key. When enabled and reachable, all CLIProxy-routed slots are preferred over direct vendor APIs.</p>
+    <div class="row">
+      <label>Enabled</label>
+      <input type="checkbox" id="cliproxy-enabled">
+    </div>
+    <div class="row">
+      <label>Base URL</label>
+      <input type="url" id="cliproxy-base-url" placeholder="http://127.0.0.1:8318/v1">
+    </div>
+    <div class="row">
+      <label>API key</label>
+      <input type="password" id="cliproxy-api-key" placeholder="(leave masked to keep existing)">
+    </div>
+    <div class="test-row" style="margin-top:8px;">
+      <button data-test="cliproxy">Test connection</button>
+      <span class="test-result idle" id="test-cliproxy">—</span>
+    </div>
+  </section>
+
+  <!-- ── Direct vendor APIs ────────────────────────────────────── -->
+  <section class="section">
+    <h2>Direct vendor APIs</h2>
+    <p class="desc">Alternative to CLIProxy. If a slot's CLIProxy route is unavailable, the slot falls back to the corresponding vendor's direct API. Each can be configured independently.</p>
+
+    <div class="vendor-block">
+      <h3>OpenAI</h3>
+      <div class="row"><label>API key</label><input type="password" id="vendor-openai-api-key"></div>
+      <div class="row"><label>Base URL</label><input type="url" id="vendor-openai-base-url"></div>
+      <div class="test-row"><button data-test="openai">Test</button><span class="test-result idle" id="test-openai">—</span></div>
+    </div>
+
+    <div class="vendor-block">
+      <h3>Anthropic (Claude)</h3>
+      <div class="row"><label>API key</label><input type="password" id="vendor-anthropic-api-key"></div>
+      <div class="row"><label>Base URL</label><input type="url" id="vendor-anthropic-base-url"></div>
+      <div class="test-row"><button data-test="anthropic">Test</button><span class="test-result idle" id="test-anthropic">—</span></div>
+    </div>
+
+    <div class="vendor-block">
+      <h3>Google (Gemini)</h3>
+      <div class="row"><label>API key</label><input type="password" id="vendor-google-api-key"></div>
+      <div class="row"><label>Base URL</label><input type="url" id="vendor-google-base-url"></div>
+      <div class="test-row"><button data-test="google">Test</button><span class="test-result idle" id="test-google">—</span></div>
+    </div>
+
+    <div class="vendor-block">
+      <h3>xAI (Grok)</h3>
+      <div class="row"><label>API key</label><input type="password" id="vendor-xai-api-key"></div>
+      <div class="row"><label>Base URL</label><input type="url" id="vendor-xai-base-url"></div>
+      <div class="test-row"><button data-test="xai">Test</button><span class="test-result idle" id="test-xai">—</span></div>
+    </div>
+  </section>
+
+  <!-- ── AGY CLI ───────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>AGY CLI (Antigravity OAuth)</h2>
+    <p class="desc">Optional. If installed, the AGY CLI slot uses the local Antigravity binary (no API key required — uses OAuth login).</p>
+    <div class="row">
+      <label>Binary path</label>
+      <input type="text" id="agy-bin-path" placeholder="~/.local/bin/agy">
+    </div>
+    <div class="test-row">
+      <button data-test="agy">Test binary</button>
+      <span class="test-result idle" id="test-agy">—</span>
+    </div>
+  </section>
+
+  <!-- ── UI prefs ─────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>Preferences</h2>
+    <div class="row">
+      <label>Default slot</label>
+      <select id="ui-default-slot" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 4px; font-family: var(--mono); font-size: 12px;"></select>
+    </div>
+  </section>
+
+  <!-- ── Syntax validator gate ────────────────────────────────── -->
+  <section class="section">
+    <h2>Syntax validator</h2>
+    <p class="desc">After each generation, brain reads the code BEFORE render. Catches undefined samples/synths, missing setcpm, `$drums = ...` ReferenceError, broken chains, silent layers. Brain reviews only — never changes creative content.</p>
+    <div class="row">
+      <label>Mode</label>
+      <div class="seg" id="validatorModeSeg" style="display:flex; gap:2px; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:6px; padding:2px;">
+        <button type="button" data-v="off"   style="background:transparent; border:0; color:var(--muted); padding:5px 14px; font-size:11px; cursor:pointer; border-radius:4px; text-transform:uppercase; letter-spacing:.04em; font-family:var(--mono);">Off</button>
+        <button type="button" data-v="light" style="background:transparent; border:0; color:var(--muted); padding:5px 14px; font-size:11px; cursor:pointer; border-radius:4px; text-transform:uppercase; letter-spacing:.04em; font-family:var(--mono);">Light</button>
+        <button type="button" data-v="heavy" style="background:transparent; border:0; color:var(--muted); padding:5px 14px; font-size:11px; cursor:pointer; border-radius:4px; text-transform:uppercase; letter-spacing:.04em; font-family:var(--mono);">Heavy</button>
+      </div>
+    </div>
+    <div style="font-size:11px; color:var(--muted); margin-top:8px; line-height:1.6;">
+      <div><b style="color:var(--text);">Off</b> — skip validation, render straight (~0s overhead)</div>
+      <div><b style="color:var(--text);">Light</b> — 1 comprehensive pass (parse + samples + playability in one prompt); typically <b>10-60s</b></div>
+      <div><b style="color:var(--text);">Heavy</b> — 3 focused passes (parse → samples/synths → playability/audibility); typically <b>30-180s</b>, hard ceiling ~4 min</div>
+    </div>
+  </section>
+
+  <!-- ── Developer Mode ───────────────────────────────────────── -->
+  <section class="section" style="border-left: 3px solid var(--red); background: linear-gradient(180deg, rgba(239,68,68,0.04), transparent);">
+    <h2 style="color: var(--red);">Developer Mode</h2>
+    <p class="desc">⚠️ When enabled, the Opus brain gains full read/write/bash access to the repo — same as a peer Claude Code instance. It can edit source files (runtime/, scripts/, docs/, settings.html, etc.), create checkpoints, and run shell commands. Brain knowledge base lives in <code style="font-family:var(--mono); color:var(--gold);">developer/</code> (auto-loaded). Audit log at <code style="font-family:var(--mono); color:var(--gold);">producer-brain/dev-mode-audit.jsonl</code>.</p>
+    <p class="desc">Brain still <strong>cannot</strong>: sudo, git push to remote, touch ~/.claude/, modify ~/.cactus-strudel/config.json directly, or write outside ROOT. Keep this OFF unless you want brain to act as platform engineer.</p>
+    <div class="row" style="margin-top:8px;">
+      <label>Enabled</label>
+      <input type="checkbox" id="developer-enabled">
+      <span class="muted" style="font-size:11px; margin-left:8px;">brain can READ repo + WRITE to producer-brain/ + developer/ + /tmp/ (sandbox)</span>
+    </div>
+    <div class="row" style="margin-top:4px;">
+      <label>Write override</label>
+      <input type="checkbox" id="developer-write-override">
+      <span style="font-size:11px; margin-left:8px; color:var(--red);">⚠ also allow brain to modify SOFTWARE SOURCE (runtime/, settings.html, docs/, kernel/, etc.) + run bash. Only enable when you explicitly want brain to act as peer engineer.</span>
+    </div>
+  </section>
+
+  <!-- ── Advanced ─────────────────────────────────────────────── -->
+  <section class="section">
+    <details>
+      <summary style="cursor:pointer; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; padding:4px 0;">Advanced — model overrides &amp; Claude Code path</summary>
+      <div style="padding-top:10px;">
+        <h3 style="margin:0 0 6px; font-size:11px; font-weight:600; color:var(--text); text-transform:uppercase; letter-spacing:.06em;">Brain chat model</h3>
+        <p class="desc">Which model the right-sidebar Opus brain uses. Two values: the slug your CLIProxy routes (`<vendor>(effort)` style), and the real vendor model name for direct-Anthropic fallback.</p>
+        <div class="row"><label>CLIProxy</label><input type="text" id="brain-cliproxy-model" placeholder="claude-opus-4-8(xhigh)"></div>
+        <div class="row"><label>Direct (Anthropic)</label><input type="text" id="brain-direct-model" placeholder="claude-opus-4-8"></div>
+
+        <h3 style="margin:18px 0 6px; font-size:11px; font-weight:600; color:var(--text); text-transform:uppercase; letter-spacing:.06em;">Claude Code session source</h3>
+        <p class="desc">Where this server reads Claude Code transcript files (for the Transcript tab). Auto-derived from your macOS username; override here if your Claude Code uses a non-standard path.</p>
+        <div class="row"><label>Path</label><input type="text" id="cc-session-dir" placeholder="~/.claude/projects/-Users-<you>"></div>
+      </div>
+    </details>
+  </section>
+
+  <div class="actions">
+    <button id="saveBtn" class="primary">Save</button>
+    <button id="discardBtn">Discard changes</button>
+    <span class="grow"></span>
+    <span class="saved" id="savedMsg">✓ Settings saved</span>
+  </div>
+
+</main>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+let CURRENT_CONFIG = null;
+
+function setKeyField(inputEl, hasKey) {
+  // If a key is already saved, leave the field EMPTY and show a clear
+  // placeholder. Anything typed = new key. Empty = keep existing.
+  inputEl.value = '';
+  if (hasKey) {
+    inputEl.placeholder = "✓ key saved — type new key to replace, or 'clear' to remove";
+    inputEl.dataset.hasKey = '1';
+  } else {
+    inputEl.placeholder = 'paste your API key here';
+    inputEl.dataset.hasKey = '';
+  }
+}
+
+async function loadSettings() {
+  const r = await fetch('/api/settings').then(r => r.json());
+  CURRENT_CONFIG = r.config;
+  // CLIProxy
+  $('#cliproxy-enabled').checked = !!r.config.cliproxy?.enabled;
+  $('#cliproxy-base-url').value = r.config.cliproxy?.base_url || '';
+  setKeyField($('#cliproxy-api-key'), r.config.cliproxy?._has_key);
+  // Vendors
+  ['openai','anthropic','google','xai'].forEach(v => {
+    setKeyField($(`#vendor-${v}-api-key`), r.config.providers?.[v]?._has_key);
+    $(`#vendor-${v}-base-url`).value = r.config.providers?.[v]?.base_url || '';
+  });
+  // AGY
+  $('#agy-bin-path').value = r.config.agy?.bin_path || '';
+  // Advanced
+  $('#brain-cliproxy-model').value = r.config.brain?.cliproxy_model || '';
+  $('#brain-direct-model').value   = r.config.brain?.direct_model || '';
+  $('#cc-session-dir').value       = r.config.cc?.session_dir || '';
+  // Developer
+  $('#developer-enabled').checked = !!r.config.developer?.enabled;
+  $('#developer-write-override').checked = !!r.config.developer?.write_override;
+  // Validator mode seg. Fallback must match the SERVER default ('heavy'), or a
+  // load-before-init Save could silently downgrade the user's heavy setting.
+  const vm = r.config.validator?.mode || 'heavy';
+  setValidatorMode(vm);
+}
+
+function setValidatorMode(mode) {
+  const seg = document.getElementById('validatorModeSeg');
+  if (!seg) return;
+  seg.dataset.value = mode;
+  seg.querySelectorAll('button').forEach(b => {
+    const on = b.dataset.v === mode;
+    b.style.background = on ? 'rgba(212,175,55,0.18)' : 'transparent';
+    b.style.color = on ? 'var(--gold)' : 'var(--muted)';
+  });
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest('#validatorModeSeg button');
+  if (btn) setValidatorMode(btn.dataset.v);
+});
+
+function keyOrMask(inputEl) {
+  // Typed value → new key. Typing 'clear' → explicitly DELETE the saved key
+  // (the empty-string the backend treats as "clear"). Empty + saved key →
+  // mask sentinel so the backend keeps it. Empty + none → empty.
+  const v = inputEl.value;
+  if (v.trim().toLowerCase() === 'clear') return '';   // explicit delete
+  if (v) return v;
+  return inputEl.dataset.hasKey ? '••••• (set)' : '';
+}
+
+async function loadBackendStatus() {
+  const r = await fetch('/api/backends').then(r => r.json());
+  const grid = $('#statusGrid');
+  grid.innerHTML = r.slots.map(s => {
+    const dot = s.available ? 'ok' : 'err';
+    const right = s.available
+      ? `<span class="dot ${dot}"></span><span>available</span><span class="mode">via ${s.mode}</span>`
+      : `<span class="dot ${dot}"></span><span class="reason">${s.reason}</span>`;
+    return `<div class="slot">${s.label}</div><div class="v">${right}</div>`;
+  }).join('');
+  // populate default-slot dropdown
+  const sel = $('#ui-default-slot');
+  sel.innerHTML = r.slots.map(s => `<option value="${s.key}"${s.key === CURRENT_CONFIG?.ui?.default_slot ? ' selected' : ''}>${s.label}${s.available ? '' : ' (unavailable)'}</option>`).join('');
+}
+
+async function testTarget(target, btn) {
+  // Test what's CURRENTLY IN THE FORM, not what's saved — so user can verify
+  // a pasted key before committing. We send inline overrides; backend uses
+  // them if provided, else falls back to saved config.
+  const inline = {};
+  if (target === 'cliproxy') {
+    const k = $('#cliproxy-api-key').value.trim();
+    if (k) inline.api_key = k;
+    const u = $('#cliproxy-base-url').value.trim();
+    if (u) inline.base_url = u;
+  } else if (target === 'agy') {
+    const p = $('#agy-bin-path').value.trim();
+    if (p) inline.bin_path = p;
+  } else if (['openai','anthropic','google','xai'].includes(target)) {
+    const k = $(`#vendor-${target}-api-key`).value.trim();
+    if (k) inline.api_key = k;
+    const u = $(`#vendor-${target}-base-url`).value.trim();
+    if (u) inline.base_url = u;
+  }
+  const resultEl = $(`#test-${target}`);
+  resultEl.className = 'test-result idle';
+  resultEl.textContent = 'testing…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/settings/test-backend', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ target, inline }),
+    }).then(r => r.json());
+    resultEl.className = 'test-result ' + (r.ok ? 'ok' : 'err');
+    resultEl.textContent = r.ok ? `✓ ${r.detail}${r.latency_ms ? ` (${r.latency_ms}ms)` : ''}` : `✗ ${r.detail}`;
+  } catch (e) {
+    resultEl.className = 'test-result err';
+    resultEl.textContent = `✗ ${e.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.querySelectorAll('button[data-test]').forEach(btn => {
+  btn.addEventListener('click', () => testTarget(btn.dataset.test, btn));
+});
+
+$('#saveBtn').addEventListener('click', async () => {
+  const cfg = {
+    cliproxy: {
+      enabled: $('#cliproxy-enabled').checked,
+      base_url: $('#cliproxy-base-url').value.trim(),
+      api_key: keyOrMask($('#cliproxy-api-key')),
+    },
+    providers: {
+      openai:    { api_key: keyOrMask($('#vendor-openai-api-key')),    base_url: $('#vendor-openai-base-url').value.trim() },
+      anthropic: { api_key: keyOrMask($('#vendor-anthropic-api-key')), base_url: $('#vendor-anthropic-base-url').value.trim() },
+      google:    { api_key: keyOrMask($('#vendor-google-api-key')),    base_url: $('#vendor-google-base-url').value.trim() },
+      xai:       { api_key: keyOrMask($('#vendor-xai-api-key')),       base_url: $('#vendor-xai-base-url').value.trim() },
+    },
+    agy: { bin_path: $('#agy-bin-path').value.trim() },
+    ui:  { default_slot: $('#ui-default-slot').value },
+    brain: {
+      cliproxy_model: $('#brain-cliproxy-model').value.trim(),
+      direct_model:   $('#brain-direct-model').value.trim(),
+    },
+    cc: { session_dir: $('#cc-session-dir').value.trim() },
+    developer: {
+      enabled: $('#developer-enabled').checked,
+      write_override: $('#developer-write-override').checked,
+    },
+    validator: { mode: document.getElementById('validatorModeSeg').dataset.value || 'heavy' },
+  };
+  $('#saveBtn').disabled = true;
+  try {
+    const r = await fetch('/api/settings', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ config: cfg }),
+    }).then(r => r.json());
+    if (r.ok) {
+      CURRENT_CONFIG = r.config;
+      const msg = $('#savedMsg');
+      msg.classList.add('show');
+      setTimeout(() => msg.classList.remove('show'), 2000);
+      await loadSettings();
+      await loadBackendStatus();
+    } else {
+      alert('Save error: ' + (r.error || '?'));
+    }
+  } finally {
+    $('#saveBtn').disabled = false;
+  }
+});
+
+$('#discardBtn').addEventListener('click', () => { loadSettings(); });
+$('#refreshStatus').addEventListener('click', () => { loadBackendStatus(); });
+
+// Init
+loadSettings().then(loadBackendStatus);
+</script>
+</body>
+</html>

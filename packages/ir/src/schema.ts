@@ -514,5 +514,5 @@ export const SessionGraphSchema = z.object({
     arrangement_likes: [],
   }),
   iteration_log: z.array(IterationSchema).default([]),
-});
+}).strict();
 export type SessionGraph = z.infer<typeof SessionGraphSchema>;

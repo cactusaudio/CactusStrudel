@@ -23,7 +23,7 @@ sound_palette:
   fx:    ["noise"]
 mix_targets:
   lufs: -16
-  true_peak_max: -1
+  true_peak_max: -2
 critic_rubric_hints:
   - "long attack/release envelopes (a > 2s, r > 2s)"
   - "wide stereo image except in lows"

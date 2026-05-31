@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildSessionGraphFromBrief, parseBrief } from '@cactus/agent-runtime';
 import type { AnalyzerFeatures } from '@cactus/ir';
 import { scoreGenreConfusion, aggregateConfusion, renderConfusionMarkdown } from './genre-confusion.js';
+import { HOLDOUT_GENRE_PROFILES_PATH, loadHoldoutGenreProfiles } from './genre-holdout-profiles.js';
 
 describe('scoreGenreConfusion', () => {
   it('ranks ambient highest for ambient-shaped features', async () => {
@@ -29,6 +30,26 @@ describe('scoreGenreConfusion', () => {
     expect(r.intended_top1).toBe(false);
     // top1 must NOT be ambient — anything more rhythmic is acceptable.
     expect(r.top1).not.toBe('ambient');
+  });
+
+  it('does not use graph.brief.bpm as analyzer evidence when features omit BPM', async () => {
+    const brief = parseBrief('ambient drone 60 BPM');
+    const graph = await buildSessionGraphFromBrief(brief);
+    const features: AnalyzerFeatures = {
+      rhythmic: { bpm_confidence: 0, grid_regularity: 0.9, syncopation_proxy: 0.05, onset_density: { low: 4, mid: 4, high: 4 } },
+      loudness: { lufs_integrated: -8, lufs_short_max: -5, true_peak_db: -1 },
+      spectral: { centroid: 2200, rolloff: 5000, flatness: 0.12, flux: 0.5, mfcc_mean: [], mfcc_std: [], band_rms: {} },
+    };
+    const r = await scoreGenreConfusion({ intended_genre: 'ambient', graph, features });
+    const ambient = r.distances.find((d) => d.genre === 'ambient')!;
+    expect(ambient.reasons.some((reason) => reason.includes('bpm 0'))).toBe(true);
+  });
+
+  it('uses audit-owned holdout profiles instead of producer genre specs', async () => {
+    expect(HOLDOUT_GENRE_PROFILES_PATH).toContain('packages/audit/genre-holdout-profiles.yaml');
+    const profiles = await loadHoldoutGenreProfiles();
+    expect(Object.keys(profiles).sort()).toEqual(['ambient', 'dnb', 'dub_techno', 'house', 'idm', 'techno']);
+    expect(profiles.techno!.bpm_range).toEqual([124, 140]);
   });
 });
 

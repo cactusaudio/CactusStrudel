@@ -1,0 +1,3215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>CactusStrudel — Main</title>
+<style>
+:root {
+  /* macOS native dark theme */
+  --bg:#1e1e1e; --panel:#252525; --border:#3f3f3f; --text:#ffffff; --muted:#98989d;
+  --accent:#d4af37; --warn:#ff9f0a; --err:#ff453a; --link:#0a84ff;
+  --gold:#d4af37; --gold-dim:#8b7523; --gold-glow:rgba(212,175,55,0.3);
+  --gold-bright:#f4d03f; --gold-shadow:rgba(212,175,55,0.5);
+  --mono: ui-monospace,SF Mono,Menlo,Consolas,monospace;
+  --sans: -apple-system,BlinkMacSystemFont,SF Pro Text,Helvetica Neue,sans-serif;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+* { box-sizing:border-box; }
+html,body { 
+  margin:0; padding:0; 
+  background:linear-gradient(135deg, #1a1a1a 0%, #1e1e1e 50%, #1a1a1a 100%);
+  color:var(--text); 
+  font:13px/1.47 var(--sans); 
+  height:100%; overflow:hidden; 
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+a { color:var(--link); text-decoration:none; transition:color 0.2s ease; }
+a:hover { color:var(--gold); }
+button { 
+  background:rgba(255,255,255,0.08); 
+  color:var(--text); 
+  border:1px solid rgba(255,255,255,0.1); 
+  padding:6px 14px; 
+  border-radius:7px; 
+  cursor:pointer; 
+  font:inherit; 
+  white-space:nowrap; 
+  transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+button::before {
+  content:'';
+  position:absolute;
+  top:0; left:-100%;
+  width:100%; height:100%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition:left 0.5s;
+}
+button:hover::before { left:100%; }
+button:hover { 
+  background:rgba(255,255,255,0.14); 
+  border-color:rgba(255,255,255,0.2); 
+  transform:translateY(-1px);
+  box-shadow:0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+button:active { 
+  transform:translateY(0); 
+  box-shadow:0 1px 2px rgba(0,0,0,0.2), inset 0 1px 2px rgba(0,0,0,0.2);
+}
+button.accent { 
+  background:linear-gradient(135deg, #d4af37 0%, #c9a028 100%);
+  border:1px solid rgba(212,175,55,0.3);
+  color:#000; 
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+button.accent:hover { 
+  background:linear-gradient(135deg, #f4d03f 0%, #d4af37 100%);
+  box-shadow:0 4px 16px rgba(212,175,55,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+  transform:translateY(-2px);
+}
+button.accent:active {
+  transform:translateY(0);
+  box-shadow:0 1px 4px rgba(212,175,55,0.4), inset 0 2px 4px rgba(0,0,0,0.2);
+}
+button.warn  { 
+  background:rgba(255,159,10,0.15); 
+  border-color:rgba(255,159,10,0.3); 
+  color:var(--warn);
+  box-shadow:0 2px 4px rgba(255,159,10,0.2);
+}
+button.warn:hover { 
+  background:rgba(255,159,10,0.25);
+  box-shadow:0 4px 8px rgba(255,159,10,0.3);
+}
+button:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+button:disabled:hover { transform:none; }
+input, select, textarea { 
+  background:rgba(0,0,0,0.3); 
+  color:var(--text); 
+  border:1px solid rgba(255,255,255,0.12); 
+  border-radius:7px; 
+  padding:7px 11px; 
+  font:inherit; 
+  transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
+}
+input:hover, select:hover, textarea:hover {
+  border-color:rgba(255,255,255,0.2);
+  background:rgba(0,0,0,0.35);
+}
+/* Keyboard a11y: visible focus ring on buttons/tabs/links (was input-only). */
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 2px;
+}
+input:focus, select:focus, textarea:focus {
+  outline:none;
+  border-color:var(--gold);
+  background:rgba(0,0,0,0.4);
+  box-shadow:0 0 0 3px rgba(212,175,55,0.2), inset 0 1px 2px rgba(0,0,0,0.3);
+}
+textarea { font-family:var(--mono); font-size:12px; line-height:1.5; }
+hr { border:none; border-top:1px solid rgba(255,255,255,0.06); margin:10px 0; }
+.row { display:flex; gap:8px; align-items:center; }
+.col { display:flex; flex-direction:column; gap:8px; }
+.cc-input .col:last-child { margin-top:-4px; }
+.section { 
+  background:linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%);
+  border:1px solid rgba(255,255,255,0.1); 
+  border-radius:12px; 
+  padding:14px; 
+  min-width:0; 
+  backdrop-filter:blur(30px);
+  box-shadow:0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation:fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.section:hover {
+  border-color:rgba(255,255,255,0.15);
+  box-shadow:0 6px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  transform:translateY(-1px);
+}
+.section h3 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); display:flex; align-items:center; gap:6px; font-weight:600; }
+.section h3 > .pill { margin-left:auto; text-transform:none; font-size:10px; }
+.muted { color:var(--muted); }
+.mono  { font-family:var(--mono); font-size:12px; }
+.pill  { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:500; }
+.pill.ok { 
+  background:linear-gradient(135deg, rgba(212,175,55,0.2), rgba(212,175,55,0.1));
+  color:var(--gold); 
+  border:1px solid rgba(212,175,55,0.4);
+  box-shadow:0 2px 6px rgba(212,175,55,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.pill.warn { 
+  background:linear-gradient(135deg, rgba(255,159,10,0.2), rgba(255,159,10,0.1));
+  color:var(--warn); 
+  border:1px solid rgba(255,159,10,0.4);
+  box-shadow:0 2px 6px rgba(255,159,10,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.pill.err  { 
+  background:linear-gradient(135deg, rgba(255,69,58,0.2), rgba(255,69,58,0.1));
+  color:var(--err); 
+  border:1px solid rgba(255,69,58,0.4);
+  box-shadow:0 2px 6px rgba(255,69,58,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+/* layout */
+.app { display:flex; flex-direction:column; height:100vh; }
+.content { display:flex; flex:1 1 0; min-height:0; overflow:hidden; }
+nav.top { 
+  display:flex; align-items:center; padding:clamp(20px,2.5vh,27px) 0 clamp(16px,2vh,24px);
+  background:linear-gradient(180deg, rgba(37,37,37,0.98) 0%, rgba(30,30,30,0.95) 100%);
+  border-bottom:1px solid rgba(255,255,255,0.12); 
+  backdrop-filter:blur(40px); 
+  -webkit-backdrop-filter:blur(40px);
+  box-shadow:0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+nav.top .tab { 
+  padding:7px 16px; 
+  border-radius:8px; 
+  cursor:pointer; 
+  color:var(--muted); 
+  font-size:13px; 
+  transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position:relative;
+  text-decoration:none;
+}
+nav.top .tab::after {
+  content:'';
+  position:absolute;
+  bottom:0; left:50%;
+  transform:translateX(-50%) scaleX(0);
+  width:80%;
+  height:2px;
+  background:linear-gradient(90deg, transparent, var(--gold), transparent);
+  transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+nav.top .tab:hover { 
+  background:rgba(255,255,255,0.08); 
+  color:var(--text);
+  transform:translateY(-1px);
+}
+nav.top .tab.active { 
+  background:linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.1) 100%);
+  color:var(--gold); 
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+  border-bottom:2px solid var(--gold);
+}
+nav.top .tab.active::after {
+  transform:translateX(-50%) scaleX(1);
+}
+nav.top .grow { flex:1; min-width:8px; }
+nav.top .status { color:var(--muted); font-size:12px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#dawToggleBtn { display:none; }   /* shown only on narrow viewports via media query */
+
+main    { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; min-height:0; }
+.content{ flex:1; display:flex; overflow:hidden; min-width:0; min-height:0; }
+/* Compression order (squeezed → squeezed-more → hidden):
+   .right (DAW + waveform) shrinks first via flex:1 1 0 down to min 200px;
+   only at extreme narrow does it hide outright. .left + .cc are flex-shrink:0
+   (their inner content is denser & less compressible).  Bowei's spec:
+   "DAW + waveform 优先压缩，不要太快隐藏". */
+.left  { 
+  width:clamp(300px, 26%, 440px); 
+  flex-shrink:0; 
+  padding:14px 6px; 
+  overflow-y:auto; 
+  overflow-x:hidden;
+  border-right:1px solid rgba(255,255,255,0.1); 
+  display:flex; 
+  flex-direction:column; 
+  gap:14px; 
+  min-width:0;
+  background:linear-gradient(180deg, rgba(255,255,255,0.01) 0%, transparent 100%);
+  z-index:95;
+}
+.left::-webkit-scrollbar { width:8px; }
+.left::-webkit-scrollbar-track { background:transparent; }
+.left::-webkit-scrollbar-thumb { 
+  background:rgba(255,255,255,0.15); 
+  border-radius:10px;
+  transition:background 0.2s;
+}
+.left::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.25); }
+.right { 
+  flex:1 1 0; 
+  display:flex; 
+  flex-direction:column; 
+  min-width:200px;
+  position:relative;
+  min-height:0;
+}
+.cc    { 
+  width:clamp(280px, 23%, 380px); 
+  flex-shrink:0; 
+  border-left:1px solid rgba(255,255,255,0.1); 
+  display:flex; 
+  flex-direction:column; 
+  background:linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.15) 100%);
+  box-shadow:inset 2px 0 8px rgba(0,0,0,0.3);
+  min-width:0; 
+}
+.right.hidden { display:none; }
+.workbench {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  min-width:0;
+}
+.workbenchbar {
+  min-height:50px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:9px 12px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  background:linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.14));
+}
+.workbenchbar .title {
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:700;
+}
+.view-switch {
+  display:flex;
+  gap:3px;
+  padding:3px;
+  background:rgba(0,0,0,0.32);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:9px;
+  flex-shrink:0;
+}
+.view-switch button {
+  padding:5px 10px;
+  border-radius:7px;
+  border-color:transparent;
+  background:transparent;
+  font-size:11px;
+}
+.view-switch button.active {
+  background:linear-gradient(135deg, rgba(212,175,55,0.24), rgba(212,175,55,0.1));
+  color:var(--gold);
+  border-color:rgba(212,175,55,0.28);
+}
+.workbench-view {
+  flex:1;
+  min-height:0;
+  min-width:0;
+  display:none;
+}
+.workbench-view.active { display:flex; }
+.workbench-view .iframe-wrap { flex:1; }
+.adv-panel {
+  flex:1;
+  min-width:0;
+  overflow:auto;
+  padding:14px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(212,175,55,0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.005));
+}
+.adv-panel::-webkit-scrollbar { width:8px; }
+.adv-panel::-webkit-scrollbar-track { background:transparent; }
+.adv-panel::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:10px; }
+.adv-grid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(260px, 1fr));
+  gap:12px;
+  align-items:start;
+}
+.adv-section {
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;
+  background:rgba(0,0,0,0.2);
+  padding:12px;
+  min-width:0;
+}
+.adv-section.wide { grid-column:1 / -1; }
+.adv-section h3 {
+  margin:0 0 10px;
+  font-size:11px;
+  line-height:1.2;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.adv-section summary {
+  cursor:pointer;
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:700;
+  list-style:none;
+}
+.adv-section summary::-webkit-details-marker { display:none; }
+.adv-section summary::after {
+  content:' +';
+  color:var(--gold);
+}
+.adv-section[open] summary::after { content:' -'; }
+.adv-fine .adv-fields { margin-top:12px; }
+.adv-fields {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:10px;
+}
+.adv-field { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.adv-field.full { grid-column:1 / -1; }
+.adv-field label, .adv-label {
+  color:var(--muted);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  font-weight:650;
+}
+.adv-field input[type=number], .adv-field select, .adv-field textarea { width:100%; }
+.adv-field textarea { min-height:56px; resize:vertical; }
+.adv-range {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  align-items:center;
+}
+.adv-range input[type=range] { width:100%; accent-color:var(--gold); }
+.adv-range output {
+  min-width:36px;
+  text-align:right;
+  color:var(--gold);
+  font-family:var(--mono);
+  font-size:11px;
+}
+/* Phase 10: .adv-spectrum replaces flat 0-100 numbers with named-end labels.
+   The 0-100 output stays in DOM (band logic reads .value) but is visually
+   hidden; the data-low / data-high attrs render as labels above the track. */
+.adv-spectrum { display:block; }
+.adv-spectrum output { display:none; }
+.adv-spectrum::before {
+  content: attr(data-low) " ─── " attr(data-high);
+  display:block;
+  font-size:9.5px;
+  color:var(--muted);
+  letter-spacing:.03em;
+  font-family:var(--mono);
+  margin-bottom:2px;
+  text-transform:lowercase;
+}
+.adv-spectrum input[type=range] { width:100%; }
+.adv-chips {
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.adv-chips label {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 8px;
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:999px;
+  color:var(--text);
+  background:rgba(255,255,255,0.035);
+  font-size:11px;
+  cursor:pointer;
+}
+.adv-chips input { margin:0; accent-color:var(--gold); }
+.adv-preview {
+  min-height:174px;
+  max-height:280px;
+  resize:vertical;
+  width:100%;
+  white-space:pre-wrap;
+}
+.adv-actions {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.adv-roman {
+  color:var(--gold);
+  font-family:var(--mono);
+  font-size:11px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.adv-hint {
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+}
+.adv-summary {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:min(34vw, 420px);
+}
+#advTopGenerate { flex-shrink:0; }
+@media (max-width:1180px) {
+  .adv-grid { grid-template-columns:1fr; }
+  .adv-summary { display:none; }
+}
+/* Only at TRULY extreme narrow (< 820px) does DAW give up its slot — at that
+   point left(300) + cc(280) + right(200) + borders > viewport even with min-widths,
+   so .right collapses to opt-in drawer to keep the rest usable. */
+@media (max-width:820px) {
+  .right { display:none; }
+  .right.open { display:flex; position:fixed; top:42px; left:0; right:0; bottom:0; z-index:40; background:var(--bg); }
+  #dawToggleBtn { display:inline-block !important; }
+}
+.cc-tabs { display:flex; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); }
+.cc-tabs .t { flex:1; padding:8px 4px; text-align:center; cursor:pointer; color:var(--muted); font-size:11px; border-right:1px solid rgba(255,255,255,0.05); transition:all 0.15s; }
+.cc-tabs .t:last-child { border-right:none; }
+.cc-tabs .t:hover { background:rgba(255,255,255,0.04); color:var(--text); }
+.cc-tabs .t.active { background:rgba(212,175,55,0.1); color:var(--gold); font-weight:500; border-bottom:2px solid var(--gold); }
+.cc-tabs .t .badge { display:inline-block; min-width:16px; padding:1px 5px; border-radius:10px; background:var(--gold); color:#000; font-size:9px; font-weight:600; margin-left:3px; }
+.cc-pane { flex:1; overflow-y:auto; overflow-x:hidden; padding:10px 6px; min-width:0; }
+.cc-pane.hidden { display:none; }
+.cc-input { border-top:1px solid rgba(255,255,255,0.08); padding:10px 6px; background:rgba(255,255,255,0.02); display:flex; gap:8px; align-items:flex-end; margin-top:-8px; }
+.cc-input textarea { flex:1; resize:none; height:52px; }
+
+/* CC chat / message styling */
+/* Chat bubbles: same width cap; brain left-aligned, user right-aligned */
+.msg { padding:8px 10px; border-radius:8px; margin-bottom:8px; font-size:12px; min-width:0; max-width:88%; }
+.msg.user { background:rgba(212,175,55,0.08); border-right:3px solid var(--gold); margin-left:auto; }
+.msg.cc   { background:rgba(214,200,156,0.05); border-left:3px solid #d6c89c; box-shadow:inset 0 0 24px rgba(214,200,156,0.03); margin-right:auto; }
+.msg.ctx  { max-width:none; }  /* keep context lines full-width */
+.msg .h   { color:var(--muted); font-size:10px; margin-bottom:3px; display:flex; gap:6px; flex-wrap:wrap; font-weight:500; }
+.msg .h[data-tip] { position:relative; cursor:help; }
+.msg .h[data-tip]::after {
+  content: attr(data-tip);
+  position:absolute;
+  top: calc(100% + 4px); left: 0;
+  padding: 6px 9px;
+  background:#141416;
+  border:1px solid var(--border);
+  border-left:2px solid #d6c89c;
+  color:#d6c89c;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.04em;
+  white-space:nowrap;
+  border-radius:4px;
+  opacity:0;
+  pointer-events:none;
+  transition: opacity 0.15s ease;
+  z-index:50;
+  box-shadow:0 4px 14px rgba(0,0,0,0.5);
+}
+.msg .h[data-tip]:hover::after { opacity:1; }
+/* user bubble tooltip = gold accent (user color), AI bubble tooltip = 米色 (Opus brain) */
+.msg.user .h[data-tip]::after { border-left-color:var(--gold); color:var(--gold); }
+
+/* Reusable hover-tooltip icon — use for any non-essential metadata/details
+   that would otherwise clutter the UI. <span class="info-icon" data-tip="…">i</span>
+   The popup itself is a single body-level element positioned by JS so it
+   never gets clipped by ancestor overflow:hidden/auto. */
+.info-icon {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:14px; height:14px;
+  font-size:10px;
+  font-weight:600;
+  font-family:Georgia, 'Times New Roman', serif;
+  font-style:normal;
+  text-transform:none !important;  /* defeat any ancestor uppercasing */
+  letter-spacing:0;
+  color:var(--muted);
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:50%;
+  cursor:help;
+  vertical-align:middle;
+  user-select:none;
+  line-height:1;
+}
+.info-icon:hover {
+  color:#d6c89c;
+  border-color:rgba(214,200,156,0.4);
+  background:rgba(214,200,156,0.06);
+}
+.info-icon.gold:hover { color:var(--gold); border-color:rgba(212,175,55,0.4); background:rgba(212,175,55,0.08); }
+/* Body-level popup, positioned by JS via #info-tip-popup */
+.info-tip-popup {
+  position:fixed;
+  display:none;
+  padding:6px 9px;
+  background:#141416;
+  border:1px solid var(--border);
+  border-left:2px solid #d6c89c;
+  color:#d6c89c;
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:400;
+  letter-spacing:.04em;
+  white-space:pre-wrap;
+  word-break:break-all;
+  overflow-wrap:anywhere;
+  text-align:left;
+  border-radius:4px;
+  pointer-events:none;
+  z-index:9999;
+  box-shadow:0 4px 14px rgba(0,0,0,0.5);
+  max-width:380px;
+  line-height:1.5;
+}
+.msg .b   { overflow-wrap:anywhere; word-break:break-word; line-height:1.5; }
+.msg .b p { margin:0 0 8px; }
+.msg .b p:last-child { margin-bottom:0; }
+.msg .b ul { margin:6px 0 8px 16px; padding:0; }
+.msg .b li { margin:3px 0; }
+/* Chat rich-text — gold-led palette to match the DAW aesthetic.
+   Single accent (gold) + dim/bright variants + warm-neutral text. No blue/green
+   accents fighting the rest of the UI. */
+/* default: gold-family (user bubble + neutral contexts) */
+.inline-code {
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--gold-bright);
+  background:rgba(212,175,55,0.08);
+  border:1px solid rgba(212,175,55,0.18);
+  border-radius:4px;
+  padding:1px 5px;
+  white-space:nowrap;
+}
+.param-chip {
+  display:inline-flex;
+  align-items:baseline;
+  gap:2px;
+  max-width:100%;
+  vertical-align:baseline;
+  font-family:var(--mono);
+  font-size:10.5px;
+  color:var(--muted);
+  background:rgba(212,175,55,0.06);
+  border:1px solid rgba(212,175,55,0.22);
+  border-radius:4px;
+  padding:1px 6px;
+  margin:0 1px;
+}
+.param-chip > span { color:var(--gold-dim); }
+.param-chip b      { color:var(--gold-bright); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* AI bubble (Opus brain) — chips become 米色 (sand/cream) to differentiate from user's gold */
+.msg.cc .inline-code,
+.tx.assistant .inline-code {
+  color:#e8dcc4;
+  background:rgba(214,200,156,0.07);
+  border-color:rgba(214,200,156,0.22);
+}
+.msg.cc .param-chip,
+.tx.assistant .param-chip {
+  background:rgba(214,200,156,0.05);
+  border-color:rgba(214,200,156,0.22);
+}
+.msg.cc .param-chip > span,
+.tx.assistant .param-chip > span { color:#b8a878; }
+.msg.cc .param-chip b,
+.tx.assistant .param-chip b     { color:#e8dcc4; }
+
+/* fenced code block — Tokyo Night terminal palette inside a sand-edged card */
+.md-code {
+  position:relative;
+  margin:8px 0 10px;
+  padding:22px 12px 10px;
+  max-width:100%;
+  overflow:auto;
+  white-space:pre;
+  font-family:var(--mono);
+  font-size:11px;
+  line-height:1.55;
+  color:#c0caf5;
+  background:#141416;
+  border:1px solid var(--border);
+  border-left:2px solid #d6c89c;
+  border-radius:6px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+.md-code::before {
+  content:attr(data-lang);
+  position:absolute;
+  top:4px;
+  left:10px;
+  color:#d6c89c;
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  font-weight:600;
+}
+.md-code::after {
+  content:'';
+  position:absolute;
+  top:0; right:0;
+  width:48px; height:18px;
+  background:linear-gradient(90deg, transparent, rgba(214,200,156,0.06));
+  border-radius:0 6px 0 6px;
+  pointer-events:none;
+}
+/* syntax highlight — Tokyo Night */
+.md-code .kw      { color:#bb9af7; }                                  /* const, let, return — purple */
+.md-code .fn      { color:#7aa2f7; }                                  /* function defs — blue */
+.md-code .call    { color:#7dcfff; }                                  /* call sites — cyan */
+.md-code .str     { color:#9ece6a; }                                  /* strings — green */
+.md-code .num     { color:#ff9e64; }                                  /* numbers — orange */
+.md-code .comment { color:#565f89; font-style:italic; }               /* comments — muted blue */
+.msg.ctx  { background:rgba(255,255,255,0.03); border-left:3px solid rgba(255,255,255,0.2); color:var(--muted); font-style:italic; overflow-wrap:anywhere; word-break:break-word; }
+
+/* proposal card */
+.prop { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px; margin-bottom:10px; font-size:12px; min-width:0; }
+.prop.pending  { border-color:rgba(255,159,10,0.4); background:rgba(255,159,10,0.05); }
+.prop.accepted { border-color:rgba(212,175,55,0.4); background:rgba(212,175,55,0.05); }
+.prop.rejected { opacity:.5; }
+.prop h4 { margin:0 0 6px; font-size:12px; overflow-wrap:anywhere; font-weight:600; }
+.prop .b { white-space:pre-wrap; color:var(--text); font-size:11px; max-height:120px; overflow:auto; overflow-wrap:anywhere; word-break:break-word; line-height:1.5; }
+.prop .diff { white-space:pre-wrap; font-family:var(--mono); font-size:10px; background:rgba(0,0,0,0.4); padding:6px 8px; border-radius:6px; margin-top:6px; max-height:140px; overflow:auto; overflow-wrap:anywhere; }
+.prop .diff .add { color:#30d158; }
+.prop .diff .rem { color:var(--err); }
+.prop .actions { display:flex; gap:8px; margin-top:8px; }
+
+/* task row */
+.task { display:grid; grid-template-columns: auto 1fr auto; gap:8px; padding:6px 8px; border-radius:6px; font-size:11px; font-family:var(--mono); align-items:center; }
+.task .st { padding:2px 7px; border-radius:10px; font-size:10px; font-weight:600; }
+.task .st.queued  { background:rgba(255,159,10,0.15); color:var(--warn); }
+.task .st.running { background:rgba(10,132,255,0.15); color:var(--link); }
+.task .st.done    { background:rgba(212,175,55,0.15); color:var(--gold); }
+.task .st.failed  { background:rgba(255,69,58,0.15); color:var(--err); }
+.task .st.cancelled { background:rgba(255,255,255,0.08); color:var(--muted); }
+
+/* preset command grid */
+.cmd-grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+.cmd-grid button { font-size:11px; padding:10px 8px; text-align:left; height:100%; border-radius:8px; }
+
+/* transcript stream */
+.tx { padding:6px 8px; border-left:2px solid transparent; font-size:11px; margin-bottom:4px; line-height:1.4; min-width:0; border-radius:6px; }
+.tx.user      { border-color:var(--gold); background:rgba(212,175,55,0.05); }
+.tx.assistant { border-color:#d6c89c; background:rgba(214,200,156,0.04); }
+.tx.tool      { border-color:var(--muted); color:var(--muted); font-family:var(--mono); font-size:10px; background:rgba(255,255,255,0.02); }
+.tx .h { color:var(--muted); font-size:9px; font-weight:600; letter-spacing:0.3px; }
+.tx .b { white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; }
+
+/* iframe */
+.iframe-wrap { 
+  flex:1; 
+  position:relative; 
+  min-height:0;
+  box-shadow:inset 0 0 20px rgba(0,0,0,0.5);
+}
+.iframe-wrap iframe { 
+  width:100%; 
+  height:100%; 
+  border:0; 
+  background:#000;
+}
+.iframe-wrap .ab {
+  position:absolute;
+  top:60px;
+  right:12px;
+  z-index:5; 
+  display:flex; 
+  gap:6px; 
+  background:rgba(37,37,37,0.95); 
+  padding:6px 8px; 
+  border-radius:10px; 
+  border:1px solid rgba(255,255,255,0.2); 
+  font-size:11px; 
+  backdrop-filter:blur(30px);
+  box-shadow:0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  animation:fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.iframe-wrap .ab button { 
+  padding:5px 12px; 
+  font-size:11px;
+  font-weight:600;
+}
+
+/* Audio player — match the dark theme (default browser audio is light grey). */
+.player-section { padding:10px 12px; }
+#aud { width:100%; height:38px; color-scheme:dark; background:rgba(0,0,0,0.4); border-radius:8px; }
+#aud::-webkit-media-controls-panel { background-color:rgba(0,0,0,0.6); }
+#aud::-webkit-media-controls-current-time-display,
+#aud::-webkit-media-controls-time-remaining-display { color:var(--text); }
+
+/* lazy-load placeholder for DAW iframe */
+.daw-empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); font-size:13px; gap:10px; background:rgba(0,0,0,0.3); }
+.daw-empty button { font-size:13px; padding:10px 18px; }
+
+/* generate */
+.gen-log { background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:6px; height:120px; overflow:auto; padding:8px 10px; font:11px/1.5 var(--mono); color:#9ba1a6; }
+.gen-log .ln { white-space:pre-wrap; }
+.gen-log .err { color:var(--err); }
+.gen-log .ok  { color:var(--gold); }
+
+/* code editor — viewport-aware so it doesn't dominate a tall narrow screen */
+textarea.code { width:100%; height:clamp(140px, 22vh, 240px); resize:vertical; }
+
+/* mix sliders — per-track mixer strip */
+.mix-mixer { display:flex; flex-direction:column; gap:10px; font-family:var(--mono); }
+.mix-track-head {
+  display:flex; align-items:baseline; gap:8px;
+  font-size:11px; font-weight:600; color:var(--gold);
+  text-transform:uppercase; letter-spacing:0.08em;
+  padding-bottom:3px;
+  border-bottom:1px solid rgba(212,175,55,0.18);
+  margin-top:4px;
+}
+.mix-track-head:first-child { margin-top:0; }
+.mix-track-count {
+  margin-left:auto;
+  color:var(--muted); font-size:9px; font-weight:400;
+  letter-spacing:0.04em; text-transform:none;
+}
+.mix-row {
+  display:grid; grid-template-columns: 76px 1fr 48px;
+  gap:8px; align-items:center;
+  font-size:11px;
+  padding-left:6px;
+}
+.mix-row .mix-label {
+  color:var(--muted); text-transform:lowercase;
+  text-align:right; padding-right:4px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mix-row input[type=range] { width:100%; accent-color:var(--gold); }
+.mix-row .mix-val {
+  text-align:right; color:var(--gold);
+  font-variant-numeric:tabular-nums; font-weight:500;
+}
+.mix-empty { color:var(--muted); font-size:11px; padding:8px 0; }
+
+/* recent — viewport-aware max */
+.recent { max-height:clamp(180px, 28vh, 320px); overflow-y:auto; overflow-x:hidden; padding-right:4px; }
+.recent::-webkit-scrollbar { width:4px; height:4px; }
+.recent::-webkit-scrollbar-track { background:transparent; }
+.recent::-webkit-scrollbar-thumb {
+  background:rgba(255,255,255,0.08);
+  border-radius:10px;
+}
+.recent::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.18); }
+.recent .item { 
+  display:flex; 
+  gap:10px; 
+  padding:8px 10px; 
+  border-radius:8px; 
+  cursor:pointer; 
+  align-items:center; 
+  font-size:11px; 
+  transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position:relative;
+  overflow:hidden;
+}
+.recent .item::before {
+  content:'';
+  position:absolute;
+  left:0; top:0; bottom:0;
+  width:3px;
+  background:var(--gold);
+  transform:scaleY(0);
+  transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.recent .item:hover { 
+  background:rgba(255,255,255,0.1);
+  transform:translateX(4px);
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+}
+.recent .item:hover::before {
+  transform:scaleY(1);
+}
+.recent .item.active { 
+  background:linear-gradient(90deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.08) 100%);
+  box-shadow:inset 3px 0 0 var(--gold), 0 2px 8px rgba(212,175,55,0.2);
+  transform:translateX(2px);
+}
+.recent .item.active::before {
+  transform:scaleY(1);
+}
+.recent .item .nm { 
+  flex:1; 
+  min-width:0; 
+  overflow:hidden; 
+  text-overflow:ellipsis; 
+  white-space:nowrap; 
+  font-family:var(--mono); 
+}
+.recent .item .sc { 
+  color:var(--gold); 
+  font-family:var(--mono); 
+  font-weight:700;
+  font-size:12px;
+  text-shadow:0 0 8px rgba(212,175,55,0.5);
+}
+
+/* guideline */
+textarea.guide { width:100%; height:clamp(160px, 30vh, 320px); }
+details summary { cursor:pointer; padding:6px 0; user-select:none; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.8px; font-weight:600; transition:color 0.15s; }
+details summary:hover { color:var(--gold); }
+details[open] summary { color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <nav class="top" aria-label="Primary navigation">
+    <div style="margin: 0; padding: 0 clamp(12px,2vw,32px); width: 100%; display: flex; align-items: center; gap: clamp(12px,2.5vw,40px)">
+      <div style="display:flex; align-items:center; gap:clamp(8px,1vw,12px); flex-shrink:1; min-width:0;">
+        <span style="width:clamp(28px,3vw,36px); height:clamp(28px,3vw,36px); border-radius:8px; display:grid; place-items:center; flex-shrink:0;">
+          <img src="uploads/logo green.png" alt="🌵" style="width:100%; height:100%; object-fit:contain;">
+        </span>
+        <span style="display:flex; flex-direction:column; line-height:1;">
+          <span style="font-size:14px; font-weight:600; color:var(--text); letter-spacing:.02em;"><b>cactus</b><span style="color:var(--gold);">·</span><b>strudel</b></span>
+          <span style="font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.24em; margin-top:5px;">runtime <span style="color:rgba(255,255,255,0.1);">/</span> producer-brain</span>
+        </span>
+      </div>
+      
+      <div style="display:flex; gap:8px; margin:0 0 0 clamp(80px,10vw,160px); align-items:center;">
+        <span class="tab active">Main</span>
+        <a class="tab" href="data.html">Data</a>
+        <a class="tab" href="spine.html">Spine</a>
+        <a class="tab" href="settings.html">Settings</a>
+      </div>
+      
+      <span class="grow"></span>
+      <span id="buildInfo" class="info-icon" data-tip="build __PAGE_BUILD__&#10;如果跟 server 不一致 → Cmd+Shift+R 强刷" role="img" aria-label="Build information">i</span>
+      <span id="genRunning" class="pill warn" style="display:none;" title="generation job — 服务器跟踪的" aria-live="polite"></span>
+      <span id="serverHealth" class="pill" title="点击查看 server build 时间" role="status" aria-live="polite"></span>
+      <span class="status" id="status" role="status" aria-live="polite">ready</span>
+      <button id="dawToggleBtn" title="toggle DAW preview (strudel.cc iframe)" aria-label="Toggle DAW preview">🎛 DAW</button>
+      <button id="stopAll" class="warn" title="清音 + 卸载 iframe">Stop All</button>
+    </div>
+  </nav>
+
+  <main>
+    <div class="content">
+    <div class="left" aria-label="Generation and library controls">
+
+      <!-- ── Generate ─────────────────────────────────── -->
+      <div class="section">
+        <h3>Generate</h3>
+        <div class="row">
+          <select id="model" title="Model — choose the brain that writes the Strudel code" aria-label="Generation model" style="max-width:140px;"></select>
+          <button id="genBtn" class="accent" title="Fast Gen: kernel baseline + optional Fast Extra blob — AI 自由发挥">▶ Fast Gen</button>
+          <button id="genCancel" disabled title="Cancel (stop)" aria-label="Cancel generation" style="padding:5px 8px;">■</button>
+        </div>
+        <textarea id="extra" aria-label="Fast generation extra prompt" placeholder="FAST EXTRA (optional; Fast Gen only — 留空 = 完全自由发挥)" rows="2" style="width:100%; margin-top:6px;"></textarea>
+        <div class="gen-log" id="genLog" role="log" aria-live="polite"><span class="muted">log appears here…</span></div>
+      </div>
+
+      <!-- ── Player (mp3 of current piece) ────────────── -->
+      <div class="section player-section">
+        <audio id="aud" controls preload="none" autoplay aria-label="Current piece audio preview"></audio>
+        <div class="row" style="margin-top:4px; align-items:center; gap:6px;">
+          <span class="muted mono" id="audMeta" style="font-size:10px;"></span>
+          <span class="grow"></span>
+          <span id="audInfo" class="info-icon" data-tip="" style="display:none;">i</span>
+        </div>
+      </div>
+
+      <!-- ── Kernel fragments editor ─────────────────── -->
+      <div class="section">
+        <details>
+          <summary>Kernel <span id="kernelInfo" class="info-icon" data-tip="kernel info" tabindex="-1">i</span></summary>
+          <div class="row" style="margin-top:6px;">
+            <select id="kernelFrag" title="选 kernel fragment 编辑" aria-label="Kernel fragment"></select>
+            <button id="kernelReload" title="reload from disk" aria-label="Reload kernel fragment">↻</button>
+          </div>
+          <textarea id="kernelText" class="guide" rows="14" aria-label="Kernel fragment text" style="width:100%; margin-top:6px; font-family:var(--mono); font-size:11px;"></textarea>
+          <div class="row" style="margin-top:6px;">
+            <button id="kernelSave" class="warn">⚠ Save fragment (auto-backup)</button>
+          </div>
+        </details>
+      </div>
+
+      <!-- ── Code editor ──────────────────────────────── -->
+      <div class="section">
+        <h3>Code <span id="curName" class="muted mono" style="text-transform:none; font-size:11px;"></span></h3>
+        <textarea id="code" class="code" aria-label="Strudel code editor" placeholder="Strudel code…"></textarea>
+        <div class="row" style="margin-top:6px;">
+          <button id="playBtn" title="Edit in strudel.cc DAW (loads code into iframe)" aria-label="Edit in DAW">✎ Edit</button>
+          <button id="saveBtn" title="Overwrite current piece code, backup, then render mp3">💾 Save+Render</button>
+          <button id="midiBtn" title="Export MIDI" aria-label="Export MIDI">→ MIDI</button>
+          <span class="grow"></span>
+          <span id="codeInfo" class="info-icon" data-tip="" style="display:none;">i</span>
+        </div>
+      </div>
+
+      <!-- ── Recent ───────────────────────────────────── -->
+      <div class="section">
+        <h3>Recent <button id="refreshRecent" aria-label="Refresh recent pieces" style="float:right; padding:1px 6px; font-size:10px;">↻</button></h3>
+        <div id="recent" class="recent"><div class="muted">loading…</div></div>
+      </div>
+
+      <!-- ── Mix sliders (collapsible, per-track) ─────── -->
+      <div class="section">
+        <details>
+          <summary>Mix (live edit code)</summary>
+          <div id="mix" class="col" style="margin-top:8px;"><div class="mix-empty">no code yet</div></div>
+        </details>
+      </div>
+
+      <!-- ── Score ──────────────────────────────────────── -->
+      <div class="section">
+        <h3>Score</h3>
+        <div class="col" style="gap:10px;">
+          <div class="row" style="gap:10px;">
+            <span class="label" style="flex-shrink:0;">Score</span>
+            <input id="score" type="number" step="0.5" min="0" max="10" placeholder="0–10" style="width:80px;">
+          </div>
+          <div class="col" style="gap:6px;">
+            <span class="label">Note (optional)</span>
+            <textarea id="note" placeholder="notes…" style="resize:vertical; min-height:60px;"></textarea>
+          </div>
+          <button id="scoreBtn" class="accent" style="width:100%;">✓ Save Score</button>
+        </div>
+      </div>
+
+
+    </div>
+
+    <div class="right" aria-label="Workspace editor">
+      <div class="workbench">
+        <div class="workbenchbar">
+          <span class="title">Workspace</span>
+          <div class="view-switch" role="tablist" aria-label="workspace view">
+            <button id="advViewBtn" class="active" type="button" role="tab" aria-selected="true" aria-controls="advView">Advanced Generation</button>
+            <button id="dawViewBtn" type="button" role="tab" aria-selected="false" aria-controls="dawView">DAW Editor</button>
+          </div>
+          <span id="advSummary" class="muted mono adv-summary"></span>
+          <span class="grow"></span>
+          <button id="workSaveBtn" type="button" title="Save current Code, backup, then render mp3" style="text-align:left; padding-left:10px; padding-right:18px;">Save</button>
+          <button id="advTopGenerate" class="accent" type="button">Generate Advanced</button>
+        </div>
+
+        <div id="advView" class="workbench-view active" role="tabpanel" aria-labelledby="advViewBtn">
+          <div class="adv-panel">
+            <div class="adv-grid">
+
+              <!-- ── Phase 7: Vision (the hero section — first thing user sees) ── -->
+              <section class="adv-section wide">
+                <h3>Vision</h3>
+                <div class="adv-fields">
+                  <div class="adv-field full">
+                    <label for="advIntent">What do you want to hear?</label>
+                    <textarea id="advIntent" rows="3" placeholder="e.g. lo-fi study beat that builds like Submerse, piano motif that feels like rain on a window; calm but with internal energy"></textarea>
+                  </div>
+                  <div class="adv-field full">
+                    <label for="advReference">Reference (optional artist / track)</label>
+                    <input id="advReference" type="text" placeholder="e.g. like Aphex Twin Aisatsana / Madlib / Floating Points">
+                  </div>
+                  <div class="adv-field full">
+                    <label class="adv-toggle" style="white-space:nowrap;">
+                      <input id="advAlgorave" type="checkbox">
+                      <span>Algorave mode <span class="muted" style="font-size:10.5px;">(live-coding sketch: evolving loops &gt; fixed arrangement)</span></span>
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              <section class="adv-section wide">
+                <h3>Preset</h3>
+                <div class="adv-fields">
+                  <div class="adv-field full">
+                    <label for="advGenre">Production preset</label>
+                    <select id="advGenre">
+                      <optgroup label="Club &amp; driving">
+                        <option value="techno-drive">Techno (driving / hypnotic)</option>
+                        <option value="house-pop">House pop (warm 4-on-floor)</option>
+                        <option value="tech-house">Tech-house (slick club)</option>
+                        <option value="deep-house">Deep house (soulful jazz-tinged)</option>
+                        <option value="acid-techno">Acid techno (303 lines)</option>
+                        <option value="uk-garage">UK garage (2-step)</option>
+                      </optgroup>
+                      <optgroup label="Bass music">
+                        <option value="dnb">Drum &amp; Bass (174 BPM)</option>
+                        <option value="liquid-dnb">Liquid DnB / Liquid Funk (LTJ Bukem / Calibre)</option>
+                        <option value="jungle">Jungle (Amen breaks)</option>
+                        <option value="breakbeat">Breakbeat (chopped 135)</option>
+                      </optgroup>
+                      <optgroup label="Jazz-electronic">
+                        <option value="lounge-house">Lounge house (smooth jazz pads)</option>
+                        <option value="jazz-house">Jazz house (Masters at Work / St Germain)</option>
+                        <option value="broken-beat">Broken beat / Nu jazz (West London)</option>
+                        <option value="chillhop">Chillhop / Lo-fi jazz (Nujabes)</option>
+                      </optgroup>
+                      <optgroup label="Melodic dance">
+                        <option value="melodic-house">Melodic house (uplifting minor)</option>
+                        <option value="trance">Trance (138 anthem)</option>
+                        <option value="tropical-house">Tropical house (Kygo / beach)</option>
+                        <option value="synthwave">Synthwave (Kavinsky / 80s neon)</option>
+                        <option value="psytrance">Psytrance (offbeat rolling bass)</option>
+                      </optgroup>
+                      <optgroup label="Downtempo &amp; chill">
+                        <option value="chillout">Chillout (downtempo lush)</option>
+                        <option value="lofi-hiphop">Lo-fi hip-hop (boom-bap)</option>
+                        <option value="trip-hop">Trip-hop (Massive Attack)</option>
+                        <option value="future-garage">Future garage (Burial)</option>
+                        <option value="dub-techno">Dub techno (Basic Channel)</option>
+                      </optgroup>
+                      <optgroup label="Experimental &amp; generative">
+                        <option value="ambient-cinematic">Ambient (spacious drone)</option>
+                        <option value="idm">IDM (Aphex / glitch)</option>
+                        <option value="algorave">Algorave (live-coding sketch)</option>
+                        <option value="minimal">Minimal (sparse pattern)</option>
+                        <option value="microhouse">Microhouse (Akufen click+cuts)</option>
+                        <option value="krautrock-motorik">Krautrock / Motorik (Neu! drone)</option>
+                        <option value="polyrhythm-study">Polyrhythm study (Euclidean)</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advMood">Mood</label>
+                    <input id="advMood" type="text" list="moodOptions" placeholder="hypnotic, melancholic, euphoric, dirty..." />
+                    <datalist id="moodOptions">
+                      <option value="driving, hypnotic, restrained"></option>
+                      <option value="euphoric, uplifting, anthemic"></option>
+                      <option value="melancholic, atmospheric, late-night"></option>
+                      <option value="dark, brooding, weighty"></option>
+                      <option value="spacious, meditative, slow-blooming"></option>
+                      <option value="playful, glitchy, brain-tickling"></option>
+                      <option value="dirty, aggressive, raw"></option>
+                      <option value="nostalgic, warm, dusty"></option>
+                      <option value="warm, confident, easy to like"></option>
+                      <option value="uplifting, bright, melodic"></option>
+                    </datalist>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advBpm">BPM</label>
+                    <input id="advBpm" type="number" min="45" max="190" step="1" value="124">
+                  </div>
+                  <div class="adv-field">
+                    <label for="advRoot">Key root</label>
+                    <select id="advRoot">
+                      <option>C</option><option>Db</option><option>D</option><option>Eb</option>
+                      <option>E</option><option>F</option><option>Gb</option><option>G</option>
+                      <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+                    </select>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advMode">Mode</label>
+                    <select id="advMode">
+                      <option value="major">major</option>
+                      <option value="minor">minor</option>
+                      <option value="dorian">dorian</option>
+                      <option value="mixolydian">mixolydian</option>
+                      <option value="modal">modal center</option>
+                    </select>
+                  </div>
+                  <div class="adv-field full">
+                    <label for="advProgression">Chord progression</label>
+                    <select id="advProgression">
+                      <optgroup label="Pop / dance loops">
+                        <option value="pop-6415">vi-IV-I-V (melodic-house / trance / chillout anthem)</option>
+                        <option value="pop-4536251">IV-V-iii-vi-ii-V-I (house-pop / deep)</option>
+                        <option value="pop-1564">I-V-vi-IV</option>
+                        <option value="pop-1645">I-vi-IV-V (doo-wop)</option>
+                        <option value="minor-pop">i-bVI-bIII-bVII (UKG / DnB minor)</option>
+                        <option value="house-minor">i-bVII-bVI-bVII (minor loop)</option>
+                        <option value="mixolydian-rock">I-bVII-IV-I</option>
+                      </optgroup>
+                      <optgroup label="Strudel-native drones / vamps">
+                        <option value="static-minor">&lt;i&gt; static minor (techno / dub / ambient)</option>
+                        <option value="modal-major-drone">&lt;I&gt; modal major drone (ambient)</option>
+                        <option value="i-bVII-vamp">&lt;i bVII&gt; 2-chord vamp (techno / dnb)</option>
+                        <option value="i-iv-acid">&lt;i iv&gt; acid vamp (acid-house / acid-techno)</option>
+                      </optgroup>
+                      <optgroup label="Jazz / soulful">
+                        <option value="turnaround">Imaj7-vi7-ii7-V7 (lo-fi / lounge-house / deep-house)</option>
+                        <option value="jazz-vamp-major">&lt;Imaj7 vi7&gt; jazz vamp (chillhop / lo-fi jazz)</option>
+                        <option value="dorian-vamp">&lt;i9 IV9&gt; dorian vamp (broken-beat / nu jazz)</option>
+                        <option value="liquid-atmospheric">&lt;i9 bVI^7 bIII^7 bVII&gt; liquid (DnB atmospheric)</option>
+                        <option value="dominant-turnaround">I-VI7-II7-V7</option>
+                        <option value="ii-v-i">ii-V-I</option>
+                        <option value="minor-ii-v-i">iiø-V7-i (jazz-house sophisticated minor)</option>
+                        <option value="iv-ivm-i">IV-iv-I (borrowed minor color)</option>
+                        <option value="backdoor">ivm7-bVII7-I (backdoor cadence)</option>
+                      </optgroup>
+                      <option value="custom">custom / typed below</option>
+                    </select>
+                    <div id="advRoman" class="adv-roman"></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="adv-section wide">
+                <h3>Core Controls</h3>
+                <div class="adv-fields">
+                  <div class="adv-field">
+                    <label for="advEnergy">Energy</label>
+                    <div class="adv-range adv-spectrum" data-low="grounded" data-high="peak"><input id="advEnergy" type="range" min="0" max="100" value="58"><output id="advEnergyOut">58</output></div>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advDensity">Density</label>
+                    <div class="adv-range adv-spectrum" data-low="sparse" data-high="dense"><input id="advDensity" type="range" min="0" max="100" value="48"><output id="advDensityOut">48</output></div>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advExperiment">Conventional / experimental</label>
+                    <div class="adv-range adv-spectrum" data-low="conventional" data-high="experimental"><input id="advExperiment" type="range" min="0" max="100" value="30"><output id="advExperimentOut">30</output></div>
+                  </div>
+                  <div class="adv-field full">
+                    <span class="adv-label">Evolution idioms <span class="muted" style="font-size:10.5px;">(pick the Strudel-native ways this piece should vary over time)</span></span>
+                    <div class="adv-chips">
+                      <label><input type="checkbox" data-adv-evol="deterministic"> deterministic loop</label>
+                      <label><input type="checkbox" data-adv-evol="subtle per-cycle variation"> subtle per-cycle (.every(n,f))</label>
+                      <label><input type="checkbox" data-adv-evol="probabilistic"> probabilistic (.sometimes / .degradeBy)</label>
+                      <label><input type="checkbox" data-adv-evol="signal-modulated"> signal-modulated (sine/perlin on params)</label>
+                      <label><input type="checkbox" data-adv-evol="Euclidean-driven"> Euclidean shift (E(3,8) rotations)</label>
+                      <label><input type="checkbox" data-adv-evol="algorave live drift"> algorave-style live drift</label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <details class="adv-section wide adv-fine">
+                <summary>Fine tune</summary>
+                <div class="adv-fields">
+                  <div class="adv-field">
+                    <label for="advStyleLens">Arrangement lens</label>
+                    <input id="advStyleLens" type="text" list="styleLensOptions" placeholder="club loop, dusty tape, anthem, spacious drone..." />
+                    <datalist id="styleLensOptions">
+                      <option value="club loop, strong groove, restrained melodic identity"></option>
+                      <option value="evolving dub-techno chord stab with delay/reverb tail"></option>
+                      <option value="arpeggiated motion with anthemic minor lift"></option>
+                      <option value="big-room anthem with arpeggio + supersaw lead"></option>
+                      <option value="dusty, intimate, late-night tape feel"></option>
+                      <option value="cinematic downtempo with dub-influenced low end"></option>
+                      <option value="spacious, cinematic, slow-blooming"></option>
+                      <option value="glitch-edited drums + modal melodic motion"></option>
+                      <option value="live-coding sketch with explicit evolution hooks"></option>
+                      <option value="minimal pattern with deliberate space"></option>
+                      <option value="rhythmic structure as primary musical content"></option>
+                      <option value="acid bassline carries the energy"></option>
+                      <option value="2-step shuffle club identity"></option>
+                      <option value="half-time amen-break feel with hypnotic minor harmony"></option>
+                      <option value="amen break chops + reggae sub-bass"></option>
+                      <option value="breaks-led IDM-adjacent club track"></option>
+                      <option value="sophisticated harmony but simple surface"></option>
+                      <option value="clear hook, clean arrangement, producer-polished"></option>
+                    </datalist>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advBpc">Beats / cycle</label>
+                    <select id="advBpc">
+                      <option value="4" selected>4 beat cycle</option>
+                      <option value="2">2 beat cycle</option>
+                      <option value="8">8 beat cycle</option>
+                    </select>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advForm">Form</label>
+                    <input id="advForm" type="text" list="formOptions" placeholder="24-cycle loop, intro-groove-break-drop, slow evolving arc..." />
+                    <datalist id="formOptions">
+                      <option value="24-cycle loop with 4/8-cycle phrase behavior"></option>
+                      <option value="intro 4, groove 8, break 4, return/drop 8"></option>
+                      <option value="slow evolving arc with sparse entries"></option>
+                      <option value="continuous evolving loop (no fixed sections)"></option>
+                      <option value="build → drop → break → return → outro"></option>
+                      <option value="long-form ambient arc (one slow gesture)"></option>
+                      <option value="DJ-friendly intro/outro with extended mid-section"></option>
+                    </datalist>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advGroove">Groove feel</label>
+                    <input id="advGroove" type="text" list="grooveOptions" placeholder="4-on-floor, broken beat, 2-step, Euclidean..." />
+                    <datalist id="grooveOptions">
+                      <option value="four-on-floor anchor with offbeat motion"></option>
+                      <option value="straight electronic pulse, restrained syncopation"></option>
+                      <option value="2-step with skippy hats and bass on offbeats"></option>
+                      <option value="half-time pocket, swung hats"></option>
+                      <option value="broken beat / Amen-style chopped break"></option>
+                      <option value="Euclidean E(3,8) / polyrhythmic"></option>
+                      <option value="minimal / sparse / dub-influenced"></option>
+                      <option value="ambient pulse (no driving groove)"></option>
+                      <option value="evolving pattern (per-cycle variation via .every/.sometimes)"></option>
+                    </datalist>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advPalette">Palette</label>
+                    <input id="advPalette" type="text" list="paletteOptions" placeholder="warm Rhodes + sub, 909 kit, granular pad, supersaw lead..." />
+                    <datalist id="paletteOptions">
+                      <option value="tight electronic drums, warm bass, simple chords, clean motif"></option>
+                      <option value="TB-303-style acid bass with lpf/lpq sweep, tight 909 kit, sparse chord stabs"></option>
+                      <option value="rolling sub-bass, chopped breakbeat, atmospheric pad, sharp lead stab"></option>
+                      <option value="chopped amen break, deep dub-style sub-bass, ragga stab, bright lead"></option>
+                      <option value="warm Rhodes/keys, soft sub-bass, jazz-tinged chords, lush texture"></option>
+                      <option value="jazz Rhodes, upright bass, dusty drums, vinyl crackle texture"></option>
+                      <option value="dub-style sub-bass, dark pad, chopped break sample, atmospheric texture"></option>
+                      <option value="long-tail dub chord stab, sub-bass, minimal hat pattern, deep reverb space"></option>
+                      <option value="lush pad bed, slow sub motion, occasional bell/pluck, deep atmospheric tail"></option>
+                      <option value="glitched FM percussion, granular pad, modal lead motif, fragmented texture"></option>
+                      <option value="supersaw lead, big arpeggio, layered pad, gated synth bass"></option>
+                      <option value="arpeggiated synth lead, warm pad, plucked bass, classic 4x4 kit"></option>
+                      <option value="warm pad, sine bass, sparse pluck, airy texture"></option>
+                      <option value="sparse synth tone, occasional sub thump, single-note motif, lots of space"></option>
+                      <option value="tonal percussion (mt/lt/ht), simple melodic tone, sparse sub"></option>
+                    </datalist>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advDrums">Drum path</label>
+                    <select id="advDrums">
+                      <option value="require an audible drum kit: kick, snare/clap, and hats must be clearly heard in main/drop sections; use noise snare/hats or sample+fallback, not only soft sine/triangle bleeps">Audible kit required</option>
+                      <option value="use official sample drums only if likely audible, with fallback synth anchors">sample with fallback</option>
+                      <option value="minimal or no drums; use pulse from bass/chords/texture">drumless pulse</option>
+                    </select>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advMotif">Motif clarity</label>
+                    <div class="adv-range adv-spectrum" data-low="formless" data-high="strong hook"><input id="advMotif" type="range" min="0" max="100" value="72"><output id="advMotifOut">72</output></div>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advTexture">Texture</label>
+                    <div class="adv-range adv-spectrum" data-low="dry / clear" data-high="rich / atmospheric"><input id="advTexture" type="range" min="0" max="100" value="38"><output id="advTextureOut">38</output></div>
+                  </div>
+                  <div class="adv-field">
+                    <label for="advReharm">Harmonic spice</label>
+                    <div class="adv-range adv-spectrum" data-low="diatonic" data-high="adventurous"><input id="advReharm" type="range" min="0" max="100" value="24"><output id="advReharmOut">24</output></div>
+                  </div>
+                  <div class="adv-field full">
+                    <span class="adv-label">Reharm moves</span>
+                    <div class="adv-chips">
+                      <label><input type="checkbox" data-adv-move="secondary dominants"> secondary dominant</label>
+                      <label><input type="checkbox" data-adv-move="backdoor cadence"> backdoor</label>
+                      <label><input type="checkbox" data-adv-move="passing diminished chords"> dim passing</label>
+                      <label><input type="checkbox" data-adv-move="tritone substitution"> tritone sub</label>
+                      <label><input type="checkbox" data-adv-move="chromatic line cliche voice-leading"> line cliche</label>
+                    </div>
+                  </div>
+                  <div class="adv-field full">
+                    <label for="advCustomProgression">Custom Roman / chord hint</label>
+                    <textarea id="advCustomProgression" placeholder="optional: e.g. IV V iii vi ii V I"></textarea>
+                  </div>
+                </div>
+              </details>
+
+              <section class="adv-section wide">
+                <h3>Compiled Prompt Extra</h3>
+                <div class="adv-fields">
+                  <div class="adv-field full">
+                    <textarea id="advPromptPreview" class="adv-preview" spellcheck="false"></textarea>
+                  </div>
+                  <div class="adv-field full">
+                    <div class="adv-actions">
+                      <button id="advApply" type="button">Copy to Fast Extra</button>
+                      <button id="advGenerate" class="accent" type="button">Generate Advanced</button>
+                      <button id="advSurprise" type="button">Surprise Me</button>
+                      <span id="advPromptInfo" class="info-icon" data-tip="" style="display:none;">i</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div id="dawView" class="workbench-view" role="tabpanel" aria-labelledby="dawViewBtn">
+          <div class="iframe-wrap">
+            <div class="ab">
+              <button id="abA" class="on" aria-label="Select DAW slot A">A</button>
+              <button id="abB" aria-label="Select DAW slot B">B</button>
+              <button id="abSnap" title="snapshot current code → other slot">↔ snap</button>
+            </div>
+            <iframe id="dawA" src="about:blank" title="Strudel DAW slot A"></iframe>
+            <iframe id="dawB" src="about:blank" title="Strudel DAW slot B" style="display:none;"></iframe>
+            <div class="daw-empty" id="dawEmpty" style="height: 660px">
+              <div>DAW编辑器</div>
+              <div class="muted" style="font-size:11px;">用左侧的播放器听，改 Code 点 ✎ Edit</div>
+              <button id="dawLoadBtn">先点 Generate 键</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CC Bridge sidebar (Opus brain + Claude Code bridge) ───────── -->
+    <aside class="cc" aria-label="Opus brain and Claude Code bridge">
+      <div class="cc-tabs" role="tablist" aria-label="Bridge panels">
+        <div class="t active" data-cc="chat" role="tab" aria-selected="true" tabindex="0">Chat<span class="badge" id="badge-chat" style="display:none;"></span></div>
+        <div class="t"        data-cc="prop" role="tab" aria-selected="false" tabindex="0">Proposals<span class="badge" id="badge-prop" style="display:none;"></span></div>
+        <div class="t"        data-cc="task" role="tab" aria-selected="false" tabindex="0">Tasks<span class="badge" id="badge-task" style="display:none;"></span></div>
+        <div class="t"        data-cc="cmd" role="tab" aria-selected="false" tabindex="0">Commands</div>
+        <div class="t"        data-cc="tx" role="tab" aria-selected="false" tabindex="0">Live</div>
+      </div>
+
+      <!-- Chat -->
+      <div class="cc-pane" data-pane="chat" id="paneChat" role="tabpanel" aria-live="polite"></div>
+      <div class="cc-input" id="inputChat">
+        <textarea id="ccText" aria-label="Opus brain chat input" placeholder="问 Opus 主脑（Claude 4.8 Opus via CLIProxy）…" style="height:80px;"></textarea>
+        <div class="col" style="gap: 4px; margin: 0px; padding: 0px 0px 1px">
+          <button id="ccSend" class="accent" title="Ask Opus brain">↩</button>
+          <label class="muted" style="font-size:10px;"><input type="checkbox" id="ccAttach" checked style="margin: 8px 3px 0px 4px; padding: 0px"> 附 current piece</label>
+        </div>
+      </div>
+
+      <!-- Proposals -->
+      <div class="cc-pane hidden" data-pane="prop" id="paneProp"></div>
+
+      <!-- Tasks -->
+      <div class="cc-pane hidden" data-pane="task" id="paneTask"></div>
+
+      <!-- Commands -->
+      <div class="cc-pane hidden" data-pane="cmd"  id="paneCmd"></div>
+
+      <!-- Transcript (live, read-only) -->
+      <div class="cc-pane hidden" data-pane="tx"   id="paneTx"></div>
+    </aside>
+    </div>  <!-- /.content -->
+
+  </main>
+</div>
+
+<script>
+// ── shared ─────────────────────────────────────────────────────────────
+const $ = (s) => document.querySelector(s);
+const status = (msg, cls='') => { const e = $('#status'); e.textContent = msg; e.className = 'status ' + cls; };
+function b64utf8(s) {
+  return btoa(unescape(encodeURIComponent(s)));
+}
+function dawUrl(code) {
+  return `https://strudel.cc/#${b64utf8(code)}`;
+}
+
+let current = { name:null, entry:null };
+let abSlot = 'A';
+
+// ── tab init: no JS needed (anchors) ───────────────────────────────────
+
+// ── Advanced Generation panel ─────────────────────────────────────────
+const ADV_STORAGE = 'cactusstrudel.advancedGeneration.v2';
+const HARMONY_GRAMMAR = {
+  'pop-4536251': {
+    label:'IV-V-iii-vi-ii-V-I',
+    roman:'IV-V-iii-vi-ii-V-I',
+    example:'F - G - Em - Am - Dm - G - C',
+    rule:'Very顺耳 pop/city-pop resolution. Keep surface simple and melodic; use it as the main hook bed.'
+  },
+  'pop-1564': {
+    label:'I-V-vi-IV',
+    roman:'I-V-vi-IV',
+    example:'C - G - Am - F',
+    rule:'Broad modern pop axis. Prioritize a clear motif and satisfying repetition.'
+  },
+  'pop-6415': {
+    label:'vi-IV-I-V',
+    roman:'vi-IV-I-V',
+    example:'Am - F - C - G',
+    rule:'Minor-starting emotional pop loop. Good for chill, anthem, and melodic electronic pieces.'
+  },
+  'pop-1645': {
+    label:'I-vi-IV-V',
+    roman:'I-vi-IV-V',
+    example:'C - Am - F - G',
+    rule:'Classic song / doo-wop motion. Make it singable and avoid overcomplicating.'
+  },
+  'house-minor': {
+    label:'i-bVII-bVI-bVII',
+    roman:'i-bVII-bVI-bVII',
+    example:'Am - G - F - G',
+    rule:'Loop-friendly minor electronic harmony. Let groove and bass carry most of the energy.'
+  },
+  'minor-pop': {
+    label:'i-bVI-bIII-bVII',
+    roman:'i-bVI-bIII-bVII',
+    example:'Am - F - C - G',
+    rule:'Dramatic but familiar minor loop. Keep low end stable and the hook direct.'
+  },
+  'mixolydian-rock': {
+    label:'I-bVII-IV-I',
+    roman:'I-bVII-IV-I',
+    example:'C - Bb - F - C',
+    rule:'Earthy four-piece / rock-soul loop. Keep harmony simple and make the groove human.'
+  },
+  'ii-v-i': {
+    label:'ii-V-I core cadence',
+    roman:'ii-V-I',
+    example:'Dm7 - G7 - Cmaj7',
+    rule:'Use dominant resolution as the main grammar; phrases should feel like they resolve into I.'
+  },
+  'minor-ii-v-i': {
+    label:'minor iiø-V7-i',
+    roman:'iiø-V7-i',
+    example:'Bm7b5 - E7b9 - Am',
+    rule:'Use minor dominant pull and a clear minor tonic; avoid random modal wandering.'
+  },
+  'turnaround': {
+    label:'I-vi-ii-V turnaround',
+    roman:'I-vi-ii-V',
+    example:'Cmaj7 - Am7 - Dm7 - G7',
+    rule:'Use as a memorable loop or phrase ending; keep the melody simple enough to sing.'
+  },
+  'dominant-turnaround': {
+    label:'I-VI7-II7-V7 dominant turnaround',
+    roman:'I-VI7-II7-V7',
+    example:'Cmaj7 - A7 - D7 - G7',
+    rule:'Use secondary dominants to push forward; make the bass motion intentional.'
+  },
+  circle: {
+    label:'iii-VI7-ii-V-I circle motion',
+    roman:'iii-VI7-ii-V-I',
+    example:'Em7 - A7 - Dm7 - G7 - Cmaj7',
+    rule:'Lean into fifth-cycle propulsion; let each dominant point to its target.'
+  },
+  'jazz-blues': {
+    label:'jazz blues grammar',
+    roman:'I7-IV7-I7-V/IV | IV7-#IVdim-I7-VI7 | ii-V-I-turnaround',
+    example:'C7 - F7 - C7 - Gm7 C7 | F7 - F#dim7 - C7 - A7 | Dm7 - G7 - C7 - Dm7 G7',
+    rule:'Blues dominant I is allowed; use ii-V, passing diminished, and turnaround tastefully.'
+  },
+  'iv-ivm-i': {
+    label:'IV-iv-I borrowed minor',
+    roman:'IV-iv-I',
+    example:'Fmaj7 - Fm6 - Cmaj7',
+    rule:'Sweet/sour borrowed minor color; leave space for the cadence to be heard.'
+  },
+  backdoor: {
+    label:'ivm7-bVII7-I backdoor cadence',
+    roman:'ivm7-bVII7-I',
+    example:'Fm7 - Bb7 - Cmaj7',
+    rule:'Use a softer jazz resolution as a phrase answer or second-half surprise.'
+  },
+  'bossa-minor': {
+    label:'i-iv-iiø-V-i bossa minor',
+    roman:'i-iv-iiø-V-i',
+    example:'Am7 - Dm7 - Bm7b5 - E7 - Am7',
+    rule:'Use light latin/bossa motion; the minor ii-V should feel inevitable.'
+  },
+  // Phase 6: Strudel-native progressions for genres where harmony deliberately
+  // stays out of the way (techno/dub/IDM/ambient/algorave). Picking these is
+  // ear-pleasing BECAUSE it doesn't force AGY to invent weird chord changes —
+  // groove/pattern/timbre carry the music.
+  'static-minor': {
+    label:'static minor drone',
+    roman:'<i>',
+    example:'Am (single tonic, drone)',
+    rule:'Single-tonic drone. The harmony stays out of the way — let groove, bass, and pattern evolution carry the piece. Avoid forcing chord changes.'
+  },
+  'i-bVII-vamp': {
+    label:'i-bVII vamp (2-chord hypnotic cycle)',
+    roman:'<i bVII>',
+    example:'Am - G - Am - G',
+    rule:'Two-chord modal vamp. Stay hypnotic; small per-cycle variation moves the piece forward without changing tonal center.'
+  },
+  'i-iv-acid': {
+    label:'i-iv acid vamp',
+    roman:'<i iv>',
+    example:'Am - Dm - Am - Dm',
+    rule:'Classic acid-house / acid-techno vamp. Bass line and filter sweeps do the heavy lifting; harmony is just framing.'
+  },
+  'modal-major-drone': {
+    label:'modal major drone',
+    roman:'<I>',
+    example:'C (single tonic, spacious)',
+    rule:'Major-mode drone. Build atmosphere around a single tonic; let slow texture and motif evolution carry the piece.'
+  },
+  // Phase 11: jazz-harmony × loop-electronic progressions. These work BECAUSE
+  // Strudel is loop-based — the jazz extensions (9ths, 11ths, maj7 with bIII)
+  // resolve naturally over a short cycle without forcing AGY to write
+  // through-composed jazz arrangements.
+  'liquid-atmospheric': {
+    label:'liquid DnB atmospheric minor (i9-bVI^7-bIII^7-bVII)',
+    roman:'<i9 bVI^7 bIII^7 bVII>',
+    example:'Am9 - Fmaj7 - Cmaj7 - G',
+    rule:'Liquid DnB / liquid funk signature. Atmospheric minor with sweet major-7 lifts; the bVI-bIII move opens up the harmonic space without losing the minor anchor. Let the drum-break and sub-bass groove carry; harmony just shimmers underneath.'
+  },
+  'dorian-vamp': {
+    label:'dorian vamp (i9-IV9)',
+    roman:'<i9 IV9>',
+    example:'Am9 - D9',
+    rule:'Dorian vamp — Coltrane / nu-jazz / broken-beat territory. The IV9 has the natural 6th of Dorian; gives a jazz-modal lift without functional resolution. Perfect for broken beat, future jazz, modal house grooves.'
+  },
+  'jazz-vamp-major': {
+    label:'jazz vamp (Imaj7-vi7)',
+    roman:'<Imaj7 vi7>',
+    example:'Cmaj7 - Am7',
+    rule:'Two-chord jazz vamp. The simplest jazz loop — major-7 to minor-7. Ideal for chillhop, lounge house, lo-fi jazz; the maj7-m7 move carries all the sophistication without changing tonal center.'
+  },
+  custom: {
+    label:'custom progression',
+    roman:'custom',
+    example:'typed by user',
+    rule:'Respect the typed Roman/chord hint; preserve functional clarity.'
+  },
+};
+// ── Phase 6: Strudel-native preset library ───────────────────────────────────
+// Every preset is chosen because Strudel actually excels at it (per real-world
+// user feedback: techno/house/DnB/trance/ambient/algorave/IDM). The 5 dropped
+// presets (four-piece, city-pop, classic-soul, jazz-blues, bossa-lounge) were
+// linear-arrangement / band-feel styles where Strudel produces caricature.
+//
+// Each preset's `advProgression` is deliberately a known-ear-pleasing pattern
+// for that genre. Static-tonic drones for hypnotic styles (techno/dub/idm) —
+// because forcing chord changes on a 4-on-floor techno track produces weird
+// movement; better to let groove + bass + pattern evolution carry it.
+//
+// Categories (see HTML <optgroup>): Club&driving · Bass music · Melodic dance
+// · Downtempo&chill · Experimental&generative
+const GENRE_DEFAULTS = {
+  // ─── Club & driving ────────────────────────────────────────────────────
+  'techno-drive': {
+    advBpm:'132', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'i-bVII-vamp', // hypnotic 2-chord cycle — techno's natural harmony
+    advMood:'hypnotic, deep, restrained',
+    advStyleLens:'club loop, strong groove, restrained melodic identity',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'straight electronic pulse, restrained syncopation',
+    advPalette:'tight electronic drums, warm bass, simple chords, clean motif',
+    advDrums:'audible drum kit: 909/808-style kick on the floor, crisp snare or clap on 2&4, hats steady',
+    advEnergy:'74', advDensity:'46', advExperiment:'36', evolution:['subtle per-cycle variation', 'probabilistic'],
+    advMotif:'48', advTexture:'30', advReharm:'4', moves:[] },
+  'house-pop': {
+    advBpm:'124', advBpc:'4', advRoot:'C', advMode:'major',
+    advProgression:'pop-4536251', // F-G-Em-Am-Dm-G-C — the gorgeous pop-house axis
+    advMood:'warm, confident, easy to like',
+    advStyleLens:'clear hook, clean arrangement, producer-polished',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'tight electronic drums, warm bass, simple chords, clean motif',
+    advDrums:'audible drum kit: house-style kick on every beat, clap on 2&4, hats with offbeat groove',
+    advEnergy:'64', advDensity:'50', advExperiment:'24', evolution:['subtle per-cycle variation'],
+    advMotif:'78', advTexture:'34', advReharm:'18', moves:[] },
+  'deep-house': {
+    advBpm:'122', advBpc:'4', advRoot:'C', advMode:'major',
+    advProgression:'turnaround', // Cmaj7-Am7-Dm7-G7 — soulful deep-house jazz-tinged 2-5-1
+    advMood:'late-night, smooth, slightly melancholic',
+    advStyleLens:'sophisticated harmony but simple surface',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'warm Rhodes/keys, soft sub-bass, jazz-tinged chords, lush texture',
+    advDrums:'audible drum kit: soft kick, brushed snare/rim, soft hats with shuffle',
+    advEnergy:'52', advDensity:'48', advExperiment:'26', evolution:['subtle per-cycle variation', 'probabilistic'],
+    advMotif:'62', advTexture:'48', advReharm:'40', moves:['secondary dominants'] },
+  'acid-techno': {
+    advBpm:'132', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'i-iv-acid', // Am-Dm vamp — the 303 home turf
+    advMood:'hypnotic, dirty, aggressive',
+    advStyleLens:'acid bassline carries the energy',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'straight electronic pulse, restrained syncopation',
+    advPalette:'TB-303-style acid bass with lpf/lpq sweep, tight 909 kit, sparse chord stabs',
+    advDrums:'audible drum kit: 909 kick on the floor, hat on offbeat, occasional snare/clap accent',
+    advEnergy:'78', advDensity:'42', advExperiment:'44', evolution:['subtle per-cycle variation', 'signal-modulated'],
+    advMotif:'36', advTexture:'28', advReharm:'4', moves:[] },
+  'uk-garage': {
+    advBpm:'132', advBpc:'4', advRoot:'F', advMode:'minor',
+    advProgression:'minor-pop', // Am-F-C-G but transposed to Fm
+    advMood:'uplifting, bright, melodic',
+    advStyleLens:'2-step shuffle club identity',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'2-step with skippy hats and bass on offbeats',
+    advPalette:'tight electronic drums, warm bass, simple chords, clean motif',
+    advDrums:'audible drum kit: 2-step kick pattern (1 and not-3), shuffled hats, classic UKG snare',
+    advEnergy:'68', advDensity:'54', advExperiment:'34', evolution:['subtle per-cycle variation', 'probabilistic'],
+    advMotif:'68', advTexture:'30', advReharm:'16', moves:[] },
+
+  // ─── Bass music ─────────────────────────────────────────────────────────
+  'dnb': {
+    advBpm:'174', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'minor-pop', // Am-F-C-G — DnB's signature emotional minor loop
+    advMood:'dark, brooding, driving',
+    advStyleLens:'half-time amen-break feel with hypnotic minor harmony',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'broken beat / Amen-style chopped break',
+    advPalette:'rolling sub-bass, chopped breakbeat, atmospheric pad, sharp lead stab',
+    advDrums:'audible drum kit: chopped/shuffled break (kick on 1, snare on 3 of the half-time grid)',
+    advEnergy:'82', advDensity:'58', advExperiment:'42', evolution:['subtle per-cycle variation', 'probabilistic'],
+    advMotif:'54', advTexture:'40', advReharm:'12', moves:[] },
+  'jungle': {
+    advBpm:'170', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'minor-pop',
+    advMood:'dark, brooding, jungle-raw',
+    advStyleLens:'amen break chops + reggae sub-bass',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'broken beat / Amen-style chopped break',
+    advPalette:'chopped amen break, deep dub-style sub-bass, ragga stab, bright lead',
+    advDrums:'audible drum kit: heavily chopped break with snare rolls; classic jungle ghost-snare grid',
+    advEnergy:'86', advDensity:'62', advExperiment:'48', evolution:['probabilistic', 'Euclidean-driven'],
+    advMotif:'48', advTexture:'42', advReharm:'8', moves:[] },
+  'breakbeat': {
+    advBpm:'135', advBpc:'4', advRoot:'F', advMode:'minor',
+    advProgression:'i-bVII-vamp',
+    advMood:'dirty, playful, glitchy',
+    advStyleLens:'breaks-led IDM-adjacent club track',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'broken beat with chopped breaks and ghost notes',
+    advPalette:'chopped break samples, warm sub-bass, sparse chord stabs',
+    advDrums:'audible drum kit: chopped breakbeat sample as foundation with kick/snare reinforcement',
+    advEnergy:'72', advDensity:'56', advExperiment:'50', evolution:['probabilistic', 'Euclidean-driven'],
+    advMotif:'46', advTexture:'38', advReharm:'8', moves:[] },
+
+  // ─── Melodic dance ──────────────────────────────────────────────────────
+  'melodic-house': {
+    advBpm:'124', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'pop-6415', // Am-F-C-G — THE melodic house progression (uplifting minor)
+    advMood:'uplifting, emotional, melodic',
+    advStyleLens:'arpeggiated motion with anthemic minor lift',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'arpeggiated synth lead, warm pad, plucked bass, classic 4x4 kit',
+    advDrums:'audible drum kit: house-style kick, clap on 2&4, busy offbeat hats',
+    advEnergy:'68', advDensity:'52', advExperiment:'28', evolution:['subtle per-cycle variation'],
+    advMotif:'82', advTexture:'46', advReharm:'18', moves:[] },
+  'trance': {
+    advBpm:'138', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'pop-6415', // Am-F-C-G — the classic trance anthem progression
+    advMood:'euphoric, uplifting, anthemic',
+    advStyleLens:'big-room anthem with arpeggio + supersaw lead',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'four-on-floor with classic trance offbeat bass',
+    advPalette:'supersaw lead, big arpeggio, layered pad, gated synth bass',
+    advDrums:'audible drum kit: punchy kick on every beat, snare on 2&4, sidechain-pumped pad',
+    advEnergy:'82', advDensity:'58', advExperiment:'24', evolution:['deterministic', 'subtle per-cycle variation'],
+    advMotif:'86', advTexture:'52', advReharm:'12', moves:[] },
+
+  // ─── Downtempo & chill ──────────────────────────────────────────────────
+  'chillout': {
+    advBpm:'92', advBpc:'4', advRoot:'D', advMode:'major',
+    advProgression:'pop-6415', // vi-IV-I-V — pretty melancholic loop
+    advMood:'late-night, smooth, slightly melancholic',
+    advStyleLens:'clear hook, clean arrangement, producer-polished',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'chill broken beat with stable low end',
+    advPalette:'warm pad, sine bass, sparse pluck, airy texture',
+    advDrums:'audible drum kit: soft kick, brushed snare, soft hats with light shuffle',
+    advEnergy:'36', advDensity:'36', advExperiment:'20', evolution:['deterministic', 'subtle per-cycle variation'],
+    advMotif:'72', advTexture:'54', advReharm:'18', moves:[] },
+  'lofi-hiphop': {
+    advBpm:'78', advBpc:'4', advRoot:'C', advMode:'major',
+    advProgression:'turnaround', // Cmaj7-Am7-Dm7-G7 — lo-fi's jazz-tinged signature
+    advMood:'nostalgic, smooth, slightly melancholic',
+    advStyleLens:'dusty, intimate, late-night tape feel',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'half-time pocket, swung hats',
+    advPalette:'jazz Rhodes, upright bass, dusty drums, vinyl crackle texture',
+    advDrums:'audible drum kit: laid-back boom-bap kick on 1&3, snap-snare on 2&4, swung hats',
+    advEnergy:'34', advDensity:'40', advExperiment:'20', evolution:['subtle per-cycle variation'],
+    advMotif:'70', advTexture:'48', advReharm:'26', moves:['secondary dominants'] },
+  'trip-hop': {
+    advBpm:'90', advBpc:'4', advRoot:'F', advMode:'minor',
+    advProgression:'minor-pop', // Fm-Db-Ab-Eb — Massive Attack territory
+    advMood:'dark, brooding, atmospheric',
+    advStyleLens:'cinematic downtempo with dub-influenced low end',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'half-time pocket with chopped break feel',
+    advPalette:'dub-style sub-bass, dark pad, chopped break sample, atmospheric texture',
+    advDrums:'audible drum kit: weighty kick on 1, snare hit on 3, sparse hats',
+    advEnergy:'42', advDensity:'42', advExperiment:'34', evolution:['subtle per-cycle variation'],
+    advMotif:'58', advTexture:'62', advReharm:'18', moves:[] },
+  'dub-techno': {
+    advBpm:'128', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'static-minor', // Basic Channel / Maurizio territory — drone-based
+    advMood:'meditative, spacious, dub-deep',
+    advStyleLens:'evolving dub chord stab with delay/reverb tail',
+    advForm:'slow evolving arc with sparse entries',
+    advGroove:'minimal 4-on-floor with deep delay/reverb space',
+    advPalette:'long-tail dub chord stab, sub-bass, minimal hat pattern, deep reverb space',
+    advDrums:'audible drum kit: minimal kick on every beat, occasional rim/clap, sparse hat',
+    advEnergy:'48', advDensity:'30', advExperiment:'42', evolution:['signal-modulated', 'subtle per-cycle variation'],
+    advMotif:'40', advTexture:'68', advReharm:'4', moves:[] },
+
+  // ─── Experimental & generative ──────────────────────────────────────────
+  'ambient-cinematic': {
+    advBpm:'60', advBpc:'8', advRoot:'C', advMode:'major',
+    advProgression:'modal-major-drone', // single-tonic drone — proper ambient
+    advMood:'cinematic, spacious, meditative',
+    advStyleLens:'spacious, cinematic, slow-blooming',
+    advForm:'slow evolving arc with sparse entries',
+    advGroove:'ambient pulse (no driving groove)',
+    advPalette:'lush pad bed, slow sub motion, occasional bell/pluck, deep atmospheric tail',
+    advDrums:'drumless: let pad/bass/texture carry the pulse',
+    advEnergy:'22', advDensity:'30', advExperiment:'32', evolution:['signal-modulated', 'subtle per-cycle variation'],
+    advMotif:'44', advTexture:'72', advReharm:'12', moves:[] },
+  'idm': {
+    advBpm:'130', advBpc:'4', advRoot:'C', advMode:'modal',
+    advProgression:'modal-major-drone', // Aphex Twin / Squarepusher: modal, often single-tonic with melodic motion
+    advMood:'playful, glitchy, brain-tickling',
+    advStyleLens:'glitch-edited drums + modal melodic motion',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'Euclidean E(3,8) / polyrhythmic',
+    advPalette:'glitched FM percussion, granular pad, modal lead motif, fragmented texture',
+    advDrums:'audible drum kit: heavily edited / glitched percussion with .degradeBy() and .sometimes() variation',
+    advEnergy:'58', advDensity:'52', advExperiment:'74', evolution:['probabilistic', 'signal-modulated', 'Euclidean-driven'],
+    advMotif:'48', advTexture:'56', advReharm:'8', moves:[] },
+  'algorave': {
+    advBpm:'130', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'static-minor', // live-coding context: harmony is just a pulse, the show is in the pattern evolution
+    advMood:'driving, playful, glitchy',
+    advStyleLens:'live-coding sketch with explicit evolution hooks',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'evolving pattern (per-cycle variation via .every/.sometimes)',
+    advPalette:'tight electronic drums, glitched FM hits, modal lead, evolving texture',
+    advDrums:'audible drum kit: 909 base with .sometimes() variations, .degradeBy() ghost notes',
+    advEnergy:'70', advDensity:'48', advExperiment:'62', evolution:['probabilistic', 'signal-modulated', 'algorave live drift'],
+    advMotif:'40', advTexture:'40', advReharm:'4', moves:[] },
+  'minimal': {
+    advBpm:'120', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'static-minor',
+    advMood:'meditative, spacious, restrained',
+    advStyleLens:'minimal pattern with deliberate space',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'minimal / sparse / dub-influenced',
+    advPalette:'sparse synth tone, occasional sub thump, single-note motif, lots of space',
+    advDrums:'audible drum kit: kick on every beat, occasional rim/clap accent, minimal hats',
+    advEnergy:'44', advDensity:'22', advExperiment:'38', evolution:['deterministic', 'subtle per-cycle variation'],
+    advMotif:'36', advTexture:'40', advReharm:'4', moves:[] },
+  'polyrhythm-study': {
+    advBpm:'120', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'static-minor', // harmony out of the way — rhythm is the subject
+    advMood:'meditative, brain-tickling',
+    advStyleLens:'rhythmic structure as primary musical content',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'Euclidean E(3,8) / polyrhythmic',
+    advPalette:'tonal percussion (mt/lt/ht), simple melodic tone, sparse sub',
+    advDrums:'audible drum kit: layered Euclidean rhythms — try E(3,8) on kick, E(5,8) on hat, E(7,16) on perc',
+    advEnergy:'56', advDensity:'40', advExperiment:'56', evolution:['Euclidean-driven', 'subtle per-cycle variation'],
+    advMotif:'30', advTexture:'34', advReharm:'4', moves:[] },
+
+  // ─── Phase 11: Jazz-electronic (jazz harmony × loop-friendly) ──────────
+  'lounge-house': {
+    advBpm:'118', advBpc:'4', advRoot:'C', advMode:'major',
+    advProgression:'turnaround', // Imaj7-vi7-ii7-V7 (Cmaj7-Am7-Dm7-G7) — smooth lounge sophistication; key=C major matches turnaround's natural key so AGY doesn't have to reharmonize
+    advMood:'sophisticated, late-night smooth, lounge',
+    advStyleLens:'smooth deep-house with jazz chord pads and brushed kit',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'Rhodes EP, soft sub-bass, brushed drums + warm 909, occasional jazz lead',
+    advDrums:'audible drum kit: soft 4-on-floor kick, brushed snare or rim, soft hats with light shuffle',
+    advEnergy:'48', advDensity:'46', advExperiment:'28', evolution:['subtle per-cycle variation'],
+    advMotif:'58', advTexture:'52', advReharm:'42', moves:['secondary dominants'] },
+  'jazz-house': {
+    advBpm:'123', advBpc:'4', advRoot:'F', advMode:'minor',
+    advProgression:'minor-ii-v-i', // iiø-V7-i — sophisticated minor jazz house (Masters at Work)
+    advMood:'sophisticated, soulful, club-jazz',
+    advStyleLens:'club house with extended jazz chord voicings',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'Rhodes stabs with 9th/11th extensions, upright/synth bass, brushed kit + 909 hybrid, occasional horn stab',
+    advDrums:'audible drum kit: 4-on-floor with jazzy hat shuffle, snare/clap on 2&4',
+    advEnergy:'58', advDensity:'52', advExperiment:'34', evolution:['subtle per-cycle variation', 'probabilistic'],
+    advMotif:'62', advTexture:'46', advReharm:'52', moves:['secondary dominants', 'passing diminished chords'] },
+  'liquid-dnb': {
+    advBpm:'172', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'liquid-atmospheric', // Am9-Fmaj7-Cmaj7-G — LTJ Bukem / Calibre signature
+    advMood:'euphoric, atmospheric, jazz-tinged, smooth',
+    advStyleLens:'liquid drum & bass — atmospheric pad bed over rolling break',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'broken beat / Amen-style chopped break',
+    advPalette:'lush atmospheric pad, jazz Rhodes stab, rolling sub-bass, chopped break, bright lead/vocal sample',
+    advDrums:'audible drum kit: chopped DnB break — rolling kick + snare on the half-time grid, sharp hat patterns',
+    advEnergy:'72', advDensity:'56', advExperiment:'34', evolution:['subtle per-cycle variation', 'probabilistic'],
+    advMotif:'64', advTexture:'58', advReharm:'36', moves:['secondary dominants'] },
+  'broken-beat': {
+    advBpm:'130', advBpc:'4', advRoot:'A', advMode:'dorian',
+    advProgression:'dorian-vamp', // Am9-D9 — broken beat / nu jazz dorian (West London sound)
+    advMood:'jazzy, broken, sophisticated, futuristic',
+    advStyleLens:'broken-beat / nu jazz — syncopated jazz house with West London edit',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'broken beat with chopped breaks and ghost notes',
+    advPalette:'Rhodes/electric piano, upright bass, chopped break sample, jazz horn stab, broken hat pattern',
+    advDrums:'audible drum kit: heavily syncopated broken beat — kick on unexpected positions, snare/clap on shifted backbeat',
+    advEnergy:'62', advDensity:'58', advExperiment:'48', evolution:['probabilistic', 'subtle per-cycle variation'],
+    advMotif:'56', advTexture:'42', advReharm:'48', moves:['secondary dominants', 'tritone substitution'] },
+  'chillhop': {
+    advBpm:'86', advBpc:'4', advRoot:'C', advMode:'major',
+    advProgression:'jazz-vamp-major', // Cmaj7-Am7 — Nujabes / Chillhop label signature
+    advMood:'nostalgic, smooth, jazz-influenced, mellow',
+    advStyleLens:'lo-fi jazz hip-hop with chillhop-label sophistication',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'half-time pocket, swung hats',
+    advPalette:'jazz piano/Rhodes with 7ths and 9ths, upright bass, brushed drums, vinyl crackle, occasional sax/horn sample',
+    advDrums:'audible drum kit: laid-back boom-bap with jazz brush feel, kick on 1, snare on 2&4',
+    advEnergy:'34', advDensity:'42', advExperiment:'22', evolution:['subtle per-cycle variation'],
+    advMotif:'68', advTexture:'56', advReharm:'38', moves:['secondary dominants'] },
+
+  // ─── Phase 11: more Strudel-strong styles (beyond Grok's user reports) ──
+  'tech-house': {
+    advBpm:'124', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'i-bVII-vamp', // Am-G — slick functional vamp
+    advMood:'driving, slick, club',
+    advStyleLens:'club loop, strong groove, restrained melodic identity',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'tight techno kick + house hat, dub-style chord stab, deep sub, simple stab',
+    advDrums:'audible drum kit: tight house kick on every beat, clap on 2&4, busy offbeat hats',
+    advEnergy:'72', advDensity:'48', advExperiment:'32', evolution:['subtle per-cycle variation', 'probabilistic'],
+    advMotif:'52', advTexture:'34', advReharm:'8', moves:[] },
+  'microhouse': {
+    advBpm:'125', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'minor-pop', // Am-F-C-G but mostly chopped sample work fills it
+    advMood:'clicky, glitchy, sophisticated',
+    advStyleLens:'click+cuts / chopped sample microhouse (Akufen/Herbert)',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'minimal / sparse / dub-influenced',
+    advPalette:'chopped vocal/sample bits, click+cut percussion, deep sub, processed Rhodes stab',
+    advDrums:'audible drum kit: minimal kick + heavy chopped/clicky percussion using .degradeBy and .sometimes',
+    advEnergy:'58', advDensity:'40', advExperiment:'56', evolution:['probabilistic', 'signal-modulated', 'subtle per-cycle variation'],
+    advMotif:'42', advTexture:'38', advReharm:'18', moves:[] },
+  'future-garage': {
+    advBpm:'130', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'minor-pop', // atmospheric minor — Burial territory
+    advMood:'dark, atmospheric, melancholic, urban',
+    advStyleLens:'half-time garage with Burial-style atmospheric weight',
+    advForm:'24-cycle loop with 4/8-cycle phrase behavior',
+    advGroove:'half-time pocket, swung hats',
+    advPalette:'rolling sub-bass, atmospheric pad, chopped vocal sample, sparse weighty drums, vinyl noise',
+    advDrums:'audible drum kit: half-time kick on 1, snare on 3, sparse hats — every hit weighty',
+    advEnergy:'46', advDensity:'40', advExperiment:'42', evolution:['probabilistic', 'subtle per-cycle variation'],
+    advMotif:'52', advTexture:'64', advReharm:'18', moves:[] },
+  'synthwave': {
+    advBpm:'110', advBpc:'4', advRoot:'F', advMode:'minor',
+    advProgression:'minor-pop', // Fm-Db-Ab-Eb — classic 80s minor synthwave
+    advMood:'nostalgic, neon, retro, dramatic',
+    advStyleLens:'80s film score / Kavinsky-style retrowave',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'straight electronic pulse, restrained syncopation',
+    advPalette:'supersaw lead, arpeggio bass, gated reverb snare, big synth toms, layered pad',
+    advDrums:'audible drum kit: big gated snare on 2&4, four-on-floor kick, arpeggiated synth bass',
+    advEnergy:'58', advDensity:'52', advExperiment:'24', evolution:['deterministic', 'subtle per-cycle variation'],
+    advMotif:'74', advTexture:'56', advReharm:'14', moves:[] },
+  'psytrance': {
+    advBpm:'145', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'static-minor', // Am drone with rolling 16th bass
+    advMood:'hypnotic, psychedelic, driving',
+    advStyleLens:'goa/psytrance hypnotic offbeat bass loop',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'rolling 16th bass on offbeats, dark FX swooshes, sharp psy-lead, tight kick',
+    advDrums:'audible drum kit: 4-on-floor kick + rolling 16th offbeat bass + sharp hats',
+    advEnergy:'82', advDensity:'56', advExperiment:'40', evolution:['signal-modulated', 'subtle per-cycle variation'],
+    advMotif:'46', advTexture:'42', advReharm:'4', moves:[] },
+  'tropical-house': {
+    advBpm:'108', advBpc:'4', advRoot:'C', advMode:'major',
+    advProgression:'pop-6415', // vi-IV-I-V — Kygo-style beach anthem
+    advMood:'laid-back, beach, melodic, warm',
+    advStyleLens:'tropical house with steel-drum/marimba lead and sunny chord pads',
+    advForm:'intro 4, groove 8, break 4, return/drop 8',
+    advGroove:'four-on-floor anchor with offbeat motion',
+    advPalette:'marimba/steel-drum lead, soft synth pad, plucky bass, warm 4x4 kit, light percussion',
+    advDrums:'audible drum kit: soft house kick, clap on 2&4, offbeat hats, occasional tropical perc accent',
+    advEnergy:'58', advDensity:'46', advExperiment:'18', evolution:['subtle per-cycle variation'],
+    advMotif:'78', advTexture:'42', advReharm:'18', moves:[] },
+  'krautrock-motorik': {
+    advBpm:'132', advBpc:'4', advRoot:'A', advMode:'minor',
+    advProgression:'static-minor', // Neu! / Kraftwerk drone-based motorik
+    advMood:'hypnotic, mechanical, drone',
+    advStyleLens:'motorik krautrock — straight 4/4 drone with evolving arpeggios',
+    advForm:'continuous evolving loop (no fixed sections)',
+    advGroove:'straight electronic pulse, restrained syncopation',
+    advPalette:'minimal motorik kit, arpeggiated synth, sequenced bass, occasional drone pad',
+    advDrums:'audible drum kit: motorik — kick on every beat, snare on 2&4, hat on every 8th — locked-in mechanical pulse',
+    advEnergy:'58', advDensity:'44', advExperiment:'34', evolution:['signal-modulated', 'subtle per-cycle variation'],
+    advMotif:'46', advTexture:'42', advReharm:'4', moves:[] },
+};
+const ADV_IDS = [
+  'advGenre','advStyleLens','advBpm','advBpc','advRoot','advMode','advMood',
+  'advProgression','advCustomProgression','advReharm','advForm','advGroove',
+  'advDensity','advEnergy','advMotif','advPalette','advDrums',
+  'advExperiment','advTexture','advIntent','advReference','advAlgorave',
+];
+function selectedText(id) {
+  const el = document.getElementById(id);
+  return el?.selectedOptions?.[0]?.textContent?.trim() || el?.value || '';
+}
+function advValue(id) { return document.getElementById(id)?.value || ''; }
+function advBand(v, labels) {
+  const n = Number(v);
+  if (n < 25) return labels[0];
+  if (n < 50) return labels[1];
+  if (n < 75) return labels[2];
+  return labels[3];
+}
+function selectedAdvMoves() {
+  return [...document.querySelectorAll('[data-adv-move]:checked')].map(x => x.dataset.advMove);
+}
+function selectedAdvEvolution() {
+  return [...document.querySelectorAll('[data-adv-evol]:checked')].map(x => x.dataset.advEvol);
+}
+function buildAdvancedPrompt() {
+  // ── Phase 3 (Advanced rewrite) ────────────────────────────────────────
+  // This function compiles the human's panel state into a prompt that READS
+  // like a producer briefing another producer — communicating vision, not
+  // dictating patterns. The model receives this through AGY's PROMPT_EXTRA
+  // on top of the kernel (which already supplies API+syntax+output contract).
+  //
+  // Design rules (from Bowei 2026-05-28):
+  // - Every option in the panel is a vision dial; the prompt expresses
+  //   "the human wants X" rather than "you must do X".
+  // - No pattern formulas. No "drums must be audible". No "4-6 layers".
+  //   No "repetition first". No mix-discipline prescriptions.
+  // - Free creative space inside the human's envelope.
+  // - End with an explicit reframe: "this is vision, not recipe — choose
+  //   freely how to realize it."
+  const grammar = HARMONY_GRAMMAR[advValue('advProgression')] || HARMONY_GRAMMAR.custom;
+  const custom  = advValue('advCustomProgression').trim();
+  const moves   = selectedAdvMoves();
+  const spice   = advBand(advValue('advReharm'),    ['minimal',           'conservative',       'clear jazz color',         'adventurous but functional']);
+  const density = advBand(advValue('advDensity'),   ['sparse',            'lean',               'medium',                   'dense']);
+  const energy  = advBand(advValue('advEnergy'),    ['low',               'mid-low',            'mid-high',                 'high']);
+  const motif   = advBand(advValue('advMotif'),     ['very sparse',       'simple',             'clear, memorable',         'strong hook identity']);
+  const evolution = selectedAdvEvolution();
+  const experm  = advBand(advValue('advExperiment'),['conventional',      'tastefully modern',  'experimental edge',        'experimental and coherent']);
+  const texture = advBand(advValue('advTexture'),   ['dry / minimal',     'light atmosphere',   'noticeable atmosphere',    'rich atmosphere']);
+
+  const genre     = selectedText('advGenre');
+  const mood      = advValue('advMood').trim();
+  const intent    = advValue('advIntent').trim();
+  const reference = advValue('advReference').trim();
+  const algorave  = document.getElementById('advAlgorave')?.checked || false;
+  const bpm     = advValue('advBpm');
+  const bpc     = advValue('advBpc');
+  const root    = advValue('advRoot');
+  const mode    = advValue('advMode');
+  const groove  = advValue('advGroove').trim();
+  const lens    = advValue('advStyleLens').trim();
+  const form    = advValue('advForm').trim();
+  const palette = advValue('advPalette').trim();
+  const drums   = advValue('advDrums').trim();
+
+  // Compose flowing brief
+  const out = [];
+
+  // ── Phase 7: Vision hero block first — intent is the most direct expression
+  // of the human's wish; reference is the most information-dense cue (artists
+  // / tracks are the producer's mental model); algorave reframes the whole
+  // brief away from "completed track" toward "live-coding sketch".
+  if (intent) {
+    out.push(`The human's vision: "${intent}"`);
+    out.push('');
+  }
+  if (reference) {
+    out.push(`Reference they're thinking of: ${reference}`);
+    out.push('');
+  }
+  if (algorave) {
+    out.push('Context: this is an ALGORAVE / LIVE-CODING sketch.');
+    out.push('  - Evolving loops > fixed arrangement.');
+    out.push('  - Short, jam-friendly patterns the human can tweak live.');
+    out.push('  - Use Strudel native evolution idioms (.every / .sometimes / .degradeBy / signals).');
+    out.push('  - Leave hooks (named const patterns) the human can manually swap in performance.');
+    out.push('');
+  }
+
+  out.push(`Style envelope they're after: ${genre || '(no preset selected)'}.`);
+  if (mood) out.push(`Mood: ${mood}.`);
+  out.push('');
+
+  out.push('Tempo & feel:');
+  out.push(`  setcpm(${bpm}/${bpc})  —  ${bpm} BPM, ${bpc} beats per cycle.`);
+  if (groove) out.push(`  Groove they're hearing: ${groove}.`);
+  if (lens)   out.push(`  Arrangement lens: ${lens}.`);
+  if (form)   out.push(`  Form preference: ${form}.`);
+  out.push('');
+
+  out.push('Harmony:');
+  out.push(`  Key/mode: ${root} ${mode}.`);
+  if (custom) {
+    out.push(`  Chord plan (their words, use verbatim as the main loop): ${custom}`);
+  } else {
+    out.push(`  Progression: ${grammar.roman}`);
+    out.push(`  Chord anchor (use these exact chord IDENTITIES — you may revoice, arpeggiate,`);
+    out.push(`    break, pause, or extend, but don't substitute different chords): ${grammar.example}`);
+    out.push(`  Key context: ${root} ${mode}. The chord set above lives within or naturally around`);
+    out.push(`    this key; if the chord-set's natural mode differs from ${mode}, lean the tonal`);
+    out.push(`    emphasis toward ${root} ${mode} (e.g. start phrases on the chord that matches`);
+    out.push(`    the home key) — but keep the chord identities intact.`);
+  }
+  if (grammar.rule) out.push(`  Context: ${grammar.rule}`);
+  out.push(`  Harmonic spice they want: ${spice}  (their dial reads ${advValue('advReharm')}/100).`);
+  if (moves.length) out.push(`  Optional reharm colors they're open to: ${moves.join(', ')}.`);
+  out.push('');
+
+  out.push("Where the human wants the piece to sit on each dial:");
+  out.push(`  energy        ${energy.padEnd(28)} (${advValue('advEnergy')}/100)`);
+  out.push(`  density       ${density.padEnd(28)} (${advValue('advDensity')}/100)`);
+  out.push(`  motif clarity ${motif.padEnd(28)} (${advValue('advMotif')}/100)`);
+  out.push(`  experiment    ${experm.padEnd(28)} (${advValue('advExperiment')}/100)`);
+  out.push(`  texture       ${texture.padEnd(28)} (${advValue('advTexture')}/100)`);
+  out.push('');
+
+  // Phase 8: Evolution idioms replace abstract "variation 0-100" slider.
+  // These tell AGY which Strudel-native mechanism to use, not a vague level.
+  if (evolution.length) {
+    out.push('Evolution idioms (Strudel-native ways the piece should vary over time):');
+    for (const e of evolution) out.push(`  - ${e}`);
+    out.push('');
+  }
+
+  if (palette) {
+    out.push('Palette the human is imagining:');
+    out.push(`  ${palette}.`);
+    out.push('');
+  }
+  if (drums) {
+    out.push('Drum approach the human is asking for:');
+    out.push(`  ${drums}.`);
+    out.push('');
+  }
+
+  out.push('---');
+  out.push('');
+  out.push("This brief is the human's vision, not a recipe. The musical decisions —");
+  out.push("what specific rhythms to write, what voicings to use, how to layer, when");
+  out.push("to repeat, when to surprise, how aggressive or gentle to be, when to leave");
+  out.push("space, when to fill — are entirely yours. Within the envelope above,");
+  out.push("choose freely and own your choices. Make something they would want to");
+  out.push("listen to again.");
+
+  return out.join('\n');
+}
+function updateAdvRanges() {
+  ['advReharm','advDensity','advEnergy','advMotif','advExperiment','advTexture'].forEach(id => {
+    const out = document.getElementById(id + 'Out');
+    if (out) out.textContent = advValue(id);
+  });
+}
+function updateAdvancedPrompt({skipSave=false} = {}) {
+  updateAdvRanges();
+  const preview = $('#advPromptPreview');
+  if (preview) preview.value = buildAdvancedPrompt();
+  const prompt = preview?.value || '';
+  const apInfo = $('#advPromptInfo');
+  if (apInfo) {
+    if (prompt.length) {
+      apInfo.setAttribute('data-tip', `compiled prompt\nchars: ${prompt.length}\nlines: ${prompt.split('\n').length}`);
+      apInfo.style.display = '';
+    } else { apInfo.style.display = 'none'; }
+  }
+  const grammar = HARMONY_GRAMMAR[advValue('advProgression')] || HARMONY_GRAMMAR.custom;
+  const roman = `${grammar.roman} · ${grammar.example}`;
+  const romanEl = $('#advRoman');
+  if (romanEl) romanEl.textContent = roman;
+  $('#advSummary').textContent = `${advValue('advRoot')} ${advValue('advMode')} · ${grammar.roman} · ${advValue('advBpm')}/${advValue('advBpc')}`;
+  if (!skipSave) saveAdvState();
+}
+function collectAdvState() {
+  const state = {};
+  ADV_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.type === 'checkbox') state[id] = el.checked;
+    else state[id] = advValue(id);
+  });
+  state.moves = selectedAdvMoves();
+  state.evolution = selectedAdvEvolution();
+  return state;
+}
+function saveAdvState() {
+  try { localStorage.setItem(ADV_STORAGE, JSON.stringify(collectAdvState())); } catch {}
+}
+function restoreAdvState() {
+  try {
+    const raw = localStorage.getItem(ADV_STORAGE);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    ADV_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || state[id] == null) return;
+      if (el.type === 'checkbox') el.checked = !!state[id];
+      else el.value = state[id];
+    });
+    if (Array.isArray(state.moves)) {
+      document.querySelectorAll('[data-adv-move]').forEach(el => { el.checked = state.moves.includes(el.dataset.advMove); });
+    }
+    if (Array.isArray(state.evolution)) {
+      document.querySelectorAll('[data-adv-evol]').forEach(el => { el.checked = state.evolution.includes(el.dataset.advEvol); });
+    }
+    return true;
+  } catch { return false; }
+}
+function applyGenreDefaults() {
+  const defs = GENRE_DEFAULTS[advValue('advGenre')];
+  if (!defs) return;
+  Object.entries(defs).forEach(([id, value]) => {
+    if (id === 'moves' || id === 'evolution') return;
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  });
+  if (Array.isArray(defs.moves)) {
+    document.querySelectorAll('[data-adv-move]').forEach(el => { el.checked = defs.moves.includes(el.dataset.advMove); });
+  }
+  if (Array.isArray(defs.evolution)) {
+    document.querySelectorAll('[data-adv-evol]').forEach(el => { el.checked = defs.evolution.includes(el.dataset.advEvol); });
+  }
+  const custom = $('#advCustomProgression');
+  if (custom) custom.value = '';
+}
+function applyAdvancedExtra() {
+  $('#extra').value = $('#advPromptPreview').value || buildAdvancedPrompt();
+  status('Advanced prompt copied to Fast Extra', 'ok');
+}
+function setWorkbenchView(which) {
+  const isAdv = which === 'adv';
+  $('#advView').classList.toggle('active', isAdv);
+  $('#dawView').classList.toggle('active', !isAdv);
+  $('#advViewBtn').classList.toggle('active', isAdv);
+  $('#dawViewBtn').classList.toggle('active', !isAdv);
+  $('#advViewBtn').setAttribute('aria-selected', isAdv ? 'true' : 'false');
+  $('#dawViewBtn').setAttribute('aria-selected', isAdv ? 'false' : 'true');
+}
+function boundedSurprise() {
+  // Pull live preset list from the dropdown so we can't pick a deleted option.
+  const presets = Array.from($('#advGenre').options).map(o => o.value).filter(v => v);
+  if (presets.length) $('#advGenre').value = presets[Math.floor(Math.random() * presets.length)];
+  applyGenreDefaults();
+  const mood = $('#advMood'); mood.selectedIndex = Math.floor(Math.random() * mood.options.length);
+  const val = (id, lo, hi) => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(Math.round(lo + Math.random() * (hi - lo)));
+  };
+  val('advDensity', 34, 60); val('advEnergy', 38, 72); val('advMotif', 68, 88);
+  val('advReharm', 8, 36); val('advExperiment', 10, 42); val('advTexture', 18, 58);
+  document.querySelectorAll('[data-adv-move]').forEach(el => { el.checked = false; });
+  const sec = document.querySelector('[data-adv-move="secondary dominants"]');
+  const bd  = document.querySelector('[data-adv-move="backdoor cadence"]');
+  if (sec && Math.random() > 0.55) sec.checked = true;
+  if (bd  && Math.random() > 0.78) bd.checked = true;
+  updateAdvancedPrompt();
+}
+function initAdvancedGeneration() {
+  const restored = restoreAdvState();
+  if (!restored) applyGenreDefaults();
+  document.querySelectorAll('#advView input, #advView select, #advView textarea:not(#advPromptPreview)').forEach(el => {
+    el.addEventListener('input', () => updateAdvancedPrompt());
+    el.addEventListener('change', () => updateAdvancedPrompt());
+  });
+  $('#advGenre').addEventListener('change', () => { applyGenreDefaults(); updateAdvancedPrompt(); });
+  $('#advPromptPreview').addEventListener('input', () => {
+    const v = $('#advPromptPreview').value;
+    const apInfo = $('#advPromptInfo');
+    if (apInfo) {
+      if (v.length) {
+        apInfo.setAttribute('data-tip', `compiled prompt\nchars: ${v.length}\nlines: ${v.split('\n').length}`);
+        apInfo.style.display = '';
+      } else { apInfo.style.display = 'none'; }
+    }
+  });
+  $('#advApply').onclick = applyAdvancedExtra;
+  $('#advTopGenerate').onclick = () => runGenerate($('#advPromptPreview').value || buildAdvancedPrompt(), 'Advanced Generation');
+  $('#advGenerate').onclick = () => runGenerate($('#advPromptPreview').value || buildAdvancedPrompt(), 'Advanced Generation');
+  $('#advSurprise').onclick = boundedSurprise;
+  $('#advViewBtn').onclick = () => setWorkbenchView('adv');
+  $('#dawViewBtn').onclick = () => setWorkbenchView('daw');
+  updateAdvancedPrompt({skipSave: restored});
+}
+function compactExtra(text) {
+  const s = String(text || '(none)').replace(/\s+/g, ' ').trim();
+  return s.length > 180 ? s.slice(0, 180) + '…' : s;
+}
+
+// ── Generate (SSE) ─────────────────────────────────────────────────────
+const genLog = $('#genLog');
+let genCtrl = null;
+let genJobId = null;
+function logLine(text, cls='') {
+  const ln = document.createElement('div');
+  ln.className = 'ln ' + cls; ln.textContent = text;
+  genLog.appendChild(ln); genLog.scrollTop = genLog.scrollHeight;
+}
+async function runGenerate(extraOverride, modeLabel='Fast Generation') {
+  // The dropdown holds slot keys (e.g. 'agy-cli', 'opus-4.8'); backend handles
+  // resolution to {backend, model} via BACKEND_REGISTRY.
+  //   Fast Gen     → extraOverride === null → use $('#extra').value (may be empty = free-roam)
+  //   Advanced Gen → extraOverride = the compiled Advanced prompt (envelope)
+  const slot = $('#model').value || 'agy-cli';
+  const extra = extraOverride == null ? $('#extra').value : extraOverride;
+  genLog.innerHTML = '';
+  status(`${modeLabel}…`, 'warn');
+  $('#genBtn').disabled = true; $('#advGenerate').disabled = true; $('#advTopGenerate').disabled = true; $('#genCancel').disabled = false;
+  genCtrl = new AbortController();
+  try {
+    const r = await fetch('/api/generate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ slot, extra }),
+      signal: genCtrl.signal,
+    });
+    const reader = r.body.getReader(); const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
+      for (const p of parts) {
+        const ev = (p.match(/^event: (.+)/m) || [,'message'])[1];
+        const dl = (p.match(/^data: (.+)/m) || [,'{}'])[1];
+        let d; try { d = JSON.parse(dl); } catch { d = {raw:dl}; }
+        if (ev === 'start') { genJobId = d.job_id || null; logLine(`▶ model=${d.model} extra=${compactExtra(d.extra)}`, 'ok'); }
+        else if (ev === 'log') logLine(d.line || '');
+        else if (ev === 'validate') {
+          if (d.phase === 'start') logLine(`🔍 validator [${d.mode}]…`, 'warn');
+          else if (d.phase === 'pass') {
+            logLine(`✓ validator [${d.mode}] PASS (${d.model || '?'}, ${d.latency_ms || '?'}ms)`, 'ok');
+            if (Array.isArray(d.passes)) {
+              d.passes.forEach(p => logLine(`  · ${p.pass}: ${p.ok ? 'ok' : 'BAD'} (${p.latency_ms||'?'}ms)`));
+            }
+          }
+          else if (d.phase === 'fail') logLine(`✗ validator [${d.mode}] BAD: ${d.reason}`, 'err');
+        }
+        else if (ev === 'error') logLine('ERR: ' + d.error, 'err');
+        else if (ev === 'done') {
+          logLine(`✓ exit=${d.exit}${d.entry ? ' name=' + d.entry.name : ''}`, 'ok');
+          if (d.entry) { await loadRecent(); await openPiece(d.entry.name); }
+        }
+      }
+    }
+  } catch (e) { if (e.name !== 'AbortError') logLine('FETCH ERR: ' + e.message, 'err'); }
+  finally {
+    $('#genBtn').disabled = false; $('#advGenerate').disabled = false; $('#advTopGenerate').disabled = false; $('#genCancel').disabled = true; genJobId = null; status('ready');
+  }
+}
+$('#genBtn').onclick = () => runGenerate(null, 'Fast Generation');
+$('#genCancel').onclick = () => {
+  // Cancel the SERVER job too (kills the running render) — aborting the client
+  // stream alone leaves the model/render burning. Then abort the local stream.
+  if (genJobId) {
+    fetch('/api/generate/cancel', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({job_id: genJobId})}).catch(()=>{});
+  }
+  genCtrl?.abort();
+  logLine('(cancelled — server job stopped)', 'warn');
+};
+
+// ── Code editor / Play / Save / MIDI ──────────────────────────────────
+const codeEl = $('#code');
+codeEl.addEventListener('input', () => { renderMix(); updateCodeStat(); });
+function updateCodeStat() {
+  const t = codeEl.value;
+  const info = $('#codeInfo');
+  if (!info) return;
+  if (t.length) {
+    info.setAttribute('data-tip', `chars: ${t.length}\nlines: ${t.split('\n').length}`);
+    info.style.display = '';
+  } else {
+    info.style.display = 'none';
+  }
+}
+// audMeta: show only duration in the visible row; full details (mp3 path, sha)
+// go into the hover-tooltip on the adjacent info-icon.
+function setAudMeta(entry) {
+  if (!entry) return;
+  const dur = entry.dur ? `${entry.dur}s` : '?';
+  $('#audMeta').textContent = dur;
+  const tipBits = [];
+  if (entry.name)   tipBits.push(`piece: ${entry.name}`);
+  if (entry.dur)    tipBits.push(`duration: ${entry.dur}s`);
+  if (entry.sha)    tipBits.push(`sha: ${entry.sha}`);
+  if (entry.mp3)    tipBits.push(`mp3: ${entry.mp3}`);
+  if (entry.source) tipBits.push(`source: ${entry.source}`);
+  const info = $('#audInfo');
+  if (info && tipBits.length) {
+    info.setAttribute('data-tip', tipBits.join('\n'));
+    info.style.display = '';
+  }
+}
+// per-slot loaded state — placeholder shows whenever active slot is blank
+const _dawLoaded = { A: false, B: false };
+let _dawReloadTimer = null;
+let _dawReloadSeq = 0;
+function syncDawEmpty() {
+  $('#dawEmpty').style.display = _dawLoaded[abSlot] ? 'none' : '';
+}
+function dawIframe(slot=abSlot) {
+  return slot === 'A' ? $('#dawA') : $('#dawB');
+}
+function forceDawLoad(code, { open=false, blankFirst=false } = {}) {
+  if (open) {
+    setWorkbenchView('daw');
+    document.querySelector('.right').classList.add('open');
+  }
+  const slot = abSlot;
+  const iframe = dawIframe(slot);
+  const url = dawUrl(code);
+  _dawLoaded[slot] = true;
+  syncDawEmpty();
+  if (!blankFirst) {
+    iframe.src = url;
+    return;
+  }
+  const seq = ++_dawReloadSeq;
+  iframe.src = 'about:blank';
+  setTimeout(() => {
+    if (seq === _dawReloadSeq && abSlot === slot) iframe.src = url;
+  }, 30);
+}
+function scheduleDawReload(reason='code') {
+  if (!_dawLoaded[abSlot]) return;
+  clearTimeout(_dawReloadTimer);
+  _dawReloadTimer = setTimeout(() => {
+    forceDawLoad(codeEl.value, { blankFirst:true });
+    status(`DAW refreshed from ${reason}`, 'ok');
+  }, 260);
+}
+function loadDawWithCode(code) {
+  forceDawLoad(code, { open:true });
+}
+$('#playBtn').onclick = () => {
+  const code = codeEl.value;
+  if (!code.trim()) { status('empty code', 'warn'); return; }
+  loadDawWithCode(code);
+  status(`✎ DAW loaded (${abSlot}) — 在 strudel.cc 内点 ▶ 开始编辑`, 'ok');
+};
+// dawLoadBtn dual-role: no piece loaded → fire Fast Gen; piece loaded → Edit in DAW
+$('#dawLoadBtn').onclick = () => {
+  if (current.name && codeEl.value.trim()) $('#playBtn').click();
+  else $('#genBtn').click();
+};
+$('#saveBtn').onclick = async () => {
+  const code = codeEl.value;
+  if (!code.trim()) return;
+  if (!current.name) { status('load a piece before Save+Render', 'warn'); return; }
+  $('#saveBtn').disabled = true;
+  status('saving current piece + rendering…', 'warn');
+  const r = await fetch('/api/update-piece-code', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ code, name: current.name }),
+  }).then(r => r.json()).catch(e => ({error:String(e)}));
+  $('#saveBtn').disabled = false;
+  if (r.error) { status('save err: ' + r.error, 'err'); return; }
+  current = { name: r.entry.name, entry: r.entry };
+  $('#curName').textContent = '· ' + r.entry.name;
+  const audioUrl = '/' + r.entry.mp3 + (r.entry.sha ? ('?v=' + encodeURIComponent(r.entry.sha)) : '');
+  $('#aud').src = audioUrl;
+  setAudMeta(r.entry);
+  if (_dawLoaded[abSlot]) forceDawLoad(codeEl.value, { blankFirst:true });
+  await loadRecent();
+  status(`✓ saved over ${r.entry.name} + rendered`, 'ok');
+};
+$('#workSaveBtn').onclick = () => $('#saveBtn').click();
+$('#midiBtn').onclick = async () => {
+  const code = codeEl.value;
+  if (!code.trim()) return;
+  status('exporting MIDI… (boots renderer, ~20s)', 'warn');
+  try {
+    const r = await fetch('/api/midi', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code, name: current.name || 'export', cycles: 32, cps: 0.5 }),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      status('midi err: ' + (j.error || r.status), 'err'); return;
+    }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = (current.name || 'export') + '.mid';
+    a.click(); URL.revokeObjectURL(a.href);
+    status('✓ MIDI downloaded', 'ok');
+  } catch (e) { status('midi err: ' + e.message, 'err'); }
+};
+
+// ── Mix sliders (regex parse layer.gain/.lpf/.hpf/.pan/.room) ──────────
+const MIX_PARAMS = [
+  // canonical mix knobs — ordered by importance in the rendered strip
+  { k:'gain',          min:0,    max:1.5,   step:0.01, def:0.8 },
+  { k:'pan',           min:-1,   max:1,     step:0.02, def:0   },
+  { k:'lpf',           min:60,   max:18000, step:50,   def:8000 },
+  { k:'lpq',           min:0,    max:30,    step:0.1,  def:1   },
+  { k:'hpf',           min:0,    max:8000,  step:25,   def:0   },
+  { k:'hpq',           min:0,    max:30,    step:0.1,  def:1   },
+  { k:'room',          min:0,    max:1,     step:0.01, def:0   },
+  { k:'roomsize',      min:0,    max:1,     step:0.01, def:0.5 },
+  { k:'delay',         min:0,    max:1,     step:0.01, def:0   },
+  { k:'delaytime',     min:0,    max:2,     step:0.01, def:0.25},
+  { k:'delayfeedback', min:0,    max:0.95,  step:0.01, def:0.4 },
+  { k:'attack',        min:0,    max:2,     step:0.005,def:0.01},
+  { k:'release',       min:0,    max:2,     step:0.005,def:0.1 },
+  { k:'shape',         min:0,    max:1,     step:0.01, def:0   },
+  { k:'distort',       min:0,    max:1,     step:0.01, def:0   },
+  { k:'speed',         min:0.1,  max:4,     step:0.05, def:1   },
+];
+const MIX_PARAM_KEYS = new Set(MIX_PARAMS.map(p => p.k));
+const MIX_PARAM_BY_KEY = Object.fromEntries(MIX_PARAMS.map(p => [p.k, p]));
+function parseLayers(code) {
+  // crude but effective: each top-level `someName: $: ...` OR `stack(` arg as layer
+  // we just find lines matching `\.([a-z]+)\(([^()]*?)\)` and group by sequence index
+  // simpler: find any `.gain(N)` etc, treat each as an editable knob — distinct positions.
+  const layers = [];
+  const re = /^([ \t]*)(\$|let\s+\w+\s*=)/gm;
+  let m, idx = 0;
+  const lines = code.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (/^[ \t]*(\$|let\s+\w+\s*=|stack\s*\()/.test(lines[i])) {
+      // find next blank or close to terminate "layer"
+      let nameMatch = lines[i].match(/let\s+(\w+)/) || lines[i].match(/^\s*(\$)/);
+      let name = nameMatch ? (nameMatch[1] === '$' ? `$${idx+1}` : nameMatch[1]) : `layer${idx+1}`;
+      layers.push({ name, startLine: i });
+      idx++;
+    }
+  }
+  return layers;
+}
+// Parse code into a list of {track, effect, value, occurrenceWithinTrack}
+// keyed by exact source position so we can edit at the right place.
+function parseMixTracks(code) {
+  // 1. Find each `const NAME = ` track start
+  const trackRe = /\bconst\s+([A-Za-z_$][\w$]*)\s*=/g;
+  const tracks = [];
+  let m;
+  while ((m = trackRe.exec(code)) !== null) {
+    tracks.push({ name: m[1], pos: m.index });
+  }
+  // 2. Find every effect call .X(N) in the code
+  const effectRe = /\.([a-zA-Z]+)\(\s*(-?\d+(?:\.\d+)?)\s*\)/g;
+  const effects = [];
+  // Skip matches inside a string literal OR a comment, so we never offer a
+  // slider for a commented-out / string-embedded effect (and thus never edit
+  // the wrong token). Build one linear mask instead of rescanning from 0 for
+  // every effect match.
+  function buildIgnoredMask() {
+    const ignored = new Uint8Array(code.length);
+    let inS = false, inD = false, inB = false, inLine = false, inBlock = false;
+    for (let i = 0; i < code.length; i++) {
+      const c = code[i], p = code[i-1], n = code[i+1];
+      if (inLine) { ignored[i] = 1; if (c === '\n') inLine = false; continue; }
+      if (inBlock) {
+        ignored[i] = 1;
+        if (c === '*' && n === '/') { ignored[i + 1] = 1; inBlock = false; i++; }
+        continue;
+      }
+      if (!inS && !inD && !inB && c === '/' && n === '/') { ignored[i] = 1; ignored[i + 1] = 1; inLine = true; i++; continue; }
+      if (!inS && !inD && !inB && c === '/' && n === '*') { ignored[i] = 1; ignored[i + 1] = 1; inBlock = true; i++; continue; }
+      if (inS || inD || inB) ignored[i] = 1;
+      if (p === '\\') continue;
+      if (!inD && !inB && c === '\'') inS = !inS;
+      else if (!inS && !inB && c === '"') inD = !inD;
+      else if (!inS && !inD && c === '`') inB = !inB;
+    }
+    return ignored;
+  }
+  const ignoredMask = buildIgnoredMask();
+  while ((m = effectRe.exec(code)) !== null) {
+    const effectName = m[1];
+    if (!MIX_PARAM_KEYS.has(effectName)) continue;
+    if (ignoredMask[m.index]) continue;
+    // attribute to most-recent track
+    let track = 'master';
+    for (let i = tracks.length - 1; i >= 0; i--) {
+      if (tracks[i].pos < m.index) { track = tracks[i].name; break; }
+    }
+    effects.push({
+      track,
+      effect: effectName,
+      value: parseFloat(m[2]),
+      sourcePos: m.index,
+      sourceLen: m[0].length,
+    });
+  }
+  // 3. Group by track; within each track, number occurrences of the same effect
+  const byTrack = {};
+  const trackOrder = [];
+  for (const e of effects) {
+    if (!byTrack[e.track]) { byTrack[e.track] = []; trackOrder.push(e.track); }
+    byTrack[e.track].push(e);
+  }
+  for (const track of trackOrder) {
+    const counts = {};
+    const totals = {};
+    byTrack[track].forEach(e => totals[e.effect] = (totals[e.effect] || 0) + 1);
+    byTrack[track].forEach(e => {
+      counts[e.effect] = (counts[e.effect] || 0) + 1;
+      e.occurrence = counts[e.effect];
+      e.totalForEffect = totals[e.effect];
+    });
+  }
+  return { trackOrder, byTrack };
+}
+
+function renderMix() {
+  const code = codeEl.value;
+  const mix = $('#mix');
+  if (!code.trim()) { mix.innerHTML = '<div class="mix-empty">no code yet</div>'; return; }
+
+  const { trackOrder, byTrack } = parseMixTracks(code);
+  if (!trackOrder.length) {
+    mix.innerHTML = '<div class="mix-empty">no mixable params in any const … = … chain</div>';
+    return;
+  }
+
+  function applyMixValue(track, effect, occurrence, nextValue) {
+    // Re-parse so positions are fresh after any earlier edit
+    const fresh = parseMixTracks(codeEl.value);
+    const list = (fresh.byTrack[track] || []).filter(e => e.effect === effect);
+    const target = list[occurrence - 1];
+    if (!target) return;
+    const before = codeEl.value.slice(0, target.sourcePos);
+    const after  = codeEl.value.slice(target.sourcePos + target.sourceLen);
+    const fmt = (Number.isInteger(+nextValue)) ? String(nextValue) : (+nextValue).toString();
+    codeEl.value = before + `.${effect}(${fmt})` + after;
+    updateCodeStat();
+    scheduleDawReload('Mix');
+  }
+
+  mix.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'mix-mixer';
+  for (const track of trackOrder) {
+    const head = document.createElement('div');
+    head.className = 'mix-track-head';
+    head.textContent = track;
+    const sub = document.createElement('span');
+    sub.className = 'mix-track-count';
+    sub.textContent = `${byTrack[track].length} param${byTrack[track].length === 1 ? '' : 's'}`;
+    head.appendChild(sub);
+    wrap.appendChild(head);
+    for (const e of byTrack[track]) {
+      const pSpec = MIX_PARAM_BY_KEY[e.effect];
+      const row = document.createElement('div');
+      row.className = 'mix-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'mix-label';
+      const occText = e.totalForEffect > 1 ? `·${e.occurrence}` : '';
+      lbl.textContent = `${e.effect}${occText}`;
+      const sl = document.createElement('input');
+      sl.type = 'range';
+      sl.min = pSpec.min; sl.max = pSpec.max; sl.step = pSpec.step;
+      sl.value = e.value;
+      sl.dataset.track = track;
+      sl.dataset.effect = e.effect;
+      sl.dataset.occ = e.occurrence;
+      const val = document.createElement('span');
+      val.className = 'mix-val';
+      const fmtVal = (v) => {
+        const n = +v;
+        if (Number.isInteger(n)) return String(n);
+        const dec = pSpec.step >= 1 ? 0 : pSpec.step >= 0.1 ? 1 : pSpec.step >= 0.01 ? 2 : 3;
+        return n.toFixed(dec);
+      };
+      val.textContent = fmtVal(e.value);
+      sl.addEventListener('input', () => {
+        val.textContent = fmtVal(sl.value);
+        applyMixValue(sl.dataset.track, sl.dataset.effect, parseInt(sl.dataset.occ, 10), sl.value);
+      });
+      row.appendChild(lbl);
+      row.appendChild(sl);
+      row.appendChild(val);
+      wrap.appendChild(row);
+    }
+  }
+  mix.appendChild(wrap);
+}
+
+// ── Score ──────────────────────────────────────────────────────────────
+async function saveScore() {
+  if (!current.name) { status('load a piece first', 'warn'); return; }
+  const score = parseFloat($('#score').value);
+  if (isNaN(score)) { status('numeric score please', 'warn'); return; }
+  const r = await fetch('/api/score', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name: current.name, score, note: $('#note').value })
+  }).then(r => r.json());
+  if (r.error) status('score err: ' + r.error, 'err');
+  else { status(`✓ ${current.name} = ${score}`, 'ok'); loadRecent(); }
+}
+$('#scoreBtn').onclick = saveScore;
+// Enter in score or note input → save (the natural "I'm done typing" gesture)
+const _scoreKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); saveScore(); } };
+$('#score').addEventListener('keydown', _scoreKey);
+$('#note').addEventListener('keydown', _scoreKey);
+
+// ── Recent (polled — survives refresh + sees out-of-band corpus appends) ─
+let _recentSig = '';
+async function loadRecent() {
+  let data;
+  try {
+    const r = await fetch('/api/recent?n=30');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    data = await r.json();
+  } catch (e) {
+    const el = $('#recent');
+    if (!el.dataset.hasContent) el.innerHTML = `<div class="muted">fetch err: ${e.message} (retrying…)</div>`;
+    return;
+  }
+  // signature = total + names + scores + current.name (so click→active flips re-render)
+  const sig = String(data.total) + '|' + (data.items || []).map(x => x.name + ':' + (x.score_bowei ?? '')).join(',') + '|cur=' + (current.name || '');
+  if (sig === _recentSig) return;
+  _recentSig = sig;
+  const el = $('#recent'); el.innerHTML = ''; el.dataset.hasContent = '1';
+  if (!data.items || data.items.length === 0) { el.innerHTML = '<div class="muted">(empty)</div>'; return; }
+  for (const it of [...data.items].reverse()) {
+    const div = document.createElement('div'); div.className = 'item';
+    if (it.name === current.name) div.classList.add('active');
+    const nm = document.createElement('span'); nm.className='nm'; nm.textContent = it.name;
+    const sc = document.createElement('span'); sc.className='sc';
+    sc.textContent = it.score_bowei != null ? String(it.score_bowei) : '·';
+    div.append(nm, sc);
+    div.onclick = () => openPiece(it.name);
+    el.appendChild(div);
+  }
+}
+
+// poll generate-status — show running-job indicator that SURVIVES PAGE REFRESH
+async function pollGenStatus() {
+  try {
+    const d = await fetch('/api/gen-status').then(r => r.json());
+    const pill = $('#genRunning');
+    if (d.count > 0) {
+      const longest = Math.max(...d.jobs.map(j => j.runtime || 0));
+      const brain = d.jobs.filter(j => j.source === 'brain').length;
+      const bn = brain ? ` · ${brain} brain` : '';
+      pill.style.display = ''; pill.textContent = `⏳ ${d.count} gen running${bn} (${longest.toFixed(0)}s)`;
+    } else {
+      pill.style.display = 'none';
+    }
+  } catch {}
+}
+async function openPiece(name) {
+  const d = await fetch('/api/piece?name=' + encodeURIComponent(name)).then(r => r.json());
+  if (d.error) { status('open err: ' + d.error, 'err'); return; }
+  current = { name, entry: d.entry };
+  codeEl.value = d.code || '';
+  $('#curName').textContent = '· ' + name;
+  $('#score').value = d.entry.score_bowei != null ? d.entry.score_bowei : '';
+  $('#note').value  = d.entry.note_bowei || '';
+  updateCodeStat(); renderMix();
+  // load + autoplay mp3 (user-gesture inherited from Recent click → browser permits)
+  if (d.entry.mp3) {
+    const aud = $('#aud');
+    const audioUrl = '/' + d.entry.mp3 + (d.entry.sha ? ('?v=' + encodeURIComponent(d.entry.sha)) : '');
+    aud.src = audioUrl;
+      setAudMeta(d.entry);
+    // focus BEFORE awaiting play() — keeps the user-gesture-inherited focus inside the same tick
+    $('#score').focus({ preventScroll: true }); $('#score').select();
+    try { await aud.play(); } catch (e) { status('autoplay blocked — 手动 ▶', 'warn'); }
+    // re-focus after audio settles (audio.play() can steal focus to audio controls)
+    $('#score').focus({ preventScroll: true }); $('#score').select();
+  }
+  // do NOT auto-load iframe (cross-origin = 2nd click anyway). Enable Edit button.
+  // Always enabled — handler routes to Generate or Edit based on context
+  $('#dawLoadBtn').textContent = d.code ? `✎ Edit ${name} in DAW` : '先点 Generate 键';
+  loadRecent();
+}
+
+// ── Kernel fragment editor ────────────────────────────────────────────
+// Replaces the old single-PROMPT_BASE Guideline editor. AGY reads from
+// producer-brain/kernel/*.md fragments compiled fresh each generation;
+// this UI picks one fragment to edit with auto-backup on save.
+async function loadKernelFragments() {
+  try {
+    const d = await fetch('/api/kernel/fragments').then(r => r.json());
+    if (d.error) { status('kernel list err: ' + d.error, 'err'); return; }
+    const sel = $('#kernelFrag');
+    const prev = sel.value;
+    sel.innerHTML = d.fragments.map(f =>
+      `<option value="${f.name}">${f.name} · ${f.size}b</option>`
+    ).join('');
+    if (prev && d.fragments.find(f => f.name === prev)) sel.value = prev;
+    await loadKernelFragment();
+  } catch (e) { /* details collapsed, no-op */ }
+}
+async function loadKernelFragment() {
+  const name = $('#kernelFrag').value;
+  if (!name) return;
+  const d = await fetch('/api/kernel/fragment?name=' + encodeURIComponent(name)).then(r => r.json());
+  if (d.error) { status('kernel read err: ' + d.error, 'err'); return; }
+  $('#kernelText').value = d.content;
+  const info = $('#kernelInfo');
+  if (info) info.setAttribute('data-tip',
+    `生成 prompt 的内容源\n` +
+    `producer-brain/kernel/* — AGY 每次 generate 时实时编译\n` +
+    `\n` +
+    `当前 fragment\n` +
+    `  bytes: ${d.content.length}\n` +
+    `  sha:   ${(d.sha || '').slice(0,12)}`
+  );
+}
+$('#kernelFrag').onchange = loadKernelFragment;
+$('#kernelReload').onclick = loadKernelFragments;
+$('#kernelSave').onclick = async () => {
+  const name = $('#kernelFrag').value;
+  const content = $('#kernelText').value;
+  if (!name) return;
+  if (!confirm(`Overwrite kernel/${name}?\n(automatic .bak.{ts} written first)`)) return;
+  const r = await fetch('/api/kernel/fragment', {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, content })
+  }).then(r => r.json());
+  if (r.ok) {
+    status(`✓ kernel/${name} saved (bak: ${r.backup})`, 'ok');
+    loadKernelFragment();
+  } else {
+    status('kernel save err: ' + (r.error || '?'), 'err');
+  }
+};
+// Defer initial load until the <details> is opened (saves an API call on every page load)
+$('#kernelFrag').closest('details').addEventListener('toggle', e => {
+  if (e.target.open && !$('#kernelFrag').options.length) loadKernelFragments();
+});
+
+// ── A/B compare ───────────────────────────────────────────────────────
+$('#abA').onclick = () => abSet('A');
+$('#abB').onclick = () => abSet('B');
+$('#abSnap').onclick = () => {
+  // snapshot current code into the OTHER slot's iframe
+  const other = abSlot === 'A' ? 'B' : 'A';
+  const iframe = other === 'A' ? $('#dawA') : $('#dawB');
+  iframe.src = dawUrl(codeEl.value);
+  status(`snapped → slot ${other}`, 'ok');
+};
+function abSet(slot) {
+  abSlot = slot;
+  $('#abA').classList.toggle('on', slot === 'A');
+  $('#abB').classList.toggle('on', slot === 'B');
+  $('#dawA').style.display = slot === 'A' ? '' : 'none';
+  $('#dawB').style.display = slot === 'B' ? '' : 'none';
+  syncDawEmpty();  // show placeholder if newly-active slot is empty
+}
+
+// ── Stop All ──────────────────────────────────────────────────────────
+$('#stopAll').onclick = () => {
+  // can't postMessage cross-origin to strudel.cc reliably; reload-blank is the hammer.
+  // Cancel any in-flight blank-then-reload (scheduleDawReload or forceDawLoad with
+  // blankFirst:true uses a 30/260ms timer) by bumping seq + clearing the timer,
+  // otherwise the iframe we just killed gets re-stamped 30ms later.
+  clearTimeout(_dawReloadTimer);
+  _dawReloadSeq++;
+  $('#dawA').src = 'about:blank';
+  $('#dawB').src = 'about:blank';
+  _dawLoaded.A = false; _dawLoaded.B = false;
+  syncDawEmpty();
+  $('#aud').pause();
+  status('⏹ all stopped', 'warn');
+};
+
+// ── Refresh recent ────────────────────────────────────────────────────
+$('#refreshRecent').onclick = loadRecent;
+
+// ── Waveform (very cheap peak-canvas) ────────────────────────────────
+// (drawWaveform removed 2026-05-29 — no canvas in this layout; audio plays via <audio>.)
+
+// ── CC Bridge ─────────────────────────────────────────────────────────
+// Right sidebar: Chat / Proposals / Tasks / Commands / Transcript
+// SSE-fed from /api/cc/stream; fallback to /api/cc/state polling.
+let ccState = { inbox:[], replies:[], proposals:[], tasks:[], transcript:[], presets:[] };
+let ccEs = null;
+
+function escHtml(s) { return String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]); }
+
+// ── info-icon shared tooltip popup ─────────────────────────────────────
+// One body-level element positioned dynamically; escapes any overflow-clip.
+(function initInfoTip() {
+  const tip = document.createElement('div');
+  tip.id = 'info-tip-popup';
+  tip.className = 'info-tip-popup';
+  document.body.appendChild(tip);
+
+  function position(icon) {
+    const iconR = icon.getBoundingClientRect();
+    // measure tip after content set
+    const tipR = tip.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight, gap = 6;
+    // Default: above icon, right edge aligned with icon's right edge
+    let top = iconR.top - tipR.height - gap;
+    let left = iconR.right - tipR.width;
+    // Flip below if no room above
+    if (top < 8) top = iconR.bottom + gap;
+    // Clamp horizontally
+    if (left < 8) left = 8;
+    if (left + tipR.width > vw - 8) left = vw - 8 - tipR.width;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  }
+
+  document.addEventListener('mouseover', e => {
+    const icon = e.target.closest('.info-icon[data-tip]');
+    if (!icon) return;
+    tip.textContent = icon.getAttribute('data-tip') || '';
+    tip.style.display = 'block';
+    // First render gives us tip dimensions; then position
+    requestAnimationFrame(() => position(icon));
+  });
+  document.addEventListener('mouseout', e => {
+    const icon = e.target.closest('.info-icon[data-tip]');
+    if (icon && !icon.contains(e.relatedTarget)) tip.style.display = 'none';
+  });
+  // hide on scroll so it doesn't strand
+  window.addEventListener('scroll', () => { tip.style.display = 'none'; }, true);
+})();
+function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
+function highlightJs(code) {
+  let h = escHtml(code);
+  const saved = [];
+  const stash = (html) => {
+    const key = `@@JSHL_${saved.length.toString(36).replace(/\d/g, d => String.fromCharCode(97 + Number(d)))}@@`;
+    saved.push([key, html]);
+    return key;
+  };
+  h = h.replace(/(".*?"|'.*?'|`[\s\S]*?`)/g, m => stash(`<span class="str">${m}</span>`));
+  h = h.replace(/(\/\/.*)$/gm, m => stash(`<span class="comment">${m}</span>`));
+  h = h.replace(/\b(const|let|var|return|if|else|async|await|function)\b/g, '<span class="kw">$1</span>');
+  h = h.replace(/\b(stack|arrange|note|chord|s|n|setcpm)\b(?=\()/g, '<span class="fn">$1</span>');
+  h = h.replace(/\.(\w+)(?=\()/g, '.<span class="call">$1</span>');
+  h = h.replace(/\b(\d+(?:\.\d+)?|\.\d+)\b/g, '<span class="num">$1</span>');
+  saved.forEach(([key, html]) => { h = h.replaceAll(key, html); });
+  return h;
+}
+function paramChipHtml(token) {
+  const m = String(token).match(/^\.([A-Za-z_]\w*)\(([\s\S]*)\)$/);
+  if (!m) return `<code class="inline-code">${escHtml(token)}</code>`;
+  return `<span class="param-chip"><span>.${escHtml(m[1])}</span><b>${escHtml(m[2])}</b></span>`;
+}
+function renderInlineRich(s) {
+  const placeholders = [];
+  let h = escHtml(s);
+  h = h.replace(/`([^`\n]+)`/g, (_m, code) => {
+    const raw = String(code).replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    const html = raw.match(/^\.[A-Za-z_]\w*\([\s\S]*\)$/)
+      ? paramChipHtml(raw)
+      : `<code class="inline-code">${escHtml(raw)}</code>`;
+    const key = `@@INLINE_${placeholders.length}@@`;
+    placeholders.push([key, html]);
+    return key;
+  });
+  h = h.replace(/(^|[\s（(，,。:：])(\.[A-Za-z_]\w*\((?:[^()"`]|"[^"]*"|'[^']*')*\))/g, (_m, pre, token) => {
+    const key = `@@INLINE_${placeholders.length}@@`;
+    placeholders.push([key, paramChipHtml(token)]);
+    return pre + key;
+  });
+  placeholders.forEach(([key, html]) => { h = h.replaceAll(key, html); });
+  return h;
+}
+function renderMsgBody(text) {
+  const raw = String(text ?? '');
+  const parts = [];
+  let last = 0;
+  raw.replace(/```([A-Za-z0-9_-]*)\n([\s\S]*?)```/g, (m, lang, code, offset) => {
+    if (offset > last) parts.push({type:'text', value:raw.slice(last, offset)});
+    parts.push({type:'code', lang:lang || 'code', value:code.replace(/\n$/, '')});
+    last = offset + m.length;
+    return m;
+  });
+  if (last < raw.length) parts.push({type:'text', value:raw.slice(last)});
+  return parts.map(part => {
+    if (part.type === 'code') {
+      return `<pre class="md-code" data-lang="${escAttr(part.lang)}"><code>${highlightJs(part.value)}</code></pre>`;
+    }
+    const lines = part.value.split('\n');
+    const out = [];
+    let list = [];
+    const flushList = () => {
+      if (!list.length) return;
+      out.push(`<ul>${list.map(x => `<li>${renderInlineRich(x)}</li>`).join('')}</ul>`);
+      list = [];
+    };
+    for (const line of lines) {
+      const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+      if (bullet) { list.push(bullet[1]); continue; }
+      flushList();
+      if (!line.trim()) continue;
+      out.push(`<p>${renderInlineRich(line)}</p>`);
+    }
+    flushList();
+    return out.join('');
+  }).join('');
+}
+function ccTabs() {
+  document.querySelectorAll('.cc-tabs .t').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.cc-tabs .t').forEach(x => {
+      x.classList.toggle('active', x === t);
+      x.setAttribute('aria-selected', x === t ? 'true' : 'false');
+    });
+    const which = t.dataset.cc;
+    document.querySelectorAll('.cc-pane').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== which));
+    document.getElementById('inputChat').style.display = which === 'chat' ? '' : 'none';
+  });
+}
+function renderChat() {
+  const el = $('#paneChat'); if (!el) return;
+  // interleave inbox + replies by ts; newest at bottom
+  const items = [
+    ...ccState.inbox.map(x => ({...x, _kind:'user'})),
+    ...ccState.replies.map(x => ({...x, _kind:'cc'})),
+  ].sort((a,b) => (a.ts || '').localeCompare(b.ts || ''));
+  el.innerHTML = items.map(m => {
+    if (m._kind === 'user') {
+      const ctxLine = m.context && m.context.piece_name
+        ? `<div class="msg ctx">附: ${escHtml(m.context.piece_name)}${m.context.code_excerpt ? ' (' + m.context.code_excerpt.length + 'c code)' : ''}</div>` : '';
+      const tagDisp = (m.tag && m.tag !== 'chat')
+        ? (m.tag === 'brain' ? 'BRAIN' : m.tag)
+        : null;
+      const uTipBits = [
+        tagDisp,
+        m.status || null,
+      ].filter(Boolean);
+      const uTipAttr = uTipBits.length ? ` data-tip="${escAttr(uTipBits.join(' · '))}"` : '';
+      return ctxLine + `<div class="msg user"><div class="h"${uTipAttr}>YOU · ${escHtml(m.ts)}</div><div class="b">${renderMsgBody(m.text)}</div></div>`;
+    }
+    const who = m.model ? 'BRAIN' : 'CLAUDE CODE';
+    const tipBits = [m.model, m.in_reply_to ? '↪ ' + m.in_reply_to : null].filter(Boolean);
+    const tipAttr = tipBits.length ? ` data-tip="${escAttr(tipBits.join(' · '))}"` : '';
+    return `<div class="msg cc"><div class="h"${tipAttr}>${who} · ${escHtml(m.ts)}${m.attached_piece ? ' · ' + escHtml(m.attached_piece) : ''}</div><div class="b">${renderMsgBody(m.text)}</div></div>`;
+  }).join('') || '<div class="muted">no messages yet — say something →</div>';
+  el.scrollTop = el.scrollHeight;
+  const unread = ccState.inbox.filter(x => x.status === 'pending').length;
+  badge('chat', unread);
+}
+function renderProposals() {
+  const el = $('#paneProp'); if (!el) return;
+  const items = [...ccState.proposals].sort((a,b) => (b.ts || '').localeCompare(a.ts || ''));
+  el.innerHTML = items.map(p => {
+    const stcls = p.status || 'pending';
+    const diff = p.diff ? `<div class="diff">${escHtml(p.diff).split('\n').map(l => l.startsWith('+') ? `<span class="add">${l}</span>` : l.startsWith('-') ? `<span class="rem">${l}</span>` : l).join('\n')}</div>` : '';
+    const actions = stcls === 'pending'
+      ? `<div class="actions"><button class="accent" data-act="accept" data-id="${escHtml(p.id)}">✓ Accept</button><button class="warn" data-act="reject" data-id="${escHtml(p.id)}">✗ Reject</button></div>`
+      : `<div class="muted" style="font-size:10px;">${escHtml(stcls)}${p.decided_at ? ' · ' + escHtml(p.decided_at) : ''}${p.executed_at ? ' · executed ' + escHtml(p.executed_at) : ''}</div>`;
+    return `<div class="prop ${stcls}"><h4>${escHtml(p.title || '(no title)')}</h4><div class="b">${escHtml(p.body || '')}</div>${diff}${actions}</div>`;
+  }).join('') || '<div class="muted">no proposals — terminal /check-inbox 后 Claude Code 提案会进这里</div>';
+  el.querySelectorAll('button[data-act]').forEach(b => b.onclick = async () => {
+    const note = b.dataset.act === 'reject' ? (prompt('rejection note (optional):') || '') : '';
+    await fetch('/api/cc/proposal-action', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: b.dataset.id, action: b.dataset.act, note})}).then(r => r.json());
+    ccLoad();
+  });
+  badge('prop', items.filter(p => p.status === 'pending').length);
+}
+function renderTasks() {
+  const el = $('#paneTask'); if (!el) return;
+  const items = [...ccState.tasks].sort((a,b) => (b.started_at || b.ts || '').localeCompare(a.started_at || a.ts || ''));
+  el.innerHTML = items.map(t => {
+    const st = t.status || 'queued';
+    const ctrl = (st === 'queued' || st === 'running')
+      ? `<button data-tact="cancel" data-id="${escHtml(t.id)}" title="cancel">✕</button>`
+      : (st === 'failed' || st === 'cancelled')
+        ? `<button data-tact="requeue" data-id="${escHtml(t.id)}">↻</button>`
+        : `<span class="muted">·</span>`;
+    return `<div class="task"><span class="st ${st}">${st}</span><span title="${escAttr(t.kind || '')}\n${escAttr(t.body || '')}">${escHtml(t.label || t.kind || t.id)}</span>${ctrl}</div>`;
+  }).join('') || '<div class="muted">no tasks</div>';
+  el.querySelectorAll('button[data-tact]').forEach(b => b.onclick = async () => {
+    await fetch('/api/cc/task-action', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: b.dataset.id, action: b.dataset.tact})}).then(r => r.json());
+    ccLoad();
+  });
+  badge('task', items.filter(t => t.status === 'queued' || t.status === 'running').length);
+}
+function renderCommands() {
+  const el = $('#paneCmd'); if (!el) return;
+  el.innerHTML = '<div class="cmd-grid">' + (ccState.presets || []).map(c =>
+    `<button data-cid="${escAttr(c.id)}" title="${escAttr(c.body)}">${escHtml(c.label)}</button>`
+  ).join('') + '</div>' +
+    '<div style="margin-top:8px; text-align:right;"><span class="info-icon" data-tip="点按钮 = 写一条带 tag 的 inbox 给 Claude Code&#10;terminal 输 /check-inbox 接收">i</span></div>';
+  el.querySelectorAll('button[data-cid]').forEach(b => b.onclick = async () => {
+    const c = ccState.presets.find(p => p.id === b.dataset.cid);
+    await fetch('/api/cc/inbox', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text: c.body, tag: c.tag, context: ccCurrentContext()})});
+    status('✓ preset → inbox: ' + c.label, 'ok');
+    ccLoad();
+  });
+}
+function renderTranscript() {
+  const el = $('#paneTx'); if (!el) return;
+  const items = [...ccState.transcript].slice(-50);  // latest 50, oldest first
+  el.innerHTML = items.map(x => {
+    const kind = x.kind || 'tool';
+    return `<div class="tx ${kind}"><div class="h">${escHtml((x.ts || '').slice(11, 19))} · ${kind}</div><div class="b">${escHtml(x.text)}</div></div>`;
+  }).join('') || '<div class="muted">no transcript yet — Claude Code 在 terminal 一动这里就跟着出</div>';
+  el.scrollTop = el.scrollHeight;
+}
+function badge(which, n) {
+  const b = document.getElementById('badge-' + which); if (!b) return;
+  if (n > 0) { b.textContent = String(n); b.style.display = ''; } else { b.style.display = 'none'; }
+}
+function ccCurrentContext() {
+  return current.name ? {
+    piece_name: current.name,
+    code_excerpt: codeEl.value.slice(0, 800),
+    score: current.entry?.score_bowei ?? null,
+    mp3:   current.entry?.mp3 ?? null,
+  } : {};
+}
+function renderCC() {
+  renderChat(); renderProposals(); renderTasks(); renderCommands(); renderTranscript();
+}
+async function ccLoad() {
+  try {
+    const d = await fetch('/api/cc/state').then(r => r.json());
+    ccState = { ...ccState, ...d };
+    renderCC();
+  } catch (e) { /* keep last */ }
+}
+function ccSubscribe() {
+  if (ccEs) ccEs.close();
+  ccEs = new EventSource('/api/cc/stream');
+  ccEs.addEventListener('state', (ev) => {
+    try { const d = JSON.parse(ev.data); ccState = { ...ccState, ...d }; renderCC(); } catch {}
+  });
+  ccEs.onerror = () => { try { ccEs.close(); } catch {} ccEs = null; setTimeout(ccSubscribe, 3000); };
+}
+let ccCtrl = null;        // in-flight brain-chat AbortController
+$('#ccSend').onclick = async () => {
+  // While a request is in flight this button acts as Cancel.
+  if (ccCtrl) { ccCtrl.abort(); ccCtrl = null; return; }
+  const text = $('#ccText').value.trim();
+  if (!text) return;
+  const attach = $('#ccAttach').checked;
+  $('#ccText').value = '';
+  const sendBtn = $('#ccSend');
+  sendBtn.textContent = '■'; sendBtn.title = 'Cancel';
+  status('Opus thinking…', 'warn');
+  ccCtrl = new AbortController();
+  let openPieceName = current?.name || null;
+  try {
+    const r = await fetch('/api/brain-chat', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, context: attach ? ccCurrentContext() : {}, stream:true}),
+      signal: ccCtrl.signal });
+    if (!r.ok || !r.body) { status('Opus err: HTTP ' + r.status, 'err'); return; }
+    const reader = r.body.getReader(); const dec = new TextDecoder();
+    let buf = '', nTools = 0, editedOpen = false;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const ev = (p.match(/^event: (.+)/m) || [,'message'])[1];
+        const dl = (p.match(/^data: (.+)/m) || [,'{}'])[1];
+        let d; try { d = JSON.parse(dl); } catch { d = {}; }
+        if (ev === 'tool' && d.phase === 'start') { nTools++; status(`Opus → ${d.name}…`, 'warn'); }
+        else if (ev === 'tool' && d.phase === 'done') {
+          status(`Opus ${d.name} ${d.ok ? '✓' : '✗'}`, d.ok ? 'warn' : 'err');
+          if ((d.name === 'update_piece_code' || d.name === 'save_piece_as_new') && d.ok) editedOpen = true;
+        }
+        else if (ev === 'thinking') status('Opus 重新核对…', 'warn');
+        else if (ev === 'error') status('Opus err: ' + (d.error || '?'), 'err');
+        else if (ev === 'done') status(d.generated_task ? '✓ Opus 已触发生成' : '✓ Opus replied', 'ok');
+      }
+    }
+    // If the brain edited the currently-open piece, refresh the workbench view.
+    if (editedOpen && openPieceName) { try { await openPiece(openPieceName); } catch {} }
+    loadRecent();
+  } catch (e) {
+    if (e.name === 'AbortError') status('已取消', 'warn');
+    else status('Opus err: ' + e.message, 'err');
+  } finally {
+    ccCtrl = null;
+    sendBtn.textContent = '↩'; sendBtn.title = 'Ask Opus brain'; sendBtn.disabled = false;
+    ccLoad();
+  }
+};
+$('#ccText').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#ccSend').click(); }
+});
+
+ccTabs();
+ccLoad();
+ccSubscribe();
+// DAW preview toggle. Auto-hidden at narrow widths; manual override on wide.
+// "Edit in DAW" also opens it (loadDawWithCode triggers this via overrideShowDaw).
+$('#dawToggleBtn').onclick = () => {
+  setWorkbenchView('daw');
+  document.querySelector('.right').classList.toggle('open');
+};
+
+// ── page-vs-server staleness detector (the "browser served cached page" footgun) ─
+const PAGE_BUILD = '__PAGE_BUILD__';  // server-injected at serve-time; mismatch with current = stale
+async function checkVersion() {
+  try {
+    const v = await fetch('/api/version').then(r => r.json());
+    const pill = $('#serverHealth');
+    if (v.main_html_build === PAGE_BUILD) {
+      pill.className = 'pill ok'; pill.textContent = 'fresh';
+      pill.title = `page=${PAGE_BUILD}  server=${v.main_html_build}  server-up-since ${v.server_started}`;
+    } else {
+      pill.className = 'pill err'; pill.textContent = '⚠ STALE — Cmd+Shift+R';
+      pill.title = `page=${PAGE_BUILD}  server=${v.main_html_build}  你看的是缓存版本; 点 Cmd+Shift+R 强制硬刷新`;
+      if (!window.__staleAlerted) {
+        window.__staleAlerted = true;
+        console.warn(`%c⚠ CactusStrudel page is STALE\npage_build=${PAGE_BUILD}\nserver_build=${v.main_html_build}\n→ Cmd+Shift+R to hard-refresh`, 'color:#f85149;font-size:14px;font-weight:bold');
+      }
+    }
+  } catch (e) {
+    $('#serverHealth').className = 'pill err'; $('#serverHealth').textContent = '✗ server';
+  }
+}
+
+// ── backend dropdown (slot keys + short labels from /api/backends) ───
+async function loadBackends() {
+  try {
+    const d = await fetch('/api/backends').then(r => r.json());
+    if (!d.slots) return;
+    const sel = $('#model');
+    const prev = sel.value;
+    sel.innerHTML = d.slots.map(s => {
+      const unavailable = s.available === false;
+      const style = unavailable ? ' style="color:#ef4444;"' : '';
+      const titleAttr = s.reason ? ` title="${s.reason}"` : '';
+      const suffix = unavailable ? ' · unavailable' : '';
+      return `<option value="${s.key}"${style}${titleAttr}>${s.label}${suffix}</option>`;
+    }).join('');
+    const valid = d.slots.find(s => s.key === prev);
+    if (valid) sel.value = prev;
+    else {
+      const firstAvail = d.slots.find(s => s.available !== false);
+      sel.value = (firstAvail || d.slots[0]).key;
+    }
+  } catch (e) { console.warn('backends load failed', e); }
+}
+
+// ── setup banner: if no slot is available, prompt user to configure ──
+async function checkSetupStatus() {
+  try {
+    const d = await fetch('/api/setup-status').then(r => r.json());
+    if (d.needs_setup) {
+      const banner = document.createElement('div');
+      banner.id = 'setupBanner';
+      banner.style.cssText = 'background:linear-gradient(90deg,rgba(212,175,55,0.18),rgba(212,175,55,0.06));border-bottom:1px solid var(--gold-dim);padding:10px 18px;color:var(--gold);font-size:12px;display:flex;align-items:center;gap:10px;font-weight:500;';
+      banner.innerHTML = '⚙ No backends configured yet — <a href="settings.html" style="color:var(--gold);text-decoration:underline;font-weight:600;">Set up Settings →</a><span style="margin-left:auto;color:var(--muted);font-size:11px;">' + d.available_count + '/' + d.total + ' available</span>';
+      document.body.insertBefore(banner, document.body.firstChild);
+    } else if (d.available_count < d.total) {
+      // soft notice — some unavailable
+      const banner = document.createElement('div');
+      banner.id = 'setupBanner';
+      banner.style.cssText = 'background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);padding:6px 18px;color:var(--muted);font-size:11px;display:flex;align-items:center;gap:8px;';
+      banner.innerHTML = `${d.available_count}/${d.total} backends available · <a href="settings.html" style="color:var(--muted);text-decoration:underline;">configure more →</a>`;
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+  } catch (e) { /* no-op */ }
+}
+
+// ── boot + liveness polling ────────────────────────────────────────────
+checkVersion();
+loadBackends();
+checkSetupStatus();
+initAdvancedGeneration();
+loadRecent();
+pollGenStatus();
+setInterval(checkVersion, 30000);
+setInterval(() => { if (document.visibilityState === 'visible') loadRecent(); }, 4000);
+setInterval(() => { if (document.visibilityState === 'visible') pollGenStatus(); }, 2000);
+// refresh as soon as tab regains focus (caught from email/Chrome/etc)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { loadRecent(); pollGenStatus(); ccLoad(); }
+});
+</script>
+</body>
+</html>

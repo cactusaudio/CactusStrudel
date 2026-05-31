@@ -40,6 +40,23 @@ describe('applyFeedback', () => {
     // groove should have grown relative to other axes
     expect(next.groove / weights.groove).toBeGreaterThan(next.originality / weights.originality);
   });
+
+  it('does not cap a concentrated boost before renormalizing', () => {
+    const weights: ScoreVector = {
+      genre_fit: 0.05, groove: 0.85, arrangement_arc: 0.02, sound_design: 0.02,
+      mix_translation: 0.02, memorability_hook: 0.01, originality: 0.01,
+      user_taste_fit: 0.01, technical_validity: 0.01,
+    };
+    const next = applyFeedback(weights, {
+      weight_adjustments: { groove: 1 },
+      attribute_preferences: {},
+      revision_hints: [],
+      synthetic_targets: [],
+      invariants: [],
+      language: 'en',
+    });
+    expect(next.groove).toBeCloseTo(1.7 / 1.85, 4);
+  });
 });
 
 describe('recordDecision', () => {

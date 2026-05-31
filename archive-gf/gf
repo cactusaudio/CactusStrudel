@@ -1,0 +1,11 @@
+#!/bin/zsh
+# End-to-end: fetch from web Gemini Pro chat box → realtime-render → mp3.
+cd /Users/bowei/CactusStrudel
+TMP=$(mktemp)
+pnpm -s exec tsx scripts/gemini-fetch.ts 2>&1 | tee "$TMP"
+out=$(grep -E "^GEMINI_OUT=" "$TMP" | tail -1 | cut -d= -f2)
+rm -f "$TMP"
+[ -z "$out" ] && { echo "[gf] no GEMINI_OUT — fetch failed"; exit 1; }
+echo
+cd /Users/bowei/CactusStrudel/apps/cli
+exec pnpm -s exec tsx src/auto-render.ts "$out"

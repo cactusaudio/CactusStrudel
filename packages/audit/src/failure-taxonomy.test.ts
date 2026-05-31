@@ -95,4 +95,29 @@ describe('classifyFailure', () => {
     const r = classifyFailure({ validatorIssues: 5 });
     expect(r.categories).toContain('strudel_validation_gap');
   });
+
+  it('high-confidence BPM drift → render_analyzer_mismatch', () => {
+    const r = classifyFailure({
+      graph: { brief: { bpm: 130 } } as never,
+      features: { rhythmic: { bpm: 98, bpm_confidence: 0.8 } },
+    });
+    expect(r.categories).toContain('render_analyzer_mismatch');
+    expect(r.evidence.bpm_confidence).toBe(0.8);
+  });
+
+  it('low-confidence BPM drift is not treated as render_analyzer_mismatch', () => {
+    const r = classifyFailure({
+      graph: { brief: { bpm: 130 } } as never,
+      features: { rhythmic: { bpm: 98, bpm_confidence: 0.2 } },
+    });
+    expect(r.categories).not.toContain('render_analyzer_mismatch');
+  });
+
+  it('short-track BPM drift is not treated as render_analyzer_mismatch', () => {
+    const r = classifyFailure({
+      graph: { brief: { bpm: 130 }, song: { total_bars: 6 } } as never,
+      features: { rhythmic: { bpm: 98, bpm_confidence: 0.9 } },
+    });
+    expect(r.categories).not.toContain('render_analyzer_mismatch');
+  });
 });

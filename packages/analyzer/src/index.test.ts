@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import wavefilePkg from 'wavefile';
 const { WaveFile } = wavefilePkg;
-import { analyzeWav, computeLoudness, generateSpectrogram } from './index.js';
+import { analyzeWav, computeLoudness, generateSpectrogram, mixToMono } from './index.js';
 
 const TMP = path.join(os.tmpdir(), 'cactus-analyzer-tests');
 
@@ -40,6 +40,16 @@ beforeAll(async () => {
   await fs.mkdir(TMP, { recursive: true });
 });
 
+describe('mixToMono', () => {
+  it('uses equal-power fold-down instead of halving coherent stereo', () => {
+    const left = new Float32Array([0.5, -0.5]);
+    const right = new Float32Array([0.5, -0.5]);
+    const mono = mixToMono([left, right]);
+    expect(mono[0]).toBeCloseTo(0.5 * Math.sqrt(2), 6);
+    expect(mono[1]).toBeCloseTo(-0.5 * Math.sqrt(2), 6);
+  });
+});
+
 describe('LUFS', () => {
   it('a -20 dBFS sine reads near -23 LUFS integrated (with K-weighting boost)', async () => {
     const sr = 48000;
@@ -69,6 +79,17 @@ describe('LUFS', () => {
     const ra = computeLoudness({ channels: [a, a], sampleRate: sr });
     const rb = computeLoudness({ channels: [b, b], sampleRate: sr });
     expect(rb.truePeakDb).toBeGreaterThan(ra.truePeakDb);
+  });
+
+  it('guards invalid sample rates and non-finite samples', () => {
+    const invalid = computeLoudness({ channels: [new Float32Array([1])], sampleRate: 0 });
+    expect(invalid.integratedLufs).toBe(-Infinity);
+    expect(Number.isFinite(invalid.truePeakDb)).toBe(true);
+
+    const ch = new Float32Array([0, Number.NaN, Number.POSITIVE_INFINITY, 0]);
+    const finite = computeLoudness({ channels: [ch], sampleRate: 48000 });
+    expect(Number.isNaN(finite.integratedLufs)).toBe(false);
+    expect(Number.isNaN(finite.truePeakDb)).toBe(false);
   });
 });
 

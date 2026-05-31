@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# piece <name> — show entry + code + prompt snapshot for a piece
+set -euo pipefail
+[ -z "${1:-}" ] && { echo "usage: piece <name>" >&2; exit 1; }
+NAME="$1"
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+echo "=== entry ==="
+ROOT="$ROOT" curl -s "$BASE/api/piece?name=$NAME" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+e=d.get('entry',{}); code=d.get('code','')
+print(json.dumps(e, indent=2, ensure_ascii=False))
+print()
+print('=== code ('+str(len(code))+' chars) ===')
+print(code)
+prompt_rel=e.get('prompt')
+if prompt_rel:
+    import os
+    p=os.path.join(os.environ['ROOT'], prompt_rel)
+    if os.path.exists(p):
+        print()
+        print('=== prompt snapshot ('+str(os.path.getsize(p))+' bytes) ===')
+        print(open(p).read())
+    else:
+        print()
+        print('(prompt file missing at', p, ')')
+"

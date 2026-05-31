@@ -126,7 +126,7 @@ export function ifSection(fn: string): SectionFunction {
 /**
  * Eval-only activation override (Bowei-approved 2026-05-17 via
  * CACTUS_KEYGEN_EVAL). Returns an augmented COPY of `policy` where
- * every (genre,role) holding ≥1 imported_public_domain (keygen) entry
+ * every (genre,role) holding ≥1 external_reference_transcription (keygen) entry
  * is forced to `enabled_default`, so the keygen ear-test render
  * actually exercises the corpus. DEFAULT_POLICY is NOT mutated. This
  * is provisional evidence-GATHERING (Bowei's ear is the verifier),
@@ -140,7 +140,7 @@ export function applyKeygenEvalOverride(
 ): ActivationPolicy {
   const per: Record<string, RoleActivationPolicy> = { ...policy.per_genre_role };
   for (const e of entries) {
-    if (e.source_type !== 'imported_public_domain') continue;
+    if (e.source_type !== 'external_reference_transcription') continue;
     per[`${e.genre}/${e.role}`] = {
       level: 'enabled_default',
       reason: 'KEYGEN-EVAL PROVISIONAL (CACTUS_KEYGEN_EVAL) — unpromoted, NOT DEFAULT_POLICY; pending §5 oracle + Bowei ear verdict',

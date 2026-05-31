@@ -135,25 +135,27 @@ export function parseBrief(text: string): BriefGraph {
   // Genre + modifiers from English first.
   let primary_genre: string | undefined;
   const modifiers = new Set<string>();
+  const genreMatches: Array<{ index: number; specificity: number; genre: string; mods: string[] }> = [];
   for (const [re, genre, mods] of GENRE_KEYWORDS) {
-    if (re.test(t)) {
-      primary_genre = genre;
-      for (const m of mods) modifiers.add(m);
-      break;
+    re.lastIndex = 0;
+    const m = re.exec(t);
+    if (m) {
+      genreMatches.push({ index: m.index, specificity: m[0].length, genre, mods });
+      for (const mod of mods) modifiers.add(mod);
     }
   }
   // Chinese fallback (or augmentation) if no English genre matched, OR if Chinese
   // adds modifiers absent from the English match.
   for (const [re, genre, mods] of GENRE_KEYWORDS_CN) {
-    if (re.test(t)) {
-      if (!primary_genre) primary_genre = genre;
-      // If both branches agree on the same genre, merge mods. If they disagree,
-      // English wins for the genre slug, Chinese mods still applied.
-      if (primary_genre === genre) {
-        for (const m of mods) modifiers.add(m);
-      }
+    re.lastIndex = 0;
+    const m = re.exec(t);
+    if (m) {
+      genreMatches.push({ index: m.index, specificity: m[0].length, genre, mods });
+      for (const mod of mods) modifiers.add(mod);
     }
   }
+  genreMatches.sort((a, b) => a.index - b.index || b.specificity - a.specificity);
+  primary_genre = genreMatches[0]?.genre;
 
   // Mood: English (substring on lowercased) + Chinese (regex on raw).
   const mood = new Set<string>();

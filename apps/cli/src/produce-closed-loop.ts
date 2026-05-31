@@ -28,7 +28,7 @@ import {
   type Patch, type SessionGraph, type AnalyzerFeatures, type CritiqueEntry,
 } from '@cactus/ir';
 import {
-  runQualityGates, analyzeWav, computeSectionDiagnostics, generateSpectrogram,
+  runQualityGates, analyzeDecoded, computeSectionDiagnosticsFromAudio, generateSpectrogram, readWav,
   type QualityGatesReport,
 } from '@cactus/analyzer';
 import { critique } from '@cactus/critic';
@@ -36,7 +36,7 @@ import { loadGenre } from '@cactus/genres';
 import { masterTrack } from '@cactus/mastering';
 import { scoreRevisionLocality, type LocalityResult } from '@cactus/revision';
 import { classifyFailure, type ClassifiedFailure } from '@cactus/audit';
-import { appendLedgerEntry, buildLedgerEntryFromClosedLoop } from '@cactus/preference';
+import { appendLedgerEntry, buildLedgerEntryFromClosedLoop, weightedScore } from '@cactus/preference';
 
 export interface ProduceClosedLoopOptions {
   brief: string;
@@ -56,6 +56,7 @@ export interface ProduceClosedLoopResult {
   stoppedReason: 'accepted' | 'plateau' | 'max_iterations' | 'no_patches' | 'failure';
   finalGraphPath: string;
   finalWavPath?: string;
+  bestIteration: number;
   reportPath: string;
   hardFailures: string[];
   failureCategories: string[];
@@ -108,7 +109,9 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
 
   let stoppedReason: ProduceClosedLoopResult['stoppedReason'] = 'max_iterations';
   let prevGraph: SessionGraph | null = null;
-  let prevWeighted = -Infinity;
+  let bestIteration = -1;
+  let bestWeighted = -Infinity;
+  let bestGraph: SessionGraph | null = null;
 
   // G4: pin the renderer warm for the whole closed loop so we pay the boot
   // tax once instead of once per iteration. Shutdown happens in the finally
@@ -145,12 +148,13 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
 
     // Render → master → analyze (fatal-by-default).
     let features: AnalyzerFeatures | undefined;
+    let decodedAudio: Awaited<ReturnType<typeof readWav>> | undefined;
     let wavWritten = false;
     try {
       const { render } = await import('@cactus/renderer');
-      const cps = (graph.brief.bpm ?? 120) / 240;
-      const totalBars = Math.min(graph.song.total_bars, 16);
-      await render({ code: compiled.code, durationCycles: totalBars, cps, outputPath: wavPath });
+      const cps = ((graph.brief.bpm ?? 120) / 240) * graph.song.cycles_per_bar;
+      const totalCycles = Math.min(graph.song.total_bars, 16) * graph.song.cycles_per_bar;
+      await render({ code: compiled.code, durationCycles: totalCycles, cps, outputPath: wavPath });
       wavWritten = true;
       if (genre) {
         const m = await masterTrack({
@@ -161,14 +165,15 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
           hardFailures.push(`${iterTag}: master applied ${m.appliedGainDb.toFixed(1)} dB (>±${SAFE_GAIN_DB}) — structural mix issue`);
         }
       }
-      features = await analyzeWav(wavPath);
+      decodedAudio = await readWav(wavPath);
+      features = await analyzeDecoded(decodedAudio);
       await fs.writeFile(featuresPath, JSON.stringify(features, null, 2));
     } catch (e) {
       const msg = `${iterTag} render/master/analyze failed: ${e instanceof Error ? e.message : String(e)}`;
       hardFailures.push(msg);
       if (!bestEffort) {
         stoppedReason = 'failure';
-        await writeReport({ sessionDir, graph, iterationLog, hardFailures, stoppedReason });
+        await writeReport({ sessionDir, graph, iterationLog, hardFailures, stoppedReason, bestIteration, bestWeighted });
         throw new Error(msg);
       }
     }
@@ -177,9 +182,9 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
     let gates: QualityGatesReport | undefined;
     let classification: ClassifiedFailure = { categories: [], evidence: {} };
     let crit: CritiqueEntry | undefined;
-    if (features) {
+    if (features && decodedAudio) {
       gates = await runQualityGates({
-        wavPath, graph, features,
+        wavPath, graph, features, decodedAudio,
         ...(genre ? { genreTargets: {
           lufs: genre.mix_targets.lufs,
           true_peak_max: genre.mix_targets.true_peak_max,
@@ -199,7 +204,7 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
       let sectionDiagsLite: Array<{ section_id: string; section_name?: string; non_silent_ratio: number; rms_db?: number; band_rms?: Record<string, number>; active_layers?: number }> | undefined;
       let spectrogramPath: string | undefined;
       try {
-        const sdReport = await computeSectionDiagnostics(wavPath, graph);
+        const sdReport = await computeSectionDiagnosticsFromAudio(decodedAudio, graph);
         sectionDiagsLite = sdReport.rendered_sections.map((s) => ({
           section_id: s.section_id,
           section_name: s.name,
@@ -230,8 +235,15 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
       }
     }
 
-    const weighted = crit ? avgScores(crit) : 0;
+    const weighted = crit ? weightedScore(crit.scores, graph.preference_graph.weights) : 0;
     const qualityPass = gates ? gates.overall_pass : false;
+    const previousEvaluated = iterationLog.at(-1);
+
+    if (weighted > bestWeighted) {
+      bestWeighted = weighted;
+      bestIteration = iter;
+      bestGraph = JSON.parse(JSON.stringify(graph)) as SessionGraph;
+    }
 
     // Locality vs previous iteration's graph (informational on first pass).
     let locality: LocalityResult | undefined;
@@ -259,6 +271,40 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
       break;
     }
 
+    // If the patches applied after the previous evaluation made this iteration
+    // worse, record the failed patch set and roll back the in-memory final graph
+    // to the best evaluated iteration. This makes the final result "best seen",
+    // not merely "last attempted".
+    if (previousEvaluated && previousEvaluated.patches.length > 0 && weighted < previousEvaluated.weighted - 0.005) {
+      const failedPatchesPath = path.join(sessionDir, `${iterTag}.failed-patches.json`);
+      await fs.writeFile(failedPatchesPath, JSON.stringify({
+        previous_iteration: previousEvaluated.iter,
+        current_iteration: iter,
+        best_iteration: bestIteration,
+        weighted_before: previousEvaluated.weighted,
+        weighted_after: weighted,
+        delta: weighted - previousEvaluated.weighted,
+        rollback_to_iteration: bestIteration,
+        patches_that_did_not_help: previousEvaluated.patches.map((p) => ({
+          patch_id: p.patch_id,
+          agent: p.agent,
+          intent: p.intent,
+          ops: p.ops.map((o) => ({ op: o.op, path: o.path })),
+        })),
+      }, null, 2));
+      iterationLog.push({ iter, patches, appliedOps, classification, qualityPass, weighted, ...(locality ? { locality } : {}) });
+      if (bestGraph) graph = JSON.parse(JSON.stringify(bestGraph)) as SessionGraph;
+      stoppedReason = 'plateau';
+      break;
+    }
+
+    if (previousEvaluated && previousEvaluated.patches.length > 0 && weighted - previousEvaluated.weighted < 0.01) {
+      iterationLog.push({ iter, patches, appliedOps, classification, qualityPass, weighted, ...(locality ? { locality } : {}) });
+      if (bestGraph) graph = JSON.parse(JSON.stringify(bestGraph)) as SessionGraph;
+      stoppedReason = 'plateau';
+      break;
+    }
+
     if (crit) {
       patches = planRevisions({ graph, critique: crit, maxPatches: 5 });
       await fs.writeFile(planPath, JSON.stringify(patches, null, 2));
@@ -270,28 +316,6 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
     }
 
     iterationLog.push({ iter, patches, appliedOps, classification, qualityPass, weighted, ...(locality ? { locality } : {}) });
-
-    // G6: failed-patch artifact. If we had patches in the previous iteration
-    // and this iteration's weighted score regressed, surface which patches
-    // didn't help so the next planner run (and the human) can see it.
-    if (iter > 0 && iterationLog.length >= 1) {
-      const prev = iterationLog[iterationLog.length - 1]!;
-      if (prev.patches.length > 0 && weighted < prev.weighted - 0.005) {
-        const failedPatchesPath = path.join(sessionDir, `${iterTag}.failed-patches.json`);
-        await fs.writeFile(failedPatchesPath, JSON.stringify({
-          previous_iteration: prev.iter,
-          weighted_before: prev.weighted,
-          weighted_after: weighted,
-          delta: weighted - prev.weighted,
-          patches_that_did_not_help: prev.patches.map((p) => ({
-            patch_id: p.patch_id,
-            agent: p.agent,
-            intent: p.intent,
-            ops: p.ops.map((o) => ({ op: o.op, path: o.path })),
-          })),
-        }, null, 2));
-      }
-    }
 
     if (patches.length === 0) {
       stoppedReason = 'no_patches';
@@ -305,14 +329,9 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
       stoppedReason = 'max_iterations';
       break;
     }
-    // Plateau check based on weighted score AFTER re-eval next loop iteration.
-    if (iter > 0 && weighted - prevWeighted < 0.01) {
-      // Allow one more iteration; declare plateau if no improvement after re-render.
-    }
-    prevWeighted = weighted;
   }
 
-  const report = await writeReport({ sessionDir, graph, iterationLog, hardFailures, stoppedReason });
+  const report = await writeReport({ sessionDir, graph, iterationLog, hardFailures, stoppedReason, bestIteration, bestWeighted });
 
   // G7: append a learning-ledger entry summarizing what this session tried
   // and what came of it. Best-effort — never fail the session over a ledger
@@ -339,13 +358,15 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
     }
   }
 
+  const finalIteration = bestIteration >= 0 ? bestIteration : iterationLog.length - 1;
   return {
     ok: hardFailures.length === 0 && (stoppedReason === 'accepted' || stoppedReason === 'plateau' || stoppedReason === 'max_iterations'),
     sessionDir,
     iterations: iterationLog.length,
     stoppedReason,
-    finalGraphPath: path.join(sessionDir, `iter_${String(iterationLog.length - 1).padStart(4, '0')}.json`),
-    finalWavPath: path.join(sessionDir, `iter_${String(iterationLog.length - 1).padStart(4, '0')}.wav`),
+    finalGraphPath: path.join(sessionDir, `iter_${String(finalIteration).padStart(4, '0')}.json`),
+    finalWavPath: path.join(sessionDir, `iter_${String(finalIteration).padStart(4, '0')}.wav`),
+    bestIteration: finalIteration,
     reportPath: report,
     hardFailures,
     failureCategories: Array.from(new Set(iterationLog.flatMap((i) => i.classification.categories))),
@@ -353,11 +374,6 @@ export async function produceClosedLoop(input: ProduceClosedLoopOptions): Promis
   } finally {
     await shutdown();
   }
-}
-
-function avgScores(c: CritiqueEntry): number {
-  const v = Object.values(c.scores);
-  return v.reduce((a, b) => a + b, 0) / v.length;
 }
 
 interface WriteReportInput {
@@ -374,6 +390,8 @@ interface WriteReportInput {
   }>;
   hardFailures: string[];
   stoppedReason: ProduceClosedLoopResult['stoppedReason'];
+  bestIteration: number;
+  bestWeighted: number;
 }
 
 async function writeReport(input: WriteReportInput): Promise<string> {
@@ -386,6 +404,8 @@ async function writeReport(input: WriteReportInput): Promise<string> {
   lines.push(`- bpm: ${input.graph.brief.bpm}`);
   lines.push(`- iterations: ${input.iterationLog.length}`);
   lines.push(`- stopped: ${input.stoppedReason}`);
+  lines.push(`- best_iteration: ${input.bestIteration}`);
+  lines.push(`- best_weighted_score: ${Number.isFinite(input.bestWeighted) ? input.bestWeighted.toFixed(3) : 'n/a'}`);
   lines.push(`- hard failures: ${input.hardFailures.length}`);
   for (const h of input.hardFailures) lines.push(`  - ${h}`);
   lines.push('');

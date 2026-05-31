@@ -58,7 +58,7 @@ const CORE_TOP_LEVEL: ReadonlyArray<string> = [
   'cat','seq','sequence','sequenceP','seqPLoop',
   'polymeter','polyrhythm','silence','pure','reify','timeCat','timecat',
   'arrange','stepcat',
-  'fast','slow','setcps','setBpm','setbpm','mini','m',
+  'fast','slow','setcps','setcpm','setCps','setCpm','setBpm','setbpm','mini','m',
   'register','registerControl',
   'evaluate','evalScope','controls','samples','setSampleBaseUrl',
   'initAudioOnFirstClick','initAudio','getAudioContext','panic','gap',

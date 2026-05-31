@@ -11,6 +11,7 @@ import type {
   HarmonicDerivation,
 } from '@cactus/ir';
 import { HarmonicDerivationSchema } from '@cactus/ir';
+import { validateMiniNotation, validateStrudelCode } from '@cactus/strudel-validator';
 import { CodeBuilder, quoteJsString } from './code-builder.js';
 
 export interface CompileOptions {
@@ -34,15 +35,18 @@ export function compileSessionGraph(
 ): CompiledStrudel {
   const cb = new CodeBuilder();
   const warnings: string[] = [];
+  warnGraphLevelUnhandledFields(graph, warnings);
 
-  const cps = bpmToCps(graph.brief.bpm ?? 120);
+  const bpm = graph.brief.bpm ?? 120;
+  const cyclesPerBar = graph.song.cycles_per_bar;
+  const cpm = (bpm / 4) * cyclesPerBar;
 
   if (options.banner) {
     cb.emit(`// ${options.banner}\n`);
   }
   cb.emit(`// session ${graph.session_id}\n`);
   cb.emit(`// brief: ${oneLine(graph.brief.text)}\n`);
-  cb.emit(`setcps(${cps})\n`, '/brief/bpm');
+  cb.emit(`setcpm(${trim(cpm)})\n`, '/brief/bpm');
   // NOTE (2026-05-17): design §5 proposed a `setDefaultVoicings(...)`
   // preamble to pin the voicing dictionary for determinism. Render
   // evidence FALSIFIED that sign-off item: in @strudel/tonal@1.2.6 any
@@ -77,7 +81,8 @@ export function compileSessionGraph(
     cb.emit(`.gain(${trim(graph.mix_graph.master.gain)})`, '/mix_graph/master/gain');
   }
 
-  return { code: cb.build().code, sourceMap: cb.build().sourceMap, warnings };
+  const built = cb.build();
+  return { code: built.code, sourceMap: built.sourceMap, warnings };
 }
 
 function compileLayer(
@@ -93,18 +98,18 @@ function compileLayer(
   cb.emit(`  // ${layer.id} (${layer.role}) → orbit ${layer.orbit}\n`);
   cb.emit('  ', layerPath);
 
-  // Build arrange(...) — one [bars, sectionExpr] tuple per section.
+  // Build arrange(...) — one [cycles, sectionExpr] tuple per section.
   cb.emit('arrange(', layerPath);
 
   const activation = graph.song.layer_activation[layer.id];
   for (let si = 0; si < sections.length; si++) {
     const section = sections[si]!;
-    const bars = section.end_bar - section.start_bar;
+    const cycles = (section.end_bar - section.start_bar) * graph.song.cycles_per_bar;
     const active = activation?.sections[section.id] ?? false;
     const pattern = graph.pattern_bank.patterns[layer.id]?.[section.id];
     if (si > 0) cb.emit(',');
     cb.emit('\n    ');
-    cb.emit(`[${bars}, `);
+    cb.emit(`[${trim(cycles)}, `);
     if (!active || !pattern) {
       cb.emit('silence', `/song/sections/${section.id}`);
     } else {
@@ -117,7 +122,9 @@ function compileLayer(
   // Effect chain from sound palette applies globally to the layer.
   const decoration = graph.sound_palette.layers[layer.id];
   if (decoration) {
-    emitEffects(cb, decoration.effects, `/sound_palette/layers/${layer.id}/effects`);
+    emitEnvelope(cb, decoration, `/sound_palette/layers/${layer.id}/envelope`);
+    warnDecorationUnhandledFields(layer, decoration, warnings, `/sound_palette/layers/${layer.id}`);
+    emitEffects(cb, decoration.effects, `/sound_palette/layers/${layer.id}/effects`, warnings);
   }
 
   // Mix graph orbit. Skip controls that the sound palette already covers
@@ -126,7 +133,7 @@ function compileLayer(
   const orbitMix = graph.mix_graph.orbits[String(layer.orbit)];
   if (orbitMix) {
     const palettedTypes = new Set((decoration?.effects ?? []).map((e) => e.type));
-    emitOrbitMix(cb, orbitMix, layer.orbit, `/mix_graph/orbits/${layer.orbit}`, palettedTypes);
+    emitOrbitMix(cb, orbitMix, layer.orbit, `/mix_graph/orbits/${layer.orbit}`, palettedTypes, warnings);
   } else {
     warnings.push(`layer ${layer.id} (orbit ${layer.orbit}) has no mix_graph entry`);
   }
@@ -167,6 +174,7 @@ function emitPatternForLayer(
   if (harmony) {
     const parsed = HarmonicDerivationSchema.safeParse(pattern.harmonic);
     if (parsed.success) {
+      warnPatternUnhandledFields(layer, pattern, warnings, graphPath);
       emitHarmonicSource(cb, layer, parsed.data, harmony, decoration, warnings, graphPath);
       return;
     }
@@ -175,9 +183,16 @@ function emitPatternForLayer(
     }
   }
 
+  warnPatternUnhandledFields(layer, pattern, warnings, graphPath);
+
   // 1) raw mode bypasses all source/effects logic — caller takes responsibility.
   if (pattern.raw) {
-    cb.emit(pattern.raw, graphPath);
+    if (isSafeRawPatternExpression(pattern.raw)) {
+      cb.emit(`(${pattern.raw})`, graphPath);
+    } else {
+      warnings.push(`${graphPath}/raw failed deterministic Strudel validation; emitted silence`);
+      cb.emit('silence', graphPath);
+    }
     return;
   }
 
@@ -224,8 +239,14 @@ function compileProgressionPattern(
   graphPath: string,
 ): string {
   const prog = harmony.progression;
-  const m = harmony.progression_rhythm.match(/^(.*?)(\/\d+)?$/s);
-  const body = m?.[1] ?? harmony.progression_rhythm;
+  const progressionRhythm = safeMiniNotation(
+    harmony.progression_rhythm,
+    '<0>/1',
+    warnings,
+    `${graphPath}/harmony/progression_rhythm`,
+  );
+  const m = progressionRhythm.match(/^(.*?)(\/\d+)?$/s);
+  const body = m?.[1] ?? progressionRhythm;
   const slow = m?.[2] ?? '';
   // Replace integer tokens not part of a `@weight` and not mid-number.
   const expanded = body.replace(/(^|[^@\d])(\d+)/g, (_full, pre: string, dig: string) => {
@@ -279,8 +300,11 @@ function emitHarmonicSource(
       return;
     }
     case 'arp': {
-      const degrees = h.degrees ?? '0';
-      const struct = h.rhythm ? `.struct(${quoteJsString(h.rhythm)})` : '';
+      const degrees = safeMiniNotation(h.degrees ?? '0', '0', warnings, `${graphPath}/harmonic/degrees`);
+      const rhythm = h.rhythm
+        ? safeMiniNotation(h.rhythm, '~', warnings, `${graphPath}/harmonic/rhythm`)
+        : undefined;
+      const struct = rhythm ? `.struct(${quoteJsString(rhythm)})` : '';
       cb.emit(
         `n(${quoteJsString(degrees)})${struct}.chord(${quoteJsString(prog)}).voicing()${addOct}.s(${sQ})`,
         graphPath,
@@ -288,7 +312,7 @@ function emitHarmonicSource(
       return;
     }
     case 'degree_line': {
-      const degrees = h.degrees ?? '0';
+      const degrees = safeMiniNotation(h.degrees ?? '0', '0', warnings, `${graphPath}/harmonic/degrees`);
       cb.emit(
         `n(${quoteJsString(degrees)}).chord(${quoteJsString(prog)}).voicing()${addOct}.s(${sQ})`,
         graphPath,
@@ -298,11 +322,23 @@ function emitHarmonicSource(
   }
 }
 
-function emitEffects(cb: CodeBuilder, effects: Effect[], graphPath: string): void {
+function emitEffects(cb: CodeBuilder, effects: Effect[], graphPath: string, warnings: string[]): void {
   for (let i = 0; i < effects.length; i++) {
     const eff = effects[i]!;
+    if (eff.automation && Object.keys(eff.automation).length > 0) {
+      warnings.push(`${graphPath}/${i}/automation is declared in IR but not compiled to Strudel automation`);
+    }
     emitEffect(cb, eff, `${graphPath}/${i}`);
   }
+}
+
+function emitEnvelope(cb: CodeBuilder, decoration: SoundDecoration, graphPath: string): void {
+  const env = decoration.envelope;
+  if (!env) return;
+  if (typeof env.a === 'number') cb.emit(`.attack(${trim(env.a)})`, `${graphPath}/a`);
+  if (typeof env.d === 'number') cb.emit(`.decay(${trim(env.d)})`, `${graphPath}/d`);
+  if (typeof env.s === 'number') cb.emit(`.sustain(${trim(env.s)})`, `${graphPath}/s`);
+  if (typeof env.r === 'number') cb.emit(`.release(${trim(env.r)})`, `${graphPath}/r`);
 }
 
 function emitEffect(cb: CodeBuilder, eff: Effect, graphPath: string): void {
@@ -357,14 +393,66 @@ function emitOrbitMix(
   _orbit: number,
   graphPath: string,
   skipPaletteTypes: ReadonlySet<string>,
+  warnings: string[],
 ): void {
   if (mix.gain !== 1) cb.emit(`.gain(${trim(mix.gain)})`, `${graphPath}/gain`);
   if (mix.pan !== 0) cb.emit(`.pan(${trim(mix.pan)})`, `${graphPath}/pan`);
+  if (mix.width !== 1) {
+    warnings.push(`${graphPath}/width is declared in IR but not compiled to Strudel stereo width`);
+  }
   if (mix.room_send > 0 && !skipPaletteTypes.has('room')) {
     cb.emit(`.room(${trim(mix.room_send)})`, `${graphPath}/room_send`);
   }
   if (mix.delay_send > 0 && !skipPaletteTypes.has('delay')) {
     cb.emit(`.delay(${trim(mix.delay_send)})`, `${graphPath}/delay_send`);
+  }
+}
+
+function warnGraphLevelUnhandledFields(graph: SessionGraph, warnings: string[]): void {
+  if (graph.mix_graph.bus_sends.length > 0) {
+    warnings.push('/mix_graph/bus_sends is declared in IR but not compiled to Strudel bus routing');
+  }
+}
+
+function safeMiniNotation(input: string, fallback: string, warnings: string[], graphPath: string): string {
+  const r = validateMiniNotation(input);
+  if (r.ok) return input;
+  warnings.push(`${graphPath} failed mini-notation validation (${r.issues.map((i) => i.code).join(', ')}); used fallback ${quoteJsString(fallback)}`);
+  return fallback;
+}
+
+function isSafeRawPatternExpression(raw: string): boolean {
+  // Raw IR is allowed only as a Pattern expression. Wrapping it in stack(...)
+  // forces JS parse/expression validation and Strudel registry checks before
+  // the compiler places it inside arrange([cycles, expr]).
+  return validateStrudelCode(`stack(${raw})`).ok;
+}
+
+function warnPatternUnhandledFields(
+  layer: LayerGraph,
+  pattern: PatternEntry,
+  warnings: string[],
+  graphPath: string,
+): void {
+  if (pattern.density !== undefined) {
+    warnings.push(`${graphPath}/density for layer ${layer.id} is metadata only; not compiled`);
+  }
+  if (pattern.syncopation !== undefined) {
+    warnings.push(`${graphPath}/syncopation for layer ${layer.id} is metadata only; not compiled`);
+  }
+  if (Array.isArray(pattern.variations) && pattern.variations.length > 0) {
+    warnings.push(`${graphPath}/variations for layer ${layer.id} is declared in IR but not compiled`);
+  }
+}
+
+function warnDecorationUnhandledFields(
+  layer: LayerGraph,
+  decoration: SoundDecoration,
+  warnings: string[],
+  graphPath: string,
+): void {
+  if (decoration.macros && Object.keys(decoration.macros).length > 0) {
+    warnings.push(`${graphPath}/macros for layer ${layer.id} is declared in IR but not compiled`);
   }
 }
 
@@ -400,11 +488,6 @@ function defaultSourceForRole(role: string): string {
     case 'foley': return 'noise';
     default: return 'sine';
   }
-}
-
-function bpmToCps(bpm: number): number {
-  // 4 beats per cycle is Strudel default. cps = bpm / (60 * 4) = bpm / 240.
-  return Math.round((bpm / 240) * 1000) / 1000;
 }
 
 function trim(n: number): string {

@@ -112,7 +112,7 @@ describe('selectPrior trace shape (G9B)', () => {
     expect(r.trace.fallback_reason).toBe('no-cookbook-match');
   });
 
-  it('returns a real entry + populated trace for a matched query (techno kick / main)', async () => {
+  it('returns a real validator-passed entry + populated trace for a matched query (techno kick / main)', async () => {
     const r = await selectPrior({
       genre: 'techno',
       layer: { id: 'lyr-1', role: 'kick' },
@@ -120,6 +120,7 @@ describe('selectPrior trace shape (G9B)', () => {
       bpm: 130,
     });
     expect(r.entry).not.toBeNull();
+    expect(r.entry!.validation_status).toBe('validator_passed');
     expect(r.trace.candidates_total).toBeGreaterThan(0);
     expect(r.trace.candidates_top_ids.length).toBeGreaterThan(0);
     expect(r.trace.selected_id).not.toBeNull();

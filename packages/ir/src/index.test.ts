@@ -51,6 +51,13 @@ describe('SessionGraphSchema validation', () => {
     g.song.sections[0]!.end_bar = g.song.sections[0]!.start_bar;
     expect(SessionGraphSchema.safeParse(g).success).toBe(false);
   });
+
+  it('rejects unknown top-level IR fields instead of silently dropping them', () => {
+    const g = createSessionGraph({ brief: { text: 'x' } }) as Record<string, unknown>;
+    g.unmodeled_future_field = { should_not_disappear: true };
+    const parsed = SessionGraphSchema.safeParse(g);
+    expect(parsed.success).toBe(false);
+  });
 });
 
 describe('json-pointer + applyPatch', () => {
@@ -66,6 +73,15 @@ describe('json-pointer + applyPatch', () => {
     expect(g.brief.text).toBe('hello'); // immutable
   });
 
+  it('copies only the patched branch, preserving untouched references', () => {
+    const g = createSessionGraph({ brief: { text: 'hello' } });
+    const next = applyPatch(g, [{ op: 'replace', path: '/brief/text', value: 'goodbye' }]);
+    expect(next).not.toBe(g);
+    expect(next.brief).not.toBe(g.brief);
+    expect(next.song).toBe(g.song);
+    expect(next.layers).toBe(g.layers);
+  });
+
   it('appends to an array via -', () => {
     const g = createSessionGraph({ brief: { text: 'x' } });
     const next = applyPatch(g, [
@@ -76,6 +92,18 @@ describe('json-pointer + applyPatch', () => {
       },
     ]);
     expect(next.brief.mood).toEqual(['haunted']);
+  });
+
+  it('rejects prototype-pollution paths', () => {
+    expect(() => applyPatch({}, [{ op: 'add', path: '/__proto__/polluted', value: true }])).toThrow(/forbidden prototype token/);
+    expect(() => applyPatch({ song: {} }, [{ op: 'add', path: '/song/constructor/prototype/polluted', value: true }])).toThrow(/forbidden prototype token/);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('validates array indices using RFC-6902 bounds', () => {
+    expect(() => applyPatch({ list: [1, 2] }, [{ op: 'replace', path: '/list/-1', value: 9 }])).toThrow(/Invalid array index/);
+    expect(() => applyPatch({ list: [1, 2] }, [{ op: 'replace', path: '/list/-', value: 9 }])).toThrow(/only valid for add/);
+    expect(() => applyPatch({ list: [1, 2] }, [{ op: 'add', path: '/list/3', value: 9 }])).toThrow(/out of bounds/);
   });
 });
 

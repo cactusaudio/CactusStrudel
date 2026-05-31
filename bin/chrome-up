@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# chrome-up — ensure Chrome debug :9222 is reachable; launch via gl if not.
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+probe() {
+  curl -fsS --max-time 1 http://127.0.0.1:9222/json/version >/dev/null 2>&1
+}
+
+pid_for_port() {
+  lsof -nP -iTCP:9222 -sTCP:LISTEN -t 2>/dev/null | head -1
+}
+
+if probe; then
+  pid="$(pid_for_port || true)"
+  echo "Chrome :9222 already up${pid:+ (pid $pid)}"
+  exit 0
+fi
+
+echo "Chrome debug down — launching via gl..."
+"$ROOT/gl"
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if probe; then
+    pid="$(pid_for_port || true)"
+    echo "Chrome debug up at t+${i}s${pid:+ (pid $pid)}"
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "ERROR: Chrome debug endpoint failed at http://127.0.0.1:9222/json/version within 15s" >&2
+exit 2

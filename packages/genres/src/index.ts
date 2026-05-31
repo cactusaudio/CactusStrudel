@@ -3,13 +3,16 @@ import { z } from 'zod';
 export const GenreSpecSchema = z.object({
   slug: z.string(),
   display_name: z.string(),
-  bpm_range: z.tuple([z.number(), z.number()]),
-  cps_range: z.tuple([z.number(), z.number()]).optional(),
+  bpm_range: z.tuple([z.number().positive(), z.number().positive()])
+    .refine(([lo, hi]) => lo <= hi, { message: 'bpm_range must be ascending' }),
+  cps_range: z.tuple([z.number().positive(), z.number().positive()])
+    .refine(([lo, hi]) => lo <= hi, { message: 'cps_range must be ascending' })
+    .optional(),
   section_template: z.array(
     z.object({
       name: z.string(),
       function: z.string(),
-      length_bars: z.number(),
+      length_bars: z.number().positive(),
     }),
   ),
   drum_archetypes: z.array(z.string()),
@@ -23,11 +26,11 @@ export const GenreSpecSchema = z.object({
   sound_palette: z.record(z.unknown()).default({}),
   mix_targets: z
     .object({
-      lufs: z.number().default(-9),
-      true_peak_max: z.number().default(-1),
-      kick_low_band_rms_target: z.number().optional(),
-      stereo_mono_low_compliance_min: z.number().optional(),
-      reverb_send_chord_min: z.number().optional(),
+      lufs: z.number().min(-30).max(-3).default(-9),
+      true_peak_max: z.number().min(-12).max(0).default(-1),
+      kick_low_band_rms_target: z.number().positive().optional(),
+      stereo_mono_low_compliance_min: z.number().min(0).max(1).optional(),
+      reverb_send_chord_min: z.number().min(0).max(1).optional(),
     })
     .default({ lufs: -9, true_peak_max: -1 }),
   critic_rubric_hints: z.array(z.string()).default([]),

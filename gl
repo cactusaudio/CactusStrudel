@@ -1,0 +1,29 @@
+#!/bin/zsh
+set -euo pipefail
+
+PORT=9222
+PROFILE="$HOME/.cactus-gemini-chrome"
+
+if curl -fsS "http://127.0.0.1:${PORT}/json/version" >/dev/null 2>&1; then
+  echo "Chrome debug ${PORT} already up."
+  exit 0
+fi
+
+mkdir -p "$PROFILE"
+
+lock="$PROFILE/SingletonLock"
+if [[ -L "$lock" ]]; then
+  target="$(readlink "$lock" || true)"
+  pid="${target##*-}"
+  if [[ "$pid" == <-> ]] && ! ps -p "$pid" >/dev/null 2>&1; then
+    rm -f "$PROFILE/SingletonLock" "$PROFILE/SingletonCookie" "$PROFILE/SingletonSocket"
+  fi
+fi
+
+open -na "Google Chrome" --args \
+  --remote-debugging-port="$PORT" \
+  --user-data-dir="$PROFILE" \
+  --no-first-run --no-default-browser-check \
+  "https://gemini.google.com/app" >/dev/null 2>&1
+
+echo "Chrome 后台启动 (debug ${PORT})。窗口里登录 Gemini+选 Pro，然后另开终端跑: ~/CactusStrudel/gf"

@@ -27,9 +27,13 @@ describe('genre maturity registry (Gap2)', () => {
     }
   });
 
-  it('the 5 core genres are production-grade post-Gap1 (the brittle-gate artifact is gone)', () => {
-    for (const core of ['techno', 'dnb', 'dub_techno', 'idm', 'ambient']) {
-      expect(isProductionGrade(core), `${core} should be production post-Gap1`).toBe(true);
+  it('does not promote sparse genres to production solely from a gate-calibration fix', () => {
+    expect(isProductionGrade('techno')).toBe(true);
+    expect(isProductionGrade('dnb')).toBe(true);
+    for (const sparse of ['dub_techno', 'idm', 'ambient']) {
+      expect(isProductionGrade(sparse), `${sparse} needs fresh current-path evidence before production`).toBe(false);
+      expect(GENRE_MATURITY[sparse]!.tier).toBe('experimental');
+      expect(GENRE_MATURITY[sparse]!.next_blocker).toMatch(/fresh|investigate/i);
     }
   });
 

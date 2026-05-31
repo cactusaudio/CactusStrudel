@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# rollback-guideline <bak-suffix> — restore PROMPT_BASE from a .bak.<ts> file
+# Example:  rollback-guideline 20260524-190114
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+SUFFIX="${1:-}"
+if [ -z "$SUFFIX" ]; then
+  echo "Available backups:"
+  ls -1 "$ROOT"/scripts/gemini-fetch.ts.bak.* 2>/dev/null | sed 's|.*\.bak\.||'
+  exit 1
+fi
+SRC="$ROOT/scripts/gemini-fetch.ts.bak.$SUFFIX"
+DST="$ROOT/scripts/gemini-fetch.ts"
+[ -f "$SRC" ] || { echo "no such backup: $SRC" >&2; exit 1; }
+# Snapshot CURRENT before overwrite (in case Bowei wants to undo the rollback)
+NOW=$(date +%Y%m%d-%H%M%S)
+cp "$DST" "$DST.bak.pre-rollback.$NOW"
+cp "$SRC" "$DST"
+echo "rolled back: $SRC → $DST"
+echo "pre-rollback snapshot: $DST.bak.pre-rollback.$NOW"
+echo "verify with: bin/guideline-get | head -3"

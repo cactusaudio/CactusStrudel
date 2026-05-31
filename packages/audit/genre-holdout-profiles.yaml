@@ -1,0 +1,36 @@
+schema_version: 1
+source: holdout_evaluator_not_producer_runtime
+notes:
+  - "This file is owned by the audit package, not @cactus/genres."
+  - "It intentionally duplicates only coarse observable audio ranges, so genre-confusion cannot be satisfied by producer-side genre self-report or by editing production genre specs alone."
+profiles:
+  ambient:
+    bpm_range: [40, 100]
+    lufs_range: [-19, -13]
+    onset_density_range: [0, 1.5]
+    centroid_range_hz: [400, 1900]
+  dub_techno:
+    bpm_range: [116, 132]
+    lufs_range: [-13, -8]
+    onset_density_range: [1, 4.5]
+    centroid_range_hz: [600, 1900]
+  house:
+    bpm_range: [118, 130]
+    lufs_range: [-10, -6]
+    onset_density_range: [3, 9]
+    centroid_range_hz: [1000, 3000]
+  techno:
+    bpm_range: [124, 140]
+    lufs_range: [-10, -6]
+    onset_density_range: [3, 8.5]
+    centroid_range_hz: [1000, 3000]
+  dnb:
+    bpm_range: [164, 180]
+    lufs_range: [-9, -5]
+    onset_density_range: [5, 15]
+    centroid_range_hz: [1500, 3800]
+  idm:
+    bpm_range: [105, 165]
+    lufs_range: [-13, -7]
+    onset_density_range: [3, 13]
+    centroid_range_hz: [1400, 3800]

@@ -43,6 +43,8 @@ export function applyGenreDiscriminators(
     if (bpm >= 120 && bpm <= 140) { bonus += 0.5; reasons.push(`bpm ${bpm.toFixed(0)} in 120-140`); }
     if (bpm >= 128 && bpm <= 138) { bonus += 0.3; reasons.push(`bpm in peak-techno window`); }
     if (totalOnsets >= 3 && totalOnsets <= 8) { bonus += 0.3; reasons.push(`onsets ${totalOnsets.toFixed(1)}/s in techno range`); }
+    if (grid < 0.75) { bonus -= 0.7; reasons.push(`grid ${grid.toFixed(2)} too fractured for techno`); }
+    if (sync >= 0.45) { bonus -= 0.7; reasons.push(`syncopation ${sync.toFixed(2)} too high for techno`); }
     if (flux > 1.5) { bonus -= 0.4; reasons.push(`spectral flux ${flux.toFixed(2)} too random for techno`); }
     if (briefMods.includes('peak_time')) { bonus += 1.5; reasons.push(`brief modifier=peak_time`); }
     if (briefMods.includes('melodic')) { bonus += 0.3; reasons.push(`brief modifier=melodic`); }
@@ -71,8 +73,8 @@ export function applyGenreDiscriminators(
   if (idm) {
     let bonus = 0;
     const reasons: string[] = [];
-    if (sync >= 0.3) { bonus += 0.4; reasons.push(`syncopation ${sync.toFixed(2)} ≥ 0.3`); }
-    if (grid < 0.85) { bonus += 0.3; reasons.push(`asymmetric grid ${grid.toFixed(2)}`); }
+    if (sync >= 0.3) { bonus += 0.5; reasons.push(`syncopation ${sync.toFixed(2)} ≥ 0.3`); }
+    if (grid < 0.85) { bonus += 0.4; reasons.push(`asymmetric grid ${grid.toFixed(2)}`); }
     if (grid > 0.92) { bonus -= 0.8; reasons.push(`grid ${grid.toFixed(2)} too regular for IDM`); }
     if (flux > 1.0) { bonus += 0.2; reasons.push(`flux ${flux.toFixed(2)} mutation-like`); }
     idm.distance = idm.distance - bonus;

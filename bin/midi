@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# midi <name> [cycles=32] [cps=0.5] — export MIDI for a piece, save to ~/Downloads/<name>.mid
+set -euo pipefail
+[ -z "${1:-}" ] && { echo "usage: midi <name> [cycles=32] [cps=0.5]" >&2; exit 1; }
+NAME="$1"; CYC="${2:-32}"; CPS="${3:-0.5}"
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+OUT="$HOME/Downloads/$NAME.mid"
+
+# fetch the code
+CODE=$(curl -s "$BASE/api/piece?name=$NAME" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print(d.get('code',''), end='')
+")
+[ -z "$CODE" ] && { echo "no code found for $NAME" >&2; exit 1; }
+
+BODY=$(python3 -c "
+import json,sys
+print(json.dumps({'code': sys.stdin.read(), 'name':'$NAME','cycles':$CYC,'cps':$CPS}))" <<< "$CODE")
+
+echo "POST /api/midi name=$NAME cycles=$CYC cps=$CPS (boots renderer, ~20s first time)..."
+curl -s -X POST -H 'Content-Type: application/json' -d "$BODY" "$BASE/api/midi" --output "$OUT"
+[ -s "$OUT" ] || { echo "ERROR: midi export failed; check server logs" >&2; exit 2; }
+echo "→ $OUT ($(wc -c < "$OUT") bytes)"
+file "$OUT" 2>/dev/null || true

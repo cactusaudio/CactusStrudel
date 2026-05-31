@@ -286,7 +286,7 @@ export function applyFeedback(
 ): ScoreVector {
   const next: ScoreVector = { ...weights };
   for (const [k, delta] of Object.entries(parsed.weight_adjustments) as Array<[keyof ScoreVector, number]>) {
-    next[k] = Math.max(0, Math.min(1, next[k] * (1 + delta)));
+    next[k] = Math.max(0, next[k] * (1 + delta));
   }
   const total = Object.values(next).reduce((a, b) => a + b, 0);
   if (total > 0) {

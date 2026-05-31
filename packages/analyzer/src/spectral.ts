@@ -47,48 +47,58 @@ export async function computeSpectralFeatures(monoInput: Float32Array, sampleRat
   let prevSpectrum: Float32Array | null = null;
 
   for (const frame of frames) {
-    const windowedRes = essentia.Windowing(essentia.arrayToVector(frame), false, FRAME_SIZE, 'hann');
-    const winVec = windowedRes.frame;
-    const spectrumRes = essentia.Spectrum(winVec, FRAME_SIZE);
-    const spectrum = vectorToFloat32(spectrumRes.spectrum);
-
-    centroids.push(essentia.Centroid(spectrumRes.spectrum, sampleRate / 2).centroid);
-    rolloffs.push(essentia.RollOff(spectrumRes.spectrum, 0.85, sampleRate).rollOff);
-    flatnesses.push(essentia.Flatness(spectrumRes.spectrum).flatness);
-
-    if (prevSpectrum) {
-      let f = 0;
-      const n = Math.min(prevSpectrum.length, spectrum.length);
-      for (let i = 0; i < n; i++) {
-        const d = spectrum[i]! - prevSpectrum[i]!;
-        f += d * d;
-      }
-      fluxes.push(Math.sqrt(f));
-    }
-    prevSpectrum = spectrum;
-
-    // MFCC
+    const frameVec = essentia.arrayToVector(frame);
+    let winVec: any;
+    let spectrumVec: any;
+    let mfccVec: any;
     try {
-      const mfccRes = essentia.MFCC(spectrumRes.spectrum, 11, 16000, 13, FRAME_SIZE / 2 + 1, 'unit_sum', 0, sampleRate, 0);
-      const m = vectorToFloat32(mfccRes.mfcc);
-      mfccs.push(Array.from(m));
-    } catch {
-      /* MFCC may fail on very short input */
-    }
+      const windowedRes = essentia.Windowing(frameVec, false, FRAME_SIZE, 'hann');
+      winVec = windowedRes.frame;
+      const spectrumRes = essentia.Spectrum(winVec, FRAME_SIZE);
+      spectrumVec = spectrumRes.spectrum;
+      const spectrum = vectorToFloat32(spectrumVec);
 
-    // Band RMS via spectrum bins
-    const binHz = sampleRate / FRAME_SIZE;
-    for (const [name, lo, hi] of BAND_EDGES) {
-      const i0 = Math.max(0, Math.floor(lo / binHz));
-      const i1 = Math.min(spectrum.length, Math.ceil(hi / binHz));
-      let sumSq = 0, n = 0;
-      for (let i = i0; i < i1; i++) {
-        const v = spectrum[i] ?? 0;
-        sumSq += v * v;
-        n++;
+      centroids.push(essentia.Centroid(spectrumVec, sampleRate / 2).centroid);
+      rolloffs.push(essentia.RollOff(spectrumVec, 0.85, sampleRate).rollOff);
+      flatnesses.push(essentia.Flatness(spectrumVec).flatness);
+
+      if (prevSpectrum) {
+        let f = 0;
+        const n = Math.min(prevSpectrum.length, spectrum.length);
+        for (let i = 0; i < n; i++) {
+          const d = spectrum[i]! - prevSpectrum[i]!;
+          f += d * d;
+        }
+        fluxes.push(Math.sqrt(f));
       }
-      const rms = n > 0 ? Math.sqrt(sumSq / n) : 0;
-      bandRmsAcc[name]!.push(rms);
+      prevSpectrum = spectrum;
+
+      // MFCC
+      try {
+        const mfccRes = essentia.MFCC(spectrumVec, 11, 16000, 13, FRAME_SIZE / 2 + 1, 'unit_sum', 0, sampleRate, 0);
+        mfccVec = mfccRes.mfcc;
+        const m = vectorToFloat32(mfccVec);
+        mfccs.push(Array.from(m));
+      } catch {
+        /* MFCC may fail on very short input */
+      }
+
+      // Band RMS via spectrum bins
+      const binHz = sampleRate / FRAME_SIZE;
+      for (const [name, lo, hi] of BAND_EDGES) {
+        const i0 = Math.max(0, Math.floor(lo / binHz));
+        const i1 = Math.min(spectrum.length, Math.ceil(hi / binHz));
+        let sumSq = 0, n = 0;
+        for (let i = i0; i < i1; i++) {
+          const v = spectrum[i] ?? 0;
+          sumSq += v * v;
+          n++;
+        }
+        const rms = n > 0 ? Math.sqrt(sumSq / n) : 0;
+        bandRmsAcc[name]!.push(rms);
+      }
+    } finally {
+      disposeVectors(frameVec, winVec, spectrumVec, mfccVec);
     }
   }
 
@@ -141,4 +151,13 @@ function vectorToFloat32(vec: any): Float32Array {
   }
   if (Array.isArray(vec)) return Float32Array.from(vec);
   return new Float32Array(0);
+}
+
+function disposeVectors(...vectors: any[]): void {
+  const seen = new Set<any>();
+  for (const vec of vectors) {
+    if (!vec || seen.has(vec) || typeof vec.delete !== 'function') continue;
+    seen.add(vec);
+    try { vec.delete(); } catch { /* best-effort WASM vector cleanup */ }
+  }
 }

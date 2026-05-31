@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+# research-backfill — import existing brain-edit-backups/* dirs into revisions.jsonl.
+# Idempotent: skips backup dirs that already have a revision.json sibling.
+# Writes diff.txt + revision.json into each backup dir + appends row to revisions.jsonl.
+# Run once after deploying the research database feature.
+set -euo pipefail
+
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+BACKUPS_DIR="$ROOT/runtime/cc-bridge/brain-edit-backups"
+REVISIONS="$ROOT/producer-brain/revisions.jsonl"
+CORPUS="$ROOT/producer-brain/corpus-2026-05-21.jsonl"
+
+[ -d "$BACKUPS_DIR" ] || { echo "no brain-edit-backups dir; nothing to backfill" >&2; exit 0; }
+
+ROOT="$ROOT" python3 - <<'PY'
+import json, os, re, difflib, time, glob
+
+ROOT=os.environ['ROOT']
+BACKUPS_DIR=f'{ROOT}/runtime/cc-bridge/brain-edit-backups'
+REVISIONS=f'{ROOT}/producer-brain/revisions.jsonl'
+CORPUS=f'{ROOT}/producer-brain/corpus-2026-05-21.jsonl'
+
+# --- existing revisions (don't double-import) ---
+existing_backups = set()
+if os.path.exists(REVISIONS):
+    with open(REVISIONS) as f:
+        for line in f:
+            if not line.strip(): continue
+            try:
+                d = json.loads(line)
+                if d.get('backup_dir'): existing_backups.add(d['backup_dir'])
+            except Exception: pass
+
+# --- corpus current state, by name ---
+corpus_by_name = {}
+with open(CORPUS) as f:
+    for line in f:
+        if not line.strip(): continue
+        d = json.loads(line)
+        corpus_by_name[d.get('name')] = d
+
+# --- gather backup dirs in chronological order ---
+dirs = sorted([d for d in os.listdir(BACKUPS_DIR) if os.path.isdir(os.path.join(BACKUPS_DIR, d))])
+
+# Build per-piece chain: for each (piece, ts), the code_after is either the next
+# backup's pre-snapshot for the same piece, or the piece's current code.
+per_piece = {}
+for d in dirs:
+    m = re.match(r'^(\d{8}-\d{6})-(.+)$', d)
+    if not m: continue
+    ts, piece = m.group(1), m.group(2)
+    per_piece.setdefault(piece, []).append((ts, d))
+
+# Score lookup at backfill time = current corpus score (best we have for old revisions).
+def detect_intent(reason_text):
+    """Best-effort: parse the brain-action JSON if it's there, else null."""
+    if not reason_text: return None
+    # The brain-edit reason is currently a free user text. Look for ` filter ` /
+    # `lpf` / `lpq` / `chords` / `lead` hints. Coarse, but better than null.
+    low = reason_text.lower()
+    if 'lpf' in low or '滤波' in low or '低通' in low or 'filter' in low:
+        target = 'chords' if ('chords' in low or '和弦' in low) else ('lead' if ('lead' in low or '旋律' in low or 'synth' in low) else None)
+        return {'kind': 'filter', 'target': target, 'params': None,
+                'brain_reply_id': None, 'natural_lang_request': reason_text}
+    if 'gain' in low or '响' in low or '大声' in low or '小声' in low:
+        return {'kind': 'gain', 'target': None, 'params': None,
+                'brain_reply_id': None, 'natural_lang_request': reason_text}
+    if 'room' in low or 'reverb' in low or '混响' in low or 'delay' in low or '回响' in low or '回声' in low:
+        return {'kind': 'effect', 'target': None, 'params': None,
+                'brain_reply_id': None, 'natural_lang_request': reason_text}
+    return {'kind': 'freeform', 'target': None, 'params': None,
+            'brain_reply_id': None, 'natural_lang_request': reason_text}
+
+def diff_stats(code_before, code_after):
+    old_lines = (code_before or '').splitlines()
+    new_lines = (code_after  or '').splitlines()
+    diff_lines = list(difflib.unified_diff(
+        old_lines, new_lines,
+        fromfile='before', tofile='after', lineterm=''))
+    added   = sum(1 for l in diff_lines if l.startswith('+') and not l.startswith('+++'))
+    removed = sum(1 for l in diff_lines if l.startswith('-') and not l.startswith('---'))
+    return '\n'.join(diff_lines), added, removed
+
+added_count = skipped_count = 0
+new_rows = []
+for piece, chain in per_piece.items():
+    chain.sort()  # by ts ascending
+    for i, (ts, d) in enumerate(chain):
+        backup_dir = os.path.join(BACKUPS_DIR, d)
+        rel_backup = backup_dir.replace(ROOT + '/', '')
+        if rel_backup in existing_backups:
+            skipped_count += 1
+            continue
+        meta_path = os.path.join(backup_dir, 'manifest-entry.before.json')
+        reason_path = os.path.join(backup_dir, 'reason.txt')
+        try:
+            entry_before = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
+        except Exception:
+            entry_before = {}
+        reason = open(reason_path).read().strip() if os.path.exists(reason_path) else ''
+
+        # pre-edit .js snapshot lives in the backup dir, same basename as entry.js
+        js_basename = None
+        if entry_before.get('js'):
+            js_basename = os.path.basename(entry_before['js'])
+        else:
+            # fallback: find any *.js in backup dir
+            for f in os.listdir(backup_dir):
+                if f.endswith('.js') and not f.endswith('.before.js'):
+                    js_basename = f; break
+        code_before = ''
+        if js_basename and os.path.exists(os.path.join(backup_dir, js_basename)):
+            code_before = open(os.path.join(backup_dir, js_basename)).read()
+
+        # code_after = next backup's pre-snapshot OR current piece code
+        if i + 1 < len(chain):
+            next_dir = os.path.join(BACKUPS_DIR, chain[i+1][1])
+            nxt_meta = os.path.join(next_dir, 'manifest-entry.before.json')
+            if os.path.exists(nxt_meta):
+                try:
+                    nxt_entry = json.load(open(nxt_meta))
+                    nxt_basename = os.path.basename(nxt_entry.get('js', '')) if nxt_entry.get('js') else js_basename
+                    if nxt_basename and os.path.exists(os.path.join(next_dir, nxt_basename)):
+                        code_after = open(os.path.join(next_dir, nxt_basename)).read()
+                    else:
+                        code_after = ''
+                except Exception:
+                    code_after = ''
+            else:
+                code_after = ''
+        else:
+            # last in chain: code_after = current piece source on disk
+            cur = corpus_by_name.get(piece, {})
+            cur_js = cur.get('js')
+            if cur_js:
+                cur_path = os.path.join(ROOT, cur_js) if not cur_js.startswith('/') else cur_js
+                code_after = open(cur_path).read() if os.path.exists(cur_path) else ''
+            else:
+                code_after = ''
+
+        diff_text, added, removed = diff_stats(code_before, code_after)
+
+        # readable ts
+        try:
+            t = time.strptime(ts, '%Y%m%d-%H%M%S')
+            iso_ts = time.strftime('%Y-%m-%d %H:%M:%S', t)
+        except Exception:
+            iso_ts = ts
+
+        intent = detect_intent(reason)
+
+        score_before = entry_before.get('score_bowei')
+        try: score_before = float(score_before) if score_before is not None else None
+        except Exception: score_before = None
+
+        rev = {
+            'id': f'rev-backfill-{ts}',
+            'ts': iso_ts,
+            'piece': piece,
+            'source': 'backfill',
+            'intent': intent,
+            'code': {
+                'before_chars': len(code_before),
+                'after_chars':  len(code_after),
+                'delta_chars':  len(code_after) - len(code_before),
+                'added_lines':   added,
+                'removed_lines': removed,
+            },
+            'from_sha': entry_before.get('sha'),
+            'to_sha':   None,  # unknown for historical mid-chain; corpus has current only
+            'from_dur': entry_before.get('dur'),
+            'to_dur':   None,
+            'score_before': score_before,
+            'score_after':  None,
+            'score_delta':  None,
+            'backup_dir':   rel_backup,
+            'backfill_notes': 'imported from existing brain-edit-backups; ts approximate from dir name',
+        }
+        # write detail files
+        try:
+            with open(os.path.join(backup_dir, 'diff.txt'), 'w') as f: f.write(diff_text)
+            with open(os.path.join(backup_dir, 'revision.json'), 'w') as f: json.dump(rev, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f'  WARN: could not write detail for {d}: {e}')
+        new_rows.append(rev)
+        added_count += 1
+
+# Append all new rows to revisions.jsonl
+if new_rows:
+    os.makedirs(os.path.dirname(REVISIONS), exist_ok=True)
+    with open(REVISIONS, 'a') as f:
+        for r in new_rows:
+            f.write(json.dumps(r, ensure_ascii=False) + '\n')
+
+print(f'backfilled: {added_count} new revisions, {skipped_count} skipped (already imported)')
+print(f'revisions.jsonl: {sum(1 for _ in open(REVISIONS)) if os.path.exists(REVISIONS) else 0} total rows')
+PY

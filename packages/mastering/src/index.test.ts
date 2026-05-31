@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import wavefilePkg from 'wavefile';
-import { masterTrack } from './index.js';
+import { _softLimitSampleForTests, masterTrack } from './index.js';
 
 const { WaveFile } = wavefilePkg;
 const TMP = path.join(os.tmpdir(), 'cactus-mastering-tests');
@@ -47,4 +47,16 @@ describe('masterTrack', () => {
     });
     expect(r.postLoudness.truePeakDb).toBeLessThan(-0.5);
   }, 30_000);
+});
+
+describe('soft limiter', () => {
+  it('is continuous across the knee and true-peak ceiling', () => {
+    const ceiling = 1;
+    expect(_softLimitSampleForTests(0.9, ceiling)).toBeCloseTo(0.9, 9);
+    expect(_softLimitSampleForTests(0.900001, ceiling)).toBeCloseTo(0.900001, 5);
+    const below = _softLimitSampleForTests(0.999999, ceiling);
+    const above = _softLimitSampleForTests(1.000001, ceiling);
+    expect(Math.abs(above - below)).toBeLessThan(0.00001);
+    expect(above).toBeLessThan(ceiling);
+  });
 });

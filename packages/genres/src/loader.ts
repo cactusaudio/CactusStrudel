@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
+import { CookbookEntrySchema, type CookbookEntry } from '@cactus/cookbook';
 import { GenreSpecSchema, type GenreSpec } from './index.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -9,6 +10,14 @@ const GENRES_DIR = path.resolve(HERE, '..', '..', '..', 'genres');
 const COOKBOOK_DIR = path.resolve(HERE, '..', '..', '..', 'cookbook');
 
 const cache = new Map<string, GenreSpec>();
+const LOADABLE_STATUSES = new Set<CookbookEntry['validation_status']>([
+  'validator_passed',
+  'render_smoke_passed',
+  'accepted',
+  'accepted_with_warning',
+  'feature_match',
+  'promoted',
+]);
 
 export async function loadGenre(slug: string): Promise<GenreSpec> {
   if (cache.has(slug)) return cache.get(slug)!;
@@ -62,24 +71,22 @@ export async function loadCookbookSnippets(genre: string, role?: string): Promis
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
-        // The legacy CookbookSnippet shape is a strict subset of the v2
-        // schema (id/genre/role/mini_notation are common). Down-cast: the
-        // legacy shape only reads what it needs and ignores the rest.
-        const obj = JSON.parse(trimmed) as Record<string, unknown>;
-        const tags = Array.isArray(obj.tags)
-          ? (obj.tags as string[])
-          : Array.isArray(obj.free_tags) ? (obj.free_tags as string[])
-          : Array.isArray(obj.sound_palette_tags) ? (obj.sound_palette_tags as string[])
-          : [];
+        const parsed = CookbookEntrySchema.safeParse(JSON.parse(trimmed));
+        if (!parsed.success) {
+          throw new Error(`schema invalid in ${dir}/${name}: ${parsed.error.issues.map((iss) => `${iss.path.join('.')}: ${iss.message}`).join('; ')}`);
+        }
+        const obj = parsed.data;
+        if (!LOADABLE_STATUSES.has(obj.validation_status)) continue;
+        const tags = [...obj.sound_palette_tags, ...obj.free_tags];
         out.push({
-          id: obj.id as string,
-          genre: obj.genre as string,
-          role: obj.role as string,
-          ...(typeof obj.mini_notation === 'string' ? { mini_notation: obj.mini_notation } : {}),
-          ...(typeof obj.raw === 'string' ? { raw: obj.raw } : {}),
+          id: obj.id,
+          genre: obj.genre,
+          role: obj.role,
+          ...(obj.mini_notation !== undefined ? { mini_notation: obj.mini_notation } : {}),
+          ...(obj.raw !== undefined ? { raw: obj.raw } : {}),
           tags,
-          ...(Array.isArray(obj.bpm_range) ? { bpm_range: obj.bpm_range as [number, number] } : {}),
-          ...(typeof obj.notes === 'string' ? { notes: obj.notes } : {}),
+          bpm_range: obj.bpm_range,
+          notes: `${obj.validation_status}: ${obj.bar_intent}`,
         });
       } catch (e) {
         throw new Error(`malformed JSONL in ${dir}/${name}: ${trimmed.slice(0, 60)}`);

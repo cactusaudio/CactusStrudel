@@ -1,4 +1,9 @@
-# IR — SessionGraph
+# Research IR — SessionGraph
+
+This document describes the TypeScript research engine's canonical graph.
+It is not the live studio's data contract. The live product stores corpus
+entries, piece JS, rendered MP3/features, prompt metadata, and revisions
+through `runtime/serve.py`. See `docs/LIVE_VS_RESEARCH.md`.
 
 The canonical artifact. Everything the producer system does is a transformation on this graph.
 

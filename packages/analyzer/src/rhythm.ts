@@ -18,16 +18,28 @@ export async function computeRhythmFeatures(monoInput: Float32Array, sampleRate:
   let bpm = 0, confidence = 0;
   let beats: Float32Array = new Float32Array(0);
   try {
-    const rRes = essentia.RhythmExtractor2013(essentia.arrayToVector(audio), 208, 'multifeature', 40);
-    bpm = rRes.bpm;
-    confidence = rRes.confidence;
-    beats = vectorToFloat32(rRes.ticks);
+    const audioVec = essentia.arrayToVector(audio);
+    let ticksVec: any;
+    try {
+      const rRes = essentia.RhythmExtractor2013(audioVec, 208, 'multifeature', 40);
+      bpm = rRes.bpm;
+      confidence = rRes.confidence;
+      ticksVec = rRes.ticks;
+      beats = vectorToFloat32(ticksVec);
+    } finally {
+      disposeVectors(audioVec, ticksVec);
+    }
   } catch (e) {
     // Fall back: use OnsetRate
     try {
-      const oRes = essentia.OnsetRate(essentia.arrayToVector(audio));
-      bpm = oRes.onsetRate * 60;
-      confidence = 0.3;
+      const audioVec = essentia.arrayToVector(audio);
+      try {
+        const oRes = essentia.OnsetRate(audioVec);
+        bpm = oRes.onsetRate * 60;
+        confidence = 0.3;
+      } finally {
+        disposeVectors(audioVec);
+      }
     } catch {
       bpm = 0; confidence = 0;
     }
@@ -44,8 +56,13 @@ export async function computeRhythmFeatures(monoInput: Float32Array, sampleRate:
   const durationSec = audio.length / targetSr;
   for (const [name, band] of Object.entries(bands)) {
     try {
-      const oRes = essentia.OnsetRate(essentia.arrayToVector(band));
-      onsetDensity[name] = oRes.onsetRate;
+      const bandVec = essentia.arrayToVector(band);
+      try {
+        const oRes = essentia.OnsetRate(bandVec);
+        onsetDensity[name] = oRes.onsetRate;
+      } finally {
+        disposeVectors(bandVec);
+      }
     } catch {
       onsetDensity[name] = 0;
     }
@@ -139,4 +156,13 @@ function vectorToFloat32(vec: any): Float32Array {
   }
   if (Array.isArray(vec)) return Float32Array.from(vec);
   return new Float32Array(0);
+}
+
+function disposeVectors(...vectors: any[]): void {
+  const seen = new Set<any>();
+  for (const vec of vectors) {
+    if (!vec || seen.has(vec) || typeof vec.delete !== 'function') continue;
+    seen.add(vec);
+    try { vec.delete(); } catch { /* best-effort WASM vector cleanup */ }
+  }
 }

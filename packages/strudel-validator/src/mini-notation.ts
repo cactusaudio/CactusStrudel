@@ -8,7 +8,7 @@ const BRACKET_PAIRS: Record<string, string> = { '[': ']', '<': '>', '{': '}', '(
 const OPENERS = new Set(Object.keys(BRACKET_PAIRS));
 const CLOSERS = new Set(Object.values(BRACKET_PAIRS));
 
-const TOKEN_RE = /[a-zA-Z_][a-zA-Z0-9_]*(?::[a-zA-Z0-9_]+)*|[0-9]+(?:\.[0-9]+)?|~|\*|\/|@|\?|!|\||,|[\[\]<>{}()]|\s+|./g;
+const TOKEN_RE = /[a-zA-Z_][a-zA-Z0-9_#]*(?::[a-zA-Z0-9_#]+)*|[0-9]+(?:\.[0-9]+)?|~|\*|\/|@|\?|!|\||,|[\[\]<>{}()]|\s+|./g;
 
 export interface MiniToken {
   text: string;
@@ -43,7 +43,7 @@ export function validateMiniNotation(input: string): ValidationResult {
   const tokens = tokenizeMini(input).filter((t) => t.kind !== 'space');
 
   if (tokens.length === 0) {
-    return { ok: true, issues: [{ code: 'EMPTY_PATTERN', message: 'pattern is empty', span: { start: 0, end: input.length } }] };
+    return { ok: true, issues };
   }
 
   // 1. bracket balance

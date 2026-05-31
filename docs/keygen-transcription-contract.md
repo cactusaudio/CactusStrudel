@@ -19,7 +19,7 @@ to pitch/rhythm/harmony/arrangement — **not** sample reproduction.
 
 - Cookbook entry = `CookbookEntrySchema` v2.0.0 (packages/cookbook/
   src/schema.ts). Per-genre/role JSONL: `cookbook/<genre>/<role>.jsonl`.
-  `source_type` already has `imported_public_domain`. `expected_
+  `source_type` already has `external_reference_transcription`. `expected_
   movement` fields (onset_density, centroid_hz, rms_db, syncopation)
   are exactly analyzer outputs. `validation_status` ladder ends at
   `feature_match`. **The schema was built for this.**
@@ -45,7 +45,7 @@ lossy, it is pointless.
 - **Path C decision: literal transcription, spine-bypass.** A pattern
   entry sourced from a transcribed cookbook entry is emitted as its
   literal `mini_notation`; the step-4 spine post-pass MUST skip layers
-  whose pattern came from a transcribed (`imported_public_domain`)
+  whose pattern came from a transcribed (`external_reference_transcription`)
   entry. Add a provenance signal the post-pass honors. "精确转译"
   literally means *faithfully reproduce*, not *re-harmonize*.
 - **Path B extension (later, not now):** also *extract* the module's
@@ -92,7 +92,7 @@ Tracker time = rows × speed (ticks/row) × tempo (BPM). Convention:
 | volume column / `Cxx` | gain in `bar_intent`, not pitch | A |
 | effects with no clean analogue (9xx offset, retrig, tremor, E6x loop, funk) | dropped; listed in `known_failure_modes` | — declared |
 
-Per entry: `source_type:'imported_public_domain'`,
+Per entry: `source_type:'external_reference_transcription'`,
 `provenance_note` = module name + author + channel + format,
 `validation_status` starts `candidate`.
 
@@ -134,7 +134,7 @@ Per entry: `source_type:'imported_public_domain'`,
 - No mass scrape. ~10–15 **hand-picked** modules, `refs/keygen/`,
   gitignored, local only, research/transcription reference — never
   committed or redistributed (CLAUDE.md provenance hard rule;
-  `source_type:'imported_public_domain'` + `provenance_note` on
+  `source_type:'external_reference_transcription'` + `provenance_note` on
   every derived entry).
 
 ## 8. Sign-off checklist (Bowei owns)

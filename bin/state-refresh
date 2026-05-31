@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# state-refresh — regenerate docs/STATE.md from live data
+set -euo pipefail
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+OUT="$ROOT/docs/STATE.md"
+mkdir -p "$ROOT/docs"
+
+ROOT="$ROOT" BASE="$BASE" python3 <<'PY' > "$OUT"
+import json, os, time, subprocess
+ROOT=os.environ['ROOT']
+BASE=os.environ.get('BASE', 'http://localhost:8765')
+
+def safe(path, fn, default=None):
+    try: return fn()
+    except Exception as e: return default
+
+now = time.strftime('%Y-%m-%d %H:%M:%S')
+
+# server probe
+try:
+    import urllib.request
+    with urllib.request.urlopen(f'{BASE}/api/version', timeout=2) as r:
+        version = json.loads(r.read())
+        server_up = True
+except Exception:
+    version = {}; server_up = False
+
+# corpus
+corpus_path = f'{ROOT}/producer-brain/corpus-2026-05-21.jsonl'
+corpus = [json.loads(l) for l in open(corpus_path) if l.strip()]
+scored = [e for e in corpus if e.get('score_bowei') is not None]
+mean = sum(e['score_bowei'] for e in scored)/len(scored) if scored else 0
+top = max(scored, key=lambda e: e['score_bowei']) if scored else None
+latest = corpus[-1] if corpus else None
+
+# spine
+spine = [json.loads(l) for l in open(f'{ROOT}/producer-brain/failure-spine.jsonl') if l.strip()]
+
+# revisions (research database — every human-saved edit recorded)
+rev_path = f'{ROOT}/producer-brain/revisions.jsonl'
+revisions = [json.loads(l) for l in open(rev_path) if l.strip()] if os.path.exists(rev_path) else []
+rev_by_source = {}
+for r in revisions:
+    s = r.get('source','?'); rev_by_source[s] = rev_by_source.get(s,0)+1
+rev_with_delta = sum(1 for r in revisions if r.get('score_delta') is not None)
+by_status = {}
+for e in spine:
+    by_status[e.get('status','?')] = by_status.get(e.get('status','?'),0)+1
+
+# prompt_base
+pb_path = f'{ROOT}/scripts/gemini-fetch.ts'
+pb_text = open(pb_path).read()
+import re
+m = re.search(r"const PROMPT_BASE = `([\s\S]*?)`;", pb_text)
+pb_len = len(m.group(1)) if m else 0
+
+# backups
+baks = sorted([f for f in os.listdir(f'{ROOT}/scripts') if f.startswith('gemini-fetch.ts.bak.')])
+
+# bridge
+def jsonl_load(p):
+    try: return [json.loads(l) for l in open(p) if l.strip()]
+    except: return []
+inbox = jsonl_load(f'{ROOT}/runtime/cc-bridge/inbox.jsonl')
+replies = jsonl_load(f'{ROOT}/runtime/cc-bridge/replies.jsonl')
+proposals = jsonl_load(f'{ROOT}/runtime/cc-bridge/proposals.jsonl')
+tasks = jsonl_load(f'{ROOT}/runtime/cc-bridge/tasks.jsonl')
+transcript = jsonl_load(f'{ROOT}/runtime/cc-bridge/transcript-tail.jsonl')
+kick = os.path.exists(f'{ROOT}/runtime/cc-bridge/.kick')
+
+print(f"# CactusStrudel — Live State Snapshot\n")
+print(f"_Regenerated: **{now}**_ via `bin/state-refresh`. Don't hand-edit — re-run instead.\n")
+
+print(f"## Server\n")
+print(f"- HTTP at `http://localhost:8765` — **{'UP' if server_up else 'DOWN'}**")
+if version:
+    print(f"- `main.html` build: `{version.get('main_html_build')}`")
+    print(f"- `serve.py` build: `{version.get('serve_py_build')}`")
+    print(f"- server started: `{version.get('server_started')}`")
+print()
+
+print(f"## Corpus\n")
+print(f"- **{len(corpus)} pieces** ({len(scored)} scored, {len(corpus)-len(scored)} unscored)")
+print(f"- mean score (scored only): **{mean:.2f}**")
+if top: print(f"- top piece: **{top['name']} = {top['score_bowei']}**")
+if latest: print(f"- latest piece: **{latest['name']}** ({latest['ts']})")
+print()
+
+# batch breakdown
+batches = {}
+for e in corpus:
+    prefix = e['name'].split('-')[0] if '-' in e['name'] else 'other'
+    batches.setdefault(prefix, []).append(e)
+print(f"### Batches\n")
+print(f"| batch | count | scored | mean | range |")
+print(f"|---|---|---|---|---|")
+for b, items in sorted(batches.items()):
+    sc = [i['score_bowei'] for i in items if i.get('score_bowei') is not None]
+    bmean = f'{sum(sc)/len(sc):.2f}' if sc else '—'
+    brange = f'{min(sc):.1f}–{max(sc):.1f}' if len(sc)>1 else (f'{sc[0]:.1f}' if sc else '—')
+    print(f"| {b} | {len(items)} | {len(sc)} | {bmean} | {brange} |")
+print()
+
+print(f"## Spine ({len(spine)} entries)\n")
+for status, n in sorted(by_status.items()):
+    print(f"- {status}: **{n}**")
+print(f"\n### Latest 3 spine entries:")
+for e in spine[-3:]:
+    print(f"- **{e['id']}** ({e.get('status','?')}): {e.get('symptom_heard','')[:100]}...")
+print()
+
+print(f"## PROMPT_BASE\n")
+print(f"- current size: **{pb_len} chars**")
+print(f"- file: `scripts/gemini-fetch.ts`")
+print(f"- backups available ({len(baks)}):")
+for b in baks:
+    sz = os.path.getsize(f'{ROOT}/scripts/{b}')
+    print(f"  - `{b}` ({sz} bytes)")
+print()
+
+print(f"## CC Bridge\n")
+print(f"- inbox: {len(inbox)} total ({sum(1 for e in inbox if e.get('status')=='pending')} pending)")
+print(f"- replies: {len(replies)}")
+print(f"- proposals: {len(proposals)} total ({sum(1 for e in proposals if e.get('status')=='pending')} pending, {sum(1 for e in proposals if e.get('status')=='accepted' and not e.get('executed_at'))} accepted-not-yet-executed)")
+print(f"- tasks: {len(tasks)} total ({sum(1 for e in tasks if e.get('status')=='queued')} queued, {sum(1 for e in tasks if e.get('status')=='running')} running)")
+print(f"- transcript-tail: {len(transcript)} entries (cap 60)")
+print(f"- `.kick` marker: **{'PRESENT — user wants you to /check-inbox' if kick else 'absent'}**")
+print()
+
+print(f"## Prompt Kernel (Phase 1+)\n")
+try:
+    import sys as _s
+    _s.path.insert(0, f'{ROOT}/runtime')
+    import prompt_kernel as _pk
+    _k = _pk.compile()
+    print(f"- Current kernel hash: **{_k['hash']}**")
+    print(f"- Text length: **{len(_k['text'])} chars**")
+    print(f"- Fragments ({len(_k['fragments_used'])}):")
+    for _f in _k['fragments_used']:
+        print(f"  - `{_f}`")
+except Exception as _e:
+    print(f"- (kernel not yet wired — {_e})")
+print()
+
+print(f"## Research Database (revisions)\n")
+print(f"- Total revisions: **{len(revisions)}**")
+print(f"- With score_delta filled: **{rev_with_delta}**")
+print(f"- By source:")
+for s, n in sorted(rev_by_source.items()):
+    print(f"  - {s}: **{n}**")
+print(f"- See `docs/research-database-plan.md` + run `bin/research-summary` to aggregate.")
+print()
+
+print(f"## Files & paths\n")
+print(f"- corpus: `producer-brain/corpus-2026-05-21.jsonl`")
+print(f"- spine: `producer-brain/failure-spine.jsonl`")
+print(f"- pieces: `producer-brain/pieces/`")
+print(f"- audio: `producer-brain/audio/` (gitignored)")
+print(f"- prompts: `producer-brain/prompts/` (per-piece PROMPT_BASE snapshots, since 2026-05-25)")
+print(f"- bridge: `runtime/cc-bridge/`")
+print(f"- web: `http://localhost:8765/runtime/main.html` and `…/data.html`")
+print()
+PY
+
+echo "wrote $OUT ($(wc -l < "$OUT") lines)"

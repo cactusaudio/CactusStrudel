@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# check-inbox — dump all bridge queues (inbox/replies/proposals/tasks/transcript-tail).
+# For terminal-side AI consumption when user says "/check-inbox" or similar.
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+BRIDGE="$ROOT/runtime/cc-bridge"
+
+dump() {
+  local f="$1" label="$2"
+  echo "=== $label ==="
+  if [ -f "$f" ] && [ -s "$f" ]; then
+    python3 -c "
+import json
+with open('$f') as fh:
+    for line in fh:
+        if not line.strip(): continue
+        d=json.loads(line)
+        print(json.dumps(d, ensure_ascii=False, indent=2))
+        print()
+"
+  else
+    echo "(empty)"
+  fi
+}
+
+dump "$BRIDGE/inbox.jsonl"     "INBOX (user → CC)"
+dump "$BRIDGE/replies.jsonl"   "REPLIES (CC → user)"
+dump "$BRIDGE/proposals.jsonl" "PROPOSALS"
+dump "$BRIDGE/tasks.jsonl"     "TASKS"
+
+echo "=== .kick marker ==="
+if [ -f "$BRIDGE/.kick" ]; then
+  echo "EXISTS (ts $(cat $BRIDGE/.kick)) — consume by deleting after handling"
+else
+  echo "(none)"
+fi
+
+echo ""
+echo "=== last 10 transcript entries (what you did in terminal lately) ==="
+tail -10 "$BRIDGE/transcript-tail.jsonl" 2>/dev/null | python3 -c "
+import json,sys
+for line in sys.stdin:
+    if not line.strip(): continue
+    d=json.loads(line)
+    print(f\"  {d.get('ts','')[11:19]:>8}  [{d.get('kind','?'):>9}]  {d.get('text','')[:130]}\")
+" || echo "(none)"

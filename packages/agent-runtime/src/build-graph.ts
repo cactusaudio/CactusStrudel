@@ -56,7 +56,7 @@ export async function buildSessionGraphFromBrief(
 
   const song = buildSong(genre, briefFinal, rng);
   const layers = buildLayers(genre, briefFinal);
-  const layerActivation = buildLayerActivation(layers, song);
+  const layerActivation = buildLayerActivation(layers, song, briefFinal);
   song.layer_activation = layerActivation;
 
   // Phase 15 fix: arrangement coverage BEFORE pattern bank so any layer the
@@ -283,19 +283,20 @@ function buildLayers(genre: GenreSpec, brief: BriefGraph): LayerGraph[] {
   return layers;
 }
 
-function buildLayerActivation(layers: LayerGraph[], song: SongGraph): SongGraph['layer_activation'] {
+function buildLayerActivation(layers: LayerGraph[], song: SongGraph, brief: BriefGraph): SongGraph['layer_activation'] {
   const map: SongGraph['layer_activation'] = {};
   for (const layer of layers) {
     const sections: Record<string, boolean> = {};
     for (const sec of song.sections) {
-      sections[sec.id] = activationFor(layer.role, sec.function, sec.energy);
+      sections[sec.id] = activationFor(layer.role, sec.function, sec.energy, brief);
     }
     map[layer.id] = { sections };
   }
   return map;
 }
 
-function activationFor(role: Role, fn: SectionFunction, energy: number): boolean {
+function activationFor(role: Role, fn: SectionFunction, energy: number, brief: BriefGraph): boolean {
+  if (role === 'kick' && brief.constraints?.no_four_on_floor === true) return false;
   // Rhythmic layers off in pure breakdown for tension.
   if (role === 'kick' && fn === 'breakdown') return false;
   if (role === 'snare' && fn === 'breakdown') return false;
@@ -328,7 +329,7 @@ async function buildPatternBank(
   // transcribed `imported_public_domain` entry is REAL human music,
   // already harmonically coherent. The step-4 synthetic spine must
   // NOT override it — that would discard the entire keygen value.
-  // Key = `${layerId} ${secId}`.
+  // Key = `${layerId}${secId}`.
   const transcribedCells = new Set<string>();
 
   // G9B: in enabled / enabled_mutating modes, route through the typed
@@ -361,9 +362,9 @@ async function buildPatternBank(
       if (cookbookMode === 'minimal') {
         // Legacy path — unchanged.
         const pick = legacySnippets.length > 0 ? pickSnippet(legacySnippets, bpm, rng) : undefined;
-        if (pick?.mini_notation) patterns[layer.id]![sec.id] = { mini_notation: pick.mini_notation };
+        if (pick?.mini_notation) patterns[layer.id]![sec.id] = enforcePatternConstraints(layer, { mini_notation: pick.mini_notation }, brief, sec);
         else if (pick?.raw) patterns[layer.id]![sec.id] = { raw: pick.raw };
-        else patterns[layer.id]![sec.id] = { mini_notation: defaultPatternForRole(layer.role) };
+        else patterns[layer.id]![sec.id] = enforcePatternConstraints(layer, { mini_notation: defaultPatternForRole(layer.role) }, brief, sec);
         continue;
       }
 
@@ -400,8 +401,8 @@ async function buildPatternBank(
         // Final (post-mutation) source_type: a mutated import is no
         // longer a faithful transcription (tryMutate → 'transformed'),
         // so it correctly does NOT bypass the spine; only an untouched
-        // imported_public_domain pick does.
-        if (entry.source_type === 'imported_public_domain') {
+        // external reference transcription pick does.
+        if (entry.source_type === 'external_reference_transcription') {
           transcribedCells.add(`${layer.id} ${sec.id}`);
         }
         seenIds.push(result.entry.id);
@@ -434,6 +435,7 @@ async function buildPatternBank(
         }
       }
 
+      chosenPattern = enforcePatternConstraints(layer, chosenPattern, brief, sec);
       patterns[layer.id]![sec.id] = chosenPattern;
       // G9C: blame attribution. Record which graph path got which value so
       // an audit can correlate a hard failure back to a specific pick.
@@ -511,6 +513,34 @@ function defaultPatternForRole(role: Role): string {
     case 'fx': return '~';
     default: return '~';
   }
+}
+
+function enforcePatternConstraints(
+  layer: LayerGraph,
+  pattern: { mini_notation?: string; raw?: string },
+  brief: BriefGraph,
+  section: Section,
+): { mini_notation?: string; raw?: string } {
+  if (layer.role !== 'kick' || !pattern.mini_notation) {
+    return pattern;
+  }
+  if (brief.constraints?.no_four_on_floor !== true && section.energy >= 0.75 && (section.function === 'main' || section.function === 'drop')) {
+    const hits = (pattern.mini_notation.match(/\b(?:bd|kick)\b|\b(?:bd|kick)\*\d+/gi) ?? []).length;
+    const explicitFastKick = /\b(?:bd|kick)\*(?:[4-9]|[1-9]\d+)/i.test(pattern.mini_notation);
+    if (!explicitFastKick && hits < 4) return { mini_notation: 'bd*4' };
+  }
+  if (brief.constraints?.no_four_on_floor !== true) {
+    return pattern;
+  }
+  const compact = pattern.mini_notation.replace(/\s+/g, ' ').trim().toLowerCase();
+  const fourOnFloor =
+    compact === 'bd*4' ||
+    compact === 'kick*4' ||
+    compact === 'bd bd bd bd' ||
+    compact === 'kick kick kick kick' ||
+    compact === '[bd]*4' ||
+    compact === '[kick]*4';
+  return fourOnFloor ? { mini_notation: defaultPatternForRole('kick') } : pattern;
 }
 
 function buildSoundPalette(genre: GenreSpec, layers: LayerGraph[], brief: BriefGraph): SoundPalette {
@@ -655,14 +685,16 @@ function buildMixGraph(genre: GenreSpec, layers: LayerGraph[], brief: BriefGraph
 
 function orbitDefaults(role: Role, brief: BriefGraph): MixGraph['orbits'][string] {
   const haunted = brief.modifiers?.includes('haunted') ?? false;
+  const monoLow = brief.constraints?.mono_low === true;
+  const lowWidth = monoLow ? 0 : undefined;
   switch (role) {
-    case 'kick':  return { gain: 1.0, pan: 0, width: 1.0, room_send: 0.05, delay_send: 0 };
+    case 'kick':  return { gain: 1.0, pan: 0, width: lowWidth ?? 1.0, room_send: 0.05, delay_send: 0 };
     case 'snare': return { gain: 0.85, pan: 0, width: 1.1, room_send: 0.18, delay_send: 0 };
     case 'hat':   return { gain: 0.6, pan: 0.15, width: 1.3, room_send: haunted ? 0.3 : 0.1, delay_send: haunted ? 0.1 : 0 };
     case 'percussion':
     case 'rim':   return { gain: 0.6, pan: -0.1, width: 1.3, room_send: 0.2, delay_send: 0.1 };
     case 'bass':
-    case 'sub':   return { gain: 0.9, pan: 0, width: 0.5, room_send: 0.05, delay_send: 0 };
+    case 'sub':   return { gain: 0.9, pan: 0, width: lowWidth ?? 0.5, room_send: 0.05, delay_send: 0 };
     case 'chord': return { gain: 0.7, pan: -0.1, width: 1.4, room_send: haunted ? 0.55 : 0.3, delay_send: haunted ? 0.4 : 0.1 };
     case 'pad':   return { gain: 0.55, pan: 0.2, width: 1.6, room_send: 0.5, delay_send: 0.3 };
     case 'lead':  return { gain: 0.7, pan: -0.1, width: 1.4, room_send: 0.3, delay_send: 0.4 };

@@ -65,6 +65,23 @@ describe('buildSessionGraphFromBrief', () => {
     expect(hasKick).toBe(false);
   });
 
+  it('respects no-four-on-floor by not activating a coverage kick', async () => {
+    const brief = parseBrief('techno 132 BPM, no 4-on-the-floor');
+    const graph = await buildSessionGraphFromBrief(brief);
+    const kick = graph.layers.find((l) => l.role === 'kick');
+    expect(kick).toBeDefined();
+    const activeKickSections = Object.values(graph.song.layer_activation[kick!.id]!.sections).filter(Boolean);
+    expect(activeKickSections.length).toBe(0);
+  });
+
+  it('respects mono low by narrowing kick and bass orbits', async () => {
+    const brief = parseBrief('house 124 BPM, mono low');
+    const graph = await buildSessionGraphFromBrief(brief);
+    for (const layer of graph.layers.filter((l) => l.role === 'kick' || l.role === 'bass' || l.role === 'sub')) {
+      expect(graph.mix_graph.orbits[String(layer.orbit)]?.width).toBe(0);
+    }
+  });
+
   it('produces total_bars within ±25% of duration target', async () => {
     const brief = parseBrief('dub techno 130 BPM, 3 minutes');
     const graph = await buildSessionGraphFromBrief(brief);

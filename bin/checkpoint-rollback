@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# checkpoint-rollback <name> — restore CactusStrudel prompt-system to a checkpoint.
+# Equivalent to running the checkpoint's own rollback.sh.
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+NAME="${1:-}"
+[ -z "$NAME" ] && {
+  echo "usage: checkpoint-rollback <name>" >&2
+  echo "available checkpoints:" >&2
+  ls -1 "$ROOT/producer-brain/checkpoints" 2>/dev/null | grep -v '^\.' >&2 || echo "  (none)" >&2
+  exit 1
+}
+CKPT_DIR="$ROOT/producer-brain/checkpoints/$NAME"
+[ -d "$CKPT_DIR" ] || { echo "no such checkpoint: $NAME" >&2; exit 1; }
+bash "$CKPT_DIR/rollback.sh"

@@ -2,14 +2,15 @@
 // Each gate returns a passed/failed verdict + numeric value + threshold so
 // failures cite measurable evidence (per dispatch §2.5 / §7).
 
-import { readWav, mixToMono } from './wav-io.js';
-import { computeSectionFeatures, type SectionFeatures } from './section-features.js';
+import { readWav, mixToMono, type DecodedAudio } from './wav-io.js';
+import { computeSectionFeaturesFromAudio, type SectionFeatures } from './section-features.js';
 import {
   nonSilentRatio as hysteresisNonSilentRatio,
   classifyNonSilent,
   BROKEN_RENDERER_NSR,
   SPARSE_OK_NSR,
 } from './silence.js';
+import { QUALITY_GATE_THRESHOLDS } from './quality-gate-config.js';
 import type { AnalyzerFeatures, SessionGraph } from '@cactus/ir';
 
 /**
@@ -69,6 +70,8 @@ export interface QualityGatesInput {
   wavPath: string;
   graph: SessionGraph;
   features: AnalyzerFeatures;
+  /** Optional already-decoded WAV to avoid duplicate disk reads in audit loops. */
+  decodedAudio?: DecodedAudio;
   /** Genre-aware thresholds. Provide the loaded GenreSpec where available. */
   genreTargets?: {
     lufs?: number;
@@ -86,9 +89,9 @@ export interface QualityGatesInput {
 }
 
 export async function runQualityGates(input: QualityGatesInput): Promise<QualityGatesReport> {
-  const audio = await readWav(input.wavPath);
+  const audio = input.decodedAudio ?? await readWav(input.wavPath);
   const mono = mixToMono(audio.channels);
-  const sectionFeatures = await computeSectionFeatures(input.wavPath, input.graph);
+  const sectionFeatures = await computeSectionFeaturesFromAudio(audio, input.graph);
 
   const gates: QualityGateResult[] = [];
   gates.push(gateNonSilentRatio(mono, audio.sampleRate));
@@ -156,12 +159,12 @@ function gateNonSilentRatio(mono: Float32Array, sr: number): QualityGateResult {
 
 function gateActiveBandCount(f: AnalyzerFeatures): QualityGateResult {
   const bands = f.spectral?.band_rms ?? {};
-  const threshold_rms = 0.005; // -46 dBFS
+  const threshold_rms = QUALITY_GATE_THRESHOLDS.spectral.active_band_rms_floor;
   let active = 0;
   for (const v of Object.values(bands)) {
     if (typeof v === 'number' && v > threshold_rms) active++;
   }
-  const threshold = 3;
+  const threshold = QUALITY_GATE_THRESHOLDS.spectral.active_band_count_min;
   return {
     name: 'active_band_count',
     passed: active >= threshold,
@@ -176,9 +179,11 @@ function gateActiveBandCount(f: AnalyzerFeatures): QualityGateResult {
 
 function gateLowBandEnergyFloor(f: AnalyzerFeatures, gt?: QualityGatesInput['genreTargets']): QualityGateResult {
   const lowRms = (f.spectral?.band_rms?.low ?? 0) + (f.spectral?.band_rms?.sub ?? 0);
-  const threshold = 0.01; // -40 dBFS combined low+sub
+  const threshold = QUALITY_GATE_THRESHOLDS.spectral.low_band_energy_floor;
   // ambient drone genres can legitimately under-shoot — relax for those.
-  const relaxed = (gt && gt.onset_density_high_floor !== undefined && gt.onset_density_high_floor < 1) ? threshold * 0.3 : threshold;
+  const relaxed = (gt && gt.onset_density_high_floor !== undefined && gt.onset_density_high_floor < 1)
+    ? threshold * QUALITY_GATE_THRESHOLDS.spectral.ambient_low_band_relax_multiplier
+    : threshold;
   return {
     name: 'low_band_energy_floor',
     passed: lowRms >= relaxed,
@@ -195,9 +200,13 @@ function gateOnsetCountFloor(
   sr: number, len: number,
 ): QualityGateResult {
   const totalSec = len / sr;
-  const totalOnsets = Object.values(f.rhythmic?.onset_density ?? {}).reduce((a, b) => a + b, 0);
+  const densities = Object.values(f.rhythmic?.onset_density ?? {}).filter((v) => Number.isFinite(v));
+  // The per-band densities are alternate views of the same timeline, not
+  // independent onset counts. Use the strongest band instead of summing
+  // low+mid+high, which otherwise triple-counts broadband transients.
+  const totalOnsets = densities.length > 0 ? Math.max(...densities) : 0;
   // Genre-aware: ambient/drone allowed near zero; default ≥ 0.5/sec (one event every 2s).
-  const threshold = gt?.onset_density_high_floor ?? 0.5;
+  const threshold = gt?.onset_density_high_floor ?? QUALITY_GATE_THRESHOLDS.rhythm.default_onset_density_floor;
   // Ambient genres pass an onset_density_high_floor below 1 — for them the
   // gate is a calibration warning rather than a severe failure.
   const tier: SeverityTier = (gt?.onset_density_high_floor !== undefined && gt.onset_density_high_floor < 1)
@@ -211,26 +220,26 @@ function gateOnsetCountFloor(
     severity: totalOnsets < threshold ? Math.min(1, (threshold - totalOnsets) / Math.max(0.001, threshold)) : 0,
     severity_tier: tier,
     confidence: 'real_wav',
-    notes: `total onset density ${totalOnsets.toFixed(2)}/s over ${totalSec.toFixed(1)}s`,
+    notes: `max per-band onset density ${totalOnsets.toFixed(2)}/s over ${totalSec.toFixed(1)}s`,
   };
 }
 
 function gateSectionEnergyDelta(sf: SectionFeatures, graph?: SessionGraph): QualityGateResult {
   // ADR 0005: skip on sub-12-bar tracks for the same reason as arrangement_arc.
-  if (graph && graph.song.total_bars < 12) {
-    return { name: 'section_energy_delta', passed: true, value: 0, threshold: 3, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: `skipped: total_bars=${graph.song.total_bars} < 12 (ADR 0005 — p95 RMS biased on short tracks)` };
+  if (graph && graph.song.total_bars < QUALITY_GATE_THRESHOLDS.arrangement.short_track_min_bars) {
+    return { name: 'section_energy_delta', passed: true, value: 0, threshold: QUALITY_GATE_THRESHOLDS.arrangement.section_energy_delta_db, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: `skipped: total_bars=${graph.song.total_bars} < ${QUALITY_GATE_THRESHOLDS.arrangement.short_track_min_bars} (ADR 0005 — p95 RMS biased on short tracks)` };
   }
   if (sf.sections.length < 2) {
-    return { name: 'section_energy_delta', passed: true, value: 0, threshold: 3, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: single-section track' };
+    return { name: 'section_energy_delta', passed: true, value: 0, threshold: QUALITY_GATE_THRESHOLDS.arrangement.section_energy_delta_db, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: single-section track' };
   }
   const energies = sf.sections.map((s) => s.energy_db).filter((v) => Number.isFinite(v));
   if (energies.length === 0) {
-    return { name: 'section_energy_delta', passed: false, value: 0, threshold: 3, severity: 1, severity_tier: 'hard_fail', confidence: 'real_wav', notes: 'all sections silent' };
+    return { name: 'section_energy_delta', passed: false, value: 0, threshold: QUALITY_GATE_THRESHOLDS.arrangement.section_energy_delta_db, severity: 1, severity_tier: 'hard_fail', confidence: 'real_wav', notes: 'all sections silent' };
   }
   const max = Math.max(...energies);
   const min = Math.min(...energies);
   const range = max - min;
-  const threshold = 3;
+  const threshold = QUALITY_GATE_THRESHOLDS.arrangement.section_energy_delta_db;
   return {
     name: 'section_energy_delta',
     passed: range >= threshold,
@@ -248,7 +257,7 @@ function gateFeatureNoveltyPer8Bars(mono: Float32Array, sr: number, graph: Sessi
   const eightBarsSec = 8 / cps;
   const windowSamples = Math.floor(eightBarsSec * sr);
   if (windowSamples < 1024 || mono.length < windowSamples * 2) {
-    return { name: 'feature_novelty_per_8_bars', passed: true, value: 1, threshold: 0.05, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: track too short for novelty test' };
+    return { name: 'feature_novelty_per_8_bars', passed: true, value: 1, threshold: QUALITY_GATE_THRESHOLDS.arrangement.feature_novelty_per_8_bars_cv, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: track too short for novelty test' };
   }
   // Compute RMS-by-window and its variance.
   const windows: number[] = [];
@@ -258,12 +267,12 @@ function gateFeatureNoveltyPer8Bars(mono: Float32Array, sr: number, graph: Sessi
     windows.push(Math.sqrt(s / windowSamples));
   }
   if (windows.length < 2) {
-    return { name: 'feature_novelty_per_8_bars', passed: true, value: 1, threshold: 0.05, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: fewer than 2 8-bar windows in render' };
+    return { name: 'feature_novelty_per_8_bars', passed: true, value: 1, threshold: QUALITY_GATE_THRESHOLDS.arrangement.feature_novelty_per_8_bars_cv, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: fewer than 2 8-bar windows in render' };
   }
   const mean = windows.reduce((a, b) => a + b, 0) / windows.length;
   const variance = windows.reduce((a, b) => a + (b - mean) ** 2, 0) / windows.length;
   const cv = mean > 0 ? Math.sqrt(variance) / mean : 0; // coefficient of variation
-  const threshold = 0.05;
+  const threshold = QUALITY_GATE_THRESHOLDS.arrangement.feature_novelty_per_8_bars_cv;
   return {
     name: 'feature_novelty_per_8_bars',
     passed: cv >= threshold,
@@ -280,8 +289,8 @@ function gateArrangementArc(sf: SectionFeatures, graph: SessionGraph): QualityGa
   // ADR 0005: skip on tracks shorter than 12 bars — the metric uses p95
   // windowed RMS, which is biased toward peaky-sparse intros (kick-only) and
   // unreliable when each section is only 1-2 seconds.
-  if (graph.song.total_bars < 12) {
-    return { name: 'arrangement_arc_score', passed: true, value: 0, threshold: 1, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: `skipped: total_bars=${graph.song.total_bars} < 12 (ADR 0005)` };
+  if (graph.song.total_bars < QUALITY_GATE_THRESHOLDS.arrangement.short_track_min_bars) {
+    return { name: 'arrangement_arc_score', passed: true, value: 0, threshold: QUALITY_GATE_THRESHOLDS.arrangement.arrangement_arc_db, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: `skipped: total_bars=${graph.song.total_bars} < ${QUALITY_GATE_THRESHOLDS.arrangement.short_track_min_bars} (ADR 0005)` };
   }
   const sectionByName = new Map(graph.song.sections.map((s) => [s.id, s]));
   let dropSum = 0, dropN = 0;
@@ -297,12 +306,12 @@ function gateArrangementArc(sf: SectionFeatures, graph: SessionGraph): QualityGa
     }
   }
   if (dropN === 0 || introN === 0) {
-    return { name: 'arrangement_arc_score', passed: true, value: 0, threshold: 1, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: no drop/intro contrast pair' };
+    return { name: 'arrangement_arc_score', passed: true, value: 0, threshold: QUALITY_GATE_THRESHOLDS.arrangement.arrangement_arc_db, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: no drop/intro contrast pair' };
   }
   const dropMean = dropSum / dropN;
   const introMean = introSum / introN;
   const delta = dropMean - introMean;
-  const threshold = 1;
+  const threshold = QUALITY_GATE_THRESHOLDS.arrangement.arrangement_arc_db;
   return {
     name: 'arrangement_arc_score',
     passed: delta >= threshold,
@@ -323,7 +332,7 @@ function gateLoopFatigue(mono: Float32Array, sr: number, graph: SessionGraph): Q
   const winSamples = Math.floor(winSec * sr);
   const innerWin = Math.floor(sr * 0.1);
   if (winSamples < innerWin * 4 || mono.length < winSamples * 2) {
-    return { name: 'loop_fatigue_score', passed: true, value: 0, threshold: 0.95, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: track too short' };
+    return { name: 'loop_fatigue_score', passed: true, value: 0, threshold: QUALITY_GATE_THRESHOLDS.arrangement.loop_fatigue_similarity_max, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: track too short' };
   }
   // Compute RMS envelope per outer window.
   const envelopes: number[][] = [];
@@ -337,7 +346,7 @@ function gateLoopFatigue(mono: Float32Array, sr: number, graph: SessionGraph): Q
     envelopes.push(env);
   }
   if (envelopes.length < 2) {
-    return { name: 'loop_fatigue_score', passed: true, value: 0, threshold: 0.95, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: fewer than 2 8-bar windows in render' };
+    return { name: 'loop_fatigue_score', passed: true, value: 0, threshold: QUALITY_GATE_THRESHOLDS.arrangement.loop_fatigue_similarity_max, severity: 0, severity_tier: 'skipped', confidence: 'real_wav', notes: 'skipped: fewer than 2 8-bar windows in render' };
   }
   // Mean cosine similarity between consecutive envelopes.
   let sumSim = 0;
@@ -347,7 +356,7 @@ function gateLoopFatigue(mono: Float32Array, sr: number, graph: SessionGraph): Q
     pairs++;
   }
   const meanSim = pairs > 0 ? sumSim / pairs : 0;
-  const threshold = 0.95; // anything above this = boring loop
+  const threshold = QUALITY_GATE_THRESHOLDS.arrangement.loop_fatigue_similarity_max;
   return {
     name: 'loop_fatigue_score',
     passed: meanSim < threshold,
@@ -362,7 +371,7 @@ function gateLoopFatigue(mono: Float32Array, sr: number, graph: SessionGraph): Q
 
 function gateStereoLowMonoGuard(f: AnalyzerFeatures, gt?: QualityGatesInput['genreTargets']): QualityGateResult {
   const compliance = f.stereo?.mono_low_compliance ?? 1;
-  const threshold = gt?.stereo_mono_low_compliance_min ?? 0.85;
+  const threshold = gt?.stereo_mono_low_compliance_min ?? QUALITY_GATE_THRESHOLDS.mix.default_stereo_mono_low_compliance_min;
   return {
     name: 'stereo_low_mono_guard',
     passed: compliance >= threshold,
@@ -375,12 +384,12 @@ function gateStereoLowMonoGuard(f: AnalyzerFeatures, gt?: QualityGatesInput['gen
 }
 
 function gateTruePeak(f: AnalyzerFeatures, gt?: QualityGatesInput['genreTargets']): QualityGateResult {
-  const peak = f.loudness?.true_peak_db ?? -1;
-  const ceiling = gt?.true_peak_max ?? -1;
+  const peak = f.loudness?.true_peak_db ?? QUALITY_GATE_THRESHOLDS.mix.default_true_peak_max_dbtp;
+  const ceiling = gt?.true_peak_max ?? QUALITY_GATE_THRESHOLDS.mix.default_true_peak_max_dbtp;
   // Margin-aware tier: anything > +0.5 dB above ceiling is hard_fail (post-render
   // peak guard SHOULD have caught this, so blowing past it means something
   // structural is broken). Smaller overshoot is severe_warning.
-  const tier: SeverityTier = peak > ceiling + 0.5 ? 'hard_fail' : 'severe_warning';
+  const tier: SeverityTier = peak > ceiling + QUALITY_GATE_THRESHOLDS.mix.true_peak_hard_fail_margin_db ? 'hard_fail' : 'severe_warning';
   return {
     name: 'true_peak_guard',
     passed: peak <= ceiling,
@@ -395,14 +404,14 @@ function gateTruePeak(f: AnalyzerFeatures, gt?: QualityGatesInput['genreTargets'
 
 function gateLufsTargetDistance(f: AnalyzerFeatures, gt?: QualityGatesInput['genreTargets']): QualityGateResult {
   const integrated = f.loudness?.lufs_integrated ?? -30;
-  const target = gt?.lufs ?? -10;
+  const target = gt?.lufs ?? QUALITY_GATE_THRESHOLDS.mix.default_lufs_target;
   if (!Number.isFinite(integrated)) {
     return { name: 'lufs_target_distance', passed: false, value: -Infinity, threshold: target, severity: 1, severity_tier: 'hard_fail', confidence: 'real_wav', notes: 'silent — LUFS undefined' };
   }
   const dist = Math.abs(integrated - target);
-  const threshold = 4;
+  const threshold = QUALITY_GATE_THRESHOLDS.mix.lufs_distance_warning_lu;
   // Per ADR 0005 G1 mapping: > 4 LU = severe_warning; > 8 LU = hard_fail.
-  const tier: SeverityTier = dist > 8 ? 'hard_fail' : 'severe_warning';
+  const tier: SeverityTier = dist > QUALITY_GATE_THRESHOLDS.mix.lufs_distance_hard_fail_lu ? 'hard_fail' : 'severe_warning';
   return {
     name: 'lufs_target_distance',
     passed: dist <= threshold,

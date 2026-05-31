@@ -1,0 +1,181 @@
+# Cactus Strudel — mbp 端 Claude Code 后处理 dispatch
+
+## 用法
+
+1. 先双击 `~/Downloads/deploy-cactus-strudel.command` 跑完基础部署
+   （它会自动解 tar、装依赖、写桌面 launcher、起 serve.py、开浏览器）。
+2. 在 mbp 上随便开一个目录的 Claude Code（任意 cwd 即可）。
+3. 把下面 `=== BEGIN_AGENT_DISPATCH ===` 到 `=== END_AGENT_DISPATCH ===`
+   之间的整块文本一次性粘贴到 Claude Code 的输入框，回车。
+4. 等它跑完报告。中间它可能会问你 5.4 / 5.5 / 5.9 这几个决策点（chat history
+   是否清空 / 是否做跨机器 corpus 同步 / 是否做 Dock 集成）—— 当场回答即可。
+
+完成后你的 mbp 上的 cactus-strudel 就跟 mac mini 那台完全一致地工作。
+
+---
+
+```
+=== BEGIN_AGENT_DISPATCH ===
+========================================================================
+TASK: Cactus Strudel mbp 端本地化收尾 + 端到端验证
+HOST: bowei@mbp.local (这台 MacBook Pro)
+PEER: bowei@mac.local (mac mini, 192.168.0.100) — cactus-strudel 的源机
+========================================================================
+
+CONTEXT
+─────────────────────────────────────────────────────────────────────
+Bowei 已经从 mac mini 那台主机打包了一份完整的 cactus-strudel 发到这台 mbp 的
+~/Downloads/。包含 282MB 的 cactus-strudel-bundle.tar.gz + 7.9KB 的双击部署脚
+本 deploy-cactus-strudel.command。Bowei 已经/即将双击 deploy 脚本完成基础部署
+（脚本会自动解 tar、装依赖、检测 CLIProxy、写桌面 launcher、启动 serve.py）。
+
+你的工作：在 deploy 脚本跑完之后，做完整的端到端验证 + 本地化收尾，确保 mbp
+上的 cactus-strudel 跟 mac mini 上完全一致地工作，并提出 deploy 脚本未覆盖的
+本地化短板。
+
+KEY mbp PATHS (deploy 脚本约定的目标)
+─────────────────────────────────────────────────────────────────────
+- 部署位置:        ~/CactusStrudel
+- 桌面 launcher:    ~/Desktop/CactusStrudel.command  (双击启动 serve + 开浏览器)
+- Tar (可归档):     ~/Downloads/cactus-strudel-bundle.tar.gz
+- Deploy 脚本:      ~/Downloads/deploy-cactus-strudel.command
+- CLIProxy 网关:    http://127.0.0.1:8317/v1  (mbp 是 8317，mac 是 8318)
+- CLIProxy key doc: ~/Downloads/CLIProxyAPI-LAN-API-Key-Usage.md
+- AGY CLI:          ~/.local/bin/agy
+- 服务监听端口:     8765
+- 日志:             /tmp/cactus-serve.log
+
+TASK 1 — 验证部署完整性
+─────────────────────────────────────────────────────────────────────
+1. 确认 ~/CactusStrudel 存在且包含: runtime/, producer-brain/, apps/, packages/,
+   docs/, bin/, README.md, package.json
+2. 确认 ~/CactusStrudel/node_modules 存在 (pnpm install 跑过了)
+3. 确认 ~/Desktop/CactusStrudel.command 存在且 chmod +x
+4. 检查 lsof -nP -iTCP:8765 -sTCP:LISTEN — 看 serve.py 是否在跑
+   如果没在跑，先双击或手动 bash ~/Desktop/CactusStrudel.command 启动
+5. cat ~/Desktop/CactusStrudel.command 确认 launcher 里:
+   - CLIPROXY_BASE_URL = http://127.0.0.1:8317/v1  ← 必须是 8317 不是 8318
+   - CLIPROXY_KEY_DOC = ~/Downloads/CLIProxyAPI-LAN-API-Key-Usage.md (确认存在)
+6. 如果上述 env 错了 (比如 CLIPROXY_BASE_URL 还是 8318)，编辑 launcher 改对，
+   并 kill 当前 serve.py 重启让新 env 生效
+
+TASK 2 — Health checks
+─────────────────────────────────────────────────────────────────────
+1. curl http://localhost:8765/api/version  → 三个 timestamp 都有
+2. curl http://localhost:8765/api/backends → 7 slots 全 available:true
+   slot 顺序: gpt-5.5 / gpt-5.5x / agy-cli / opus-4.8 / gemini-flash / gemini-pro / grok-build
+3. curl http://localhost:8765/api/gen-status → 0 jobs
+4. 浏览器打开 http://localhost:8765/runtime/main.html → 页面加载
+5. 浏览器打开 http://localhost:8765/runtime/data.html → 2 行 trajectory cards 显示
+
+TASK 3 — Brain chat 烟雾测试
+─────────────────────────────────────────────────────────────────────
+1. 发一个 ping 试一下纯对话:
+   curl -s --max-time 30 -X POST http://localhost:8765/api/brain-chat \
+     -H 'Content-Type: application/json' \
+     -d '{"text":"reply with exactly OK","context":{}}'
+   期望: {"ok":true, "reply":{"text":"OK", "model":"claude-opus-4-8(xhigh)", ...}}
+
+2. 工具调用测试 (list_recent):
+   curl -s --max-time 30 -X POST http://localhost:8765/api/brain-chat \
+     -H 'Content-Type: application/json' \
+     -d '{"text":"列出最近 3 条 piece","context":{}}'
+   期望: reply 里包含具体 piece 名字 (TPH-003 / CHP-001 等)，tool_log 有
+   list_recent ok:true
+
+TASK 4 — 端到端 generate 验证 (一次真实 generation)
+─────────────────────────────────────────────────────────────────────
+直接打 /api/generate 走 cliproxy-api，省掉 brain 走一圈的 60-90s 等待:
+   curl -s --max-time 180 -N -X POST http://localhost:8765/api/generate \
+     -H 'Content-Type: application/json' \
+     -d '{"slot":"gpt-5.5","extra":"Style envelope they'"'"'re after: Lo-fi hip-hop.\n\nBPM 82, key D minor, dusty piano + brushed snares + tape hiss."}'
+   期望最终 event: done {"exit":0, "entry":{"name":"LFH-NNN", "schema_version":2, "source":"gpt-5.5", ...}}
+   验证完成后:
+   - tail -1 ~/CactusStrudel/producer-brain/corpus.jsonl 看到这条新 entry
+   - 对应 mp3 在 producer-brain/audio/ 实际存在
+   - 浏览器刷新 data.html，新 piece 显示在 grid 顶部
+
+TASK 5 — 本地化收尾 (Bowei 让我提的"还有什么要做")
+─────────────────────────────────────────────────────────────────────
+按你的判断挑做 (其中 5.1 / 5.2 / 5.3 / 5.8 建议直接做，其余看情况):
+
+5.1  归档已用完的 tar
+     mv ~/Downloads/cactus-strudel-bundle.tar.gz ~/Downloads/.cactus-archive/
+     (~/Downloads/ 别留 282MB 占着)
+
+5.2  写 mbp-only 的本机标识到 ~/.claude/CLAUDE.md
+     在 "本机标识" 块下面加一段 "Cactus Strudel deployed at ~/CactusStrudel
+     since YYYY-MM-DD. CLIProxy port 8317. Launcher: ~/Desktop/CactusStrudel
+     .command. AGY CLI present." 用 Edit tool 加，不要覆盖既有内容
+
+5.3  保存 memory 入口 (跨会话有用)
+     创建 ~/.claude/projects/-Users-bowei/memory/reference_cactus_strudel_
+     mbp_deploy.md 记录: 部署位置 / 端口 8317 vs 8318 区别 / launcher 路径 /
+     如何重启 (kill + 双击 launcher) / 已知 7 backends 全部 available。
+     在 MEMORY.md 里加一行索引
+
+5.4  Brain chat history 决策
+     mbp:~/CactusStrudel/runtime/cc-bridge/brain-chat-history.jsonl 现在是
+     mac 那台 deploy 时的快照 (包含 mac 上跟 brain 的所有对话)。问 Bowei
+     是要清空 (开始独立的 mbp 对话历史) 还是保留 (跨机器连贯感)。默认建议
+     清空 (mv 到 .archive-mac-snapshot)，因为 mbp 上的 brain 看到 mac 上的
+     旧对话会困惑当前 UI 状态。
+
+5.5  跨机器 corpus 同步 (新设计，可推后)
+     目前 mac corpus.jsonl 跟 mbp 是独立的。Bowei 在 mbp 生成的 piece 不会回
+     传 mac。如果 Bowei 关心这个，提示他可以做一个 /sync-corpus 双向 rsync
+     脚本 (类比 ~/.claude/skills/mesh/sync.sh)。不要自动做，先确认意图。
+
+5.6  Chrome remote-debug 端口 9222
+     archive-gf/ 里的旧 gf path 不再用了；如果你看到 9222 端口被旧 Chrome
+     用户数据目录占着 (~/.cactus-gemini-chrome/)，可以提示 Bowei 清理。不是
+     必须。
+
+5.7  AGY CLI 版本对齐
+     运行 ~/.local/bin/agy --version 看一下版本，跟 mac 那台对比 (你可以 ssh
+     bowei@mac.local '~/.local/bin/agy --version')。如果版本差太多，标记
+     可能影响 agy-cli slot 的行为，但不要主动升级。
+
+5.8  音频输出验证
+     在浏览器里 click 一下新生成的 piece 的 play，确认能听到声音 (mbp 用蓝
+     牙耳机/扬声器 vs mac 的输出链路可能不一样，audio context permissions 也
+     不同)。如果浏览器 block autoplay，告诉 Bowei "首次点 ▶ 按钮即可"。
+
+5.9  Spotlight + Dock 集成 (锦上添花)
+     考虑帮 Bowei 把 ~/Desktop/CactusStrudel.command 拖到 Dock 或者做一个
+     .app wrapper (Automator app)，让从 Spotlight 也能搜出来。不是必须，
+     问一下 Bowei 是否要。
+
+5.10 cleanup-orphans
+     扫描 ~/CactusStrudel/producer-brain/audio/ 和 pieces/ 是否有不在 corpus
+     .jsonl 索引里的孤儿文件 (deploy 时可能因为 tar 时序问题留下)。如果有，
+     列出来给 Bowei 决定删/留。
+
+5.11 firewall / network
+     这台 mbp 如果在公司网络 / 公共 WiFi，确认 8765 没被防火墙拦 (本地访问
+     不应受影响，但可以一查)。
+
+TASK 6 — 终极报告
+─────────────────────────────────────────────────────────────────────
+完成后报告以下:
+- 7 backends 状态 (哪些 available:true)
+- 端到端 generate 是否成功 + 生成的 piece name
+- TASK 5 里你做了哪些子项，对应结果
+- 任何你发现的、deploy 脚本没覆盖的本地化问题
+
+输出语言: 中文。报告控制在 250 字以内，重点突出 (verdict-style)。如果有 Bowei
+需要决策的事 (5.4 / 5.5 / 5.9 是常见的决策点)，单独列。
+
+GUARDRAILS
+─────────────────────────────────────────────────────────────────────
+- 不要 git push / 不要 push 到任何远端
+- 不要修改 ~/CactusStrudel 之外的 cactus 源 (kernel 在 producer-brain/kernel/
+  里，那个可以编辑因为它是 prompt 内容源不是代码)
+- 不要清空 ~/.claude/projects/-Users-bowei/memory/ 里的任何东西
+- TASK 5 里几个 cleanup 类的操作 (归档 tar, 清 chat history) 在做之前可以
+  告知一声但不必征求确认 (它们都是可逆的 mv，不是 rm)
+- 不要 sudo
+- 不要 disable / enable 任何 LaunchAgent
+========================================================================
+=== END_AGENT_DISPATCH ===
+```

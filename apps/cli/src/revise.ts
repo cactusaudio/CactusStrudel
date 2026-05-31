@@ -15,7 +15,7 @@ import { compileSessionGraph } from '@cactus/strudel-compiler';
 import { validateStrudelCode } from '@cactus/strudel-validator';
 import { planRevisions } from '@cactus/agent-runtime';
 import { parseFeedback, applyFeedback, recordDecision, appendLedgerEntry } from '@cactus/preference';
-import { runQualityGates, analyzeWav } from '@cactus/analyzer';
+import { runQualityGates, analyzeDecoded, readWav } from '@cactus/analyzer';
 import { critique } from '@cactus/critic';
 import { loadGenre } from '@cactus/genres';
 import { masterTrack } from '@cactus/mastering';
@@ -83,15 +83,21 @@ export async function revise(input: ReviseInput): Promise<ReviseResult> {
 
   const patchesPlanned = planRevisions({ graph, critique: syntheticCritique, maxPatches: 8 });
 
-  // Apply boundary-valid patches; track requested paths for locality.
-  const requestedPaths: string[] = [];
+  // Requested locality paths come from parsed user intent, not from the patch
+  // ops themselves. Using applied op paths here would make locality
+  // self-confirming: any patch would look targeted because it defines its own
+  // target after the fact.
+  const requestedPaths = Array.from(new Set(
+    parsed.synthetic_targets.flatMap((target) => target.graph_paths),
+  ));
+  const appliedPaths: string[] = [];
   let patchesApplied = 0;
   for (const p of patchesPlanned) {
     if (!p.ops.every((op) => isAgentAllowedToWrite(p.agent, op.path))) continue;
     try {
       graph = applyPatch(graph, p.ops);
       patchesApplied++;
-      for (const op of p.ops) requestedPaths.push(op.path);
+      for (const op of p.ops) appliedPaths.push(op.path);
     } catch {
       /* skip un-applyable */
     }
@@ -112,7 +118,13 @@ export async function revise(input: ReviseInput): Promise<ReviseResult> {
   // by default because revise is lower-priority than produce; pass bestEffort=false
   // if you want fatal-on-render failures.
   await fs.writeFile(nextGraphPath, JSON.stringify(graph, null, 2));
-  await fs.writeFile(nextPlanPath, JSON.stringify({ planned: patchesPlanned, applied: patchesApplied, requested_paths: requestedPaths, parsed_feedback: parsed }, null, 2));
+  await fs.writeFile(nextPlanPath, JSON.stringify({
+    planned: patchesPlanned,
+    applied: patchesApplied,
+    requested_paths: requestedPaths,
+    applied_paths: appliedPaths,
+    parsed_feedback: parsed,
+  }, null, 2));
 
   // G5: refuse to compile a revision that violates semantic invariants.
   const sem = validateSemanticInvariants(graph);
@@ -136,9 +148,9 @@ export async function revise(input: ReviseInput): Promise<ReviseResult> {
   try {
     if (skipRender) throw new Error('skipRender:true');
     const { render } = await import('@cactus/renderer');
-    const cps = (graph.brief.bpm ?? 120) / 240;
-    const totalBars = Math.min(graph.song.total_bars, 16);
-    await render({ code: compiled.code, durationCycles: totalBars, cps, outputPath: nextWavPath });
+    const cps = ((graph.brief.bpm ?? 120) / 240) * graph.song.cycles_per_bar;
+    const totalCycles = Math.min(graph.song.total_bars, 16) * graph.song.cycles_per_bar;
+    await render({ code: compiled.code, durationCycles: totalCycles, cps, outputPath: nextWavPath });
     renderedWav = nextWavPath;
     const genre = await loadGenre(graph.brief.primary_genre ?? 'techno').catch(() => undefined);
     if (genre) {
@@ -150,11 +162,12 @@ export async function revise(input: ReviseInput): Promise<ReviseResult> {
         hardFailures.push(`master applied ${m.appliedGainDb.toFixed(1)} dB`);
       }
     }
-    const features = await analyzeWav(nextWavPath);
+    const decodedAudio = await readWav(nextWavPath);
+    const features = await analyzeDecoded(decodedAudio);
     await fs.writeFile(nextFeaturesPath, JSON.stringify(features, null, 2));
     if (genre) {
       await runQualityGates({
-        wavPath: nextWavPath, graph, features,
+        wavPath: nextWavPath, graph, features, decodedAudio,
         genreTargets: { lufs: genre.mix_targets.lufs, true_peak_max: genre.mix_targets.true_peak_max },
       });
     }

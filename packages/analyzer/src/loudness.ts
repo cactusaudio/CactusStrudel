@@ -36,11 +36,11 @@ function biquad(
   const out = new Float32Array(input.length);
   let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
   for (let n = 0; n < input.length; n++) {
-    const x = input[n]!;
+    const x = Number.isFinite(input[n]!) ? input[n]! : 0;
     const y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
-    out[n] = y;
+    out[n] = Number.isFinite(y) ? y : 0;
     x2 = x1; x1 = x;
-    y2 = y1; y1 = y;
+    y2 = y1; y1 = out[n]!;
   }
   return out;
 }
@@ -72,6 +72,7 @@ interface BiquadCoeffs {
 
 // High-shelf coefficients per BS.1770-4 (recomputed from analog prototype).
 function computeShelfCoeffs(fs: number): BiquadCoeffs {
+  if (!Number.isFinite(fs) || fs <= 0) return { b0: 1, b1: 0, b2: 0, a1: 0, a2: 0 };
   // Analog prototype: f0=1681.974 Hz, gain=+3.999 dB, Q=0.7071.
   const f0 = 1681.974450955533;
   const gainDb = 3.999843853973347;
@@ -92,6 +93,7 @@ function computeShelfCoeffs(fs: number): BiquadCoeffs {
 
 // High-pass coefficients per BS.1770-4 stage 2.
 function computeHighpassCoeffs(fs: number): BiquadCoeffs {
+  if (!Number.isFinite(fs) || fs <= 0) return { b0: 1, b1: 0, b2: 0, a1: 0, a2: 0 };
   const f0 = 38.13547087602444;
   const Q = 0.5003270373238773;
   const w0 = 2 * Math.PI * f0 / fs;
@@ -168,17 +170,18 @@ function lufsMean(values: number[]): number {
 }
 
 function truePeakDb(channels: Float32Array[]): number {
-  // Approximate true-peak = peak after 4× oversampling (BS.1770-4 Annex 2 simplification).
-  // For an analyzer-grade signal we use a less expensive sinc-interpolated 4× peak.
+  // Analyzer-grade 4x oversampled peak. This is intentionally not the old
+  // linear-interpolation proxy: cubic interpolation at 1/4, 1/2, and 3/4
+  // sample offsets is cheap enough for every quality gate and can expose
+  // inter-sample overshoots that linear interpolation systematically misses.
   let peak = 0;
   for (const ch of channels) {
-    // Linear interpolation 4× — a crude proxy. For production, replace with sinc.
-    for (let i = 0; i < ch.length - 1; i++) {
-      const a = ch[i] ?? 0;
-      const b = ch[i + 1] ?? 0;
-      for (let f = 0; f < 4; f++) {
-        const t = f / 4;
-        const v = Math.abs(a * (1 - t) + b * t);
+    for (let i = 0; i < ch.length; i++) {
+      const samplePeak = Math.abs(ch[i] ?? 0);
+      if (samplePeak > peak) peak = samplePeak;
+      if (i >= ch.length - 1) continue;
+      for (let f = 1; f < 4; f++) {
+        const v = Math.abs(cubicInterpolate(ch, i, f / 4));
         if (v > peak) peak = v;
       }
     }
@@ -186,7 +189,21 @@ function truePeakDb(channels: Float32Array[]): number {
   return 20 * Math.log10(Math.max(1e-12, peak));
 }
 
+function cubicInterpolate(ch: Float32Array, i: number, t: number): number {
+  const y0 = ch[Math.max(0, i - 1)] ?? 0;
+  const y1 = ch[i] ?? 0;
+  const y2 = ch[Math.min(ch.length - 1, i + 1)] ?? 0;
+  const y3 = ch[Math.min(ch.length - 1, i + 2)] ?? 0;
+  const a0 = -0.5 * y0 + 1.5 * y1 - 1.5 * y2 + 0.5 * y3;
+  const a1 = y0 - 2.5 * y1 + 2 * y2 - 0.5 * y3;
+  const a2 = -0.5 * y0 + 0.5 * y2;
+  return ((a0 * t + a1) * t + a2) * t + y1;
+}
+
 export function computeLoudness(input: LoudnessInput): LoudnessResult {
+  if (!Number.isFinite(input.sampleRate) || input.sampleRate <= 0 || input.channels.length === 0) {
+    return { integratedLufs: -Infinity, shortTermMaxLufs: -Infinity, truePeakDb: -240 };
+  }
   const blocks = blockLufs(input.channels, input.sampleRate, BLOCK_DURATION_S, BLOCK_OVERLAP);
   const integrated = gatedMeanLufs(blocks);
   // Short-term: 3-second sliding blocks, 75% overlap → max value

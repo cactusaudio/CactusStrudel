@@ -18,6 +18,7 @@ const baseEntry = (over: Partial<CookbookEntry> = {}): CookbookEntry => Cookbook
   bar_intent: 'fixture for quarantine retrieval-exclusion testing',
   compatible_sections: ['main'],
   source_type: 'authored', provenance_note: 'test',
+  validation_status: 'accepted',
   ...over,
 });
 
@@ -64,12 +65,17 @@ describe('quarantine + retrieval exclusion (G9C §5)', () => {
     expect(r2.find((x) => x.entry.id === 'qt-002')).toBeDefined();
   });
 
-  it('candidate entries are still retrievable but unscored', () => {
-    // candidate is a v2 lifecycle state; we did NOT add a hard-exclude for it,
-    // it should still be retrievable like unvalidated.
-    const corpus = [baseEntry({ id: 'qt-001', validation_status: 'candidate' })];
-    const r = retrieve(corpus, { genre: 'techno', role: 'kick' });
-    expect(r.find((x) => x.entry.id === 'qt-001')).toBeDefined();
+  it('candidate and unvalidated entries are excluded by default but visible with include_diagnostic', () => {
+    const corpus = [
+      baseEntry({ id: 'qt-001', validation_status: 'candidate' }),
+      baseEntry({ id: 'qt-002', validation_status: 'unvalidated' }),
+    ];
+    const r1 = retrieve(corpus, { genre: 'techno', role: 'kick' });
+    expect(r1.find((x) => x.entry.id === 'qt-001')).toBeUndefined();
+    expect(r1.find((x) => x.entry.id === 'qt-002')).toBeUndefined();
+    const r2 = retrieve(corpus, { genre: 'techno', role: 'kick', include_diagnostic: true });
+    expect(r2.find((x) => x.entry.id === 'qt-001')).toBeDefined();
+    expect(r2.find((x) => x.entry.id === 'qt-002')).toBeDefined();
   });
 });
 

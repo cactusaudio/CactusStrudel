@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# checkpoint-list — show all checkpoints with size + description + creation time
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+DIR="$ROOT/producer-brain/checkpoints"
+[ -d "$DIR" ] || { echo "(no checkpoints yet)"; exit 0; }
+latest=$(cat "$DIR/.latest" 2>/dev/null || echo "")
+echo "checkpoints (latest = ${latest:-none}):"
+for d in $(ls -1 "$DIR" 2>/dev/null | grep -v '^\.'); do
+  marker="  "; [ "$d" = "$latest" ] && marker="→ "
+  size=$(du -sh "$DIR/$d" 2>/dev/null | cut -f1)
+  desc=$(grep -E '^\*\*Description\*\*' "$DIR/$d/manifest.md" 2>/dev/null | sed 's|\*\*Description\*\*: ||' | head -1)
+  echo "$marker$d  ($size)  $desc"
+done

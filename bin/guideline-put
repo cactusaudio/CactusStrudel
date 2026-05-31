@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# guideline-put <file> — replace PROMPT_BASE with file contents (server auto-backs up)
+set -euo pipefail
+[ -z "${1:-}" ] && { echo "usage: guideline-put <file>" >&2; exit 1; }
+FILE="$1"
+[ -f "$FILE" ] || { echo "file not found: $FILE" >&2; exit 1; }
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+BODY=$(python3 -c "
+import json,sys
+print(json.dumps({'prompt_base': open('$FILE').read()}))")
+curl -s -X PUT -H 'Content-Type: application/json' -d "$BODY" "$BASE/api/guideline" | python3 -m json.tool

@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..', '..');
+const PORT = Number.parseInt(process.env.STUDIO_UI_PORT || '5174', 10);
+const BASE_URL = process.env.STUDIO_UI_URL || `http://localhost:${PORT}`;
 
 async function waitFor(url, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;
@@ -22,18 +24,18 @@ async function waitFor(url, timeoutMs = 15_000) {
 }
 
 async function pickFirstSessionId() {
-  const r = await fetch('http://localhost:5174/api/sessions');
+  const r = await fetch(`${BASE_URL}/api/sessions`);
   const j = await r.json();
   const sess = j.entries.find((e) => e.type === 'dir' && /^[0-9a-f-]{36}$/.test(e.name));
   return sess?.name;
 }
 
 async function pickSessionWithGates() {
-  const r = await fetch('http://localhost:5174/api/sessions');
+  const r = await fetch(`${BASE_URL}/api/sessions`);
   const j = await r.json();
   for (const e of j.entries) {
     if (e.type !== 'dir' || !/^[0-9a-f-]{36}$/.test(e.name)) continue;
-    const inv = await fetch(`http://localhost:5174/api/sessions/${e.name}`);
+    const inv = await fetch(`${BASE_URL}/api/sessions/${e.name}`);
     const ij = await inv.json();
     const hasGates = ij.entries?.some((x) => x.name.endsWith('.quality-gates.json'));
     if (hasGates) return e.name;
@@ -42,11 +44,11 @@ async function pickSessionWithGates() {
 }
 
 async function pickSessionWithTrace() {
-  const r = await fetch('http://localhost:5174/api/sessions');
+  const r = await fetch(`${BASE_URL}/api/sessions`);
   const j = await r.json();
   for (const e of j.entries) {
     if (e.type !== 'dir' || !/^[0-9a-f-]{36}$/.test(e.name)) continue;
-    const inv = await fetch(`http://localhost:5174/api/sessions/${e.name}`);
+    const inv = await fetch(`${BASE_URL}/api/sessions/${e.name}`);
     const ij = await inv.json();
     const trace = ij.entries?.find((x) => x.name === 'cookbook-trace.json');
     if (!trace) continue;
@@ -61,30 +63,30 @@ async function shoot() {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
 
-  await page.goto('http://localhost:5174/', { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/`, { waitUntil: 'networkidle' });
   await page.waitForSelector('table.dense, .missing-evidence', { timeout: 5000 }).catch(() => undefined);
   await page.screenshot({ path: path.join(HERE, '01-sessions-list.png'), fullPage: true });
 
   const traceSession = await pickSessionWithTrace();
   if (traceSession) {
-    await page.goto(`http://localhost:5174/#session/${traceSession}/overview`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/#session/${traceSession}/overview`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.metric-strip', { timeout: 5000 }).catch(() => undefined);
     await page.screenshot({ path: path.join(HERE, '02-session-overview.png'), fullPage: true });
 
-    await page.goto(`http://localhost:5174/#session/${traceSession}/trace`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/#session/${traceSession}/trace`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.metric-strip, .missing-evidence', { timeout: 5000 }).catch(() => undefined);
     await page.screenshot({ path: path.join(HERE, '03-cookbook-trace.png'), fullPage: true });
 
-    await page.goto(`http://localhost:5174/#session/${traceSession}/gates`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/#session/${traceSession}/gates`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.metric-strip, .missing-evidence', { timeout: 5000 }).catch(() => undefined);
     await page.screenshot({ path: path.join(HERE, '04-quality-gates-missing.png'), fullPage: true });
   }
 
-  await page.goto('http://localhost:5174/#impact', { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/#impact`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.metric-strip, .missing-evidence', { timeout: 5000 }).catch(() => undefined);
   await page.screenshot({ path: path.join(HERE, '05-impact-audit.png'), fullPage: true });
 
-  await page.goto('http://localhost:5174/#ledger', { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/#ledger`, { waitUntil: 'networkidle' });
   await page.waitForSelector('table.dense, .missing-evidence', { timeout: 5000 }).catch(() => undefined);
   await page.screenshot({ path: path.join(HERE, '06-ledger.png'), fullPage: true });
 
@@ -100,7 +102,7 @@ async function main() {
   server.stdout.on('data', () => undefined);
   server.stderr.on('data', () => undefined);
   try {
-    await waitFor('http://localhost:5174/');
+    await waitFor(`${BASE_URL}/`);
     await shoot();
   } finally {
     server.kill('SIGTERM');

@@ -1,0 +1,39 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#0e2a1e"/>
+      <stop offset="100%" stop-color="#050a07"/>
+    </linearGradient>
+    <linearGradient id="cactus" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#6ee7b7"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+  <!-- squircle background (macOS app-icon proportions) -->
+  <rect width="1024" height="1024" rx="225" fill="url(#bg)"/>
+  <!-- subtle horizontal grid (Strudel/loop hint) -->
+  <g stroke="#6ee7b7" stroke-width="3" opacity="0.12" stroke-linecap="round">
+    <line x1="80" y1="180" x2="944" y2="180"/>
+    <line x1="80" y1="250" x2="944" y2="250"/>
+    <line x1="80" y1="864" x2="944" y2="864"/>
+    <line x1="80" y1="934" x2="944" y2="934"/>
+  </g>
+  <!-- saguaro cactus: trunk + asymmetric arms -->
+  <g fill="url(#cactus)">
+    <!-- trunk -->
+    <rect x="466" y="280" width="92" height="560" rx="46"/>
+    <!-- left arm (horizontal + vertical) -->
+    <rect x="338" y="500" width="160" height="76" rx="38"/>
+    <rect x="338" y="430" width="76" height="146" rx="38"/>
+    <!-- right arm (higher) -->
+    <rect x="526" y="420" width="160" height="76" rx="38"/>
+    <rect x="610" y="350" width="76" height="146" rx="38"/>
+  </g>
+  <!-- spines -->
+  <g fill="#0e2a1e" opacity="0.45">
+    <circle cx="488" cy="340" r="4"/><circle cx="510" cy="400" r="4"/><circle cx="488" cy="460" r="4"/>
+    <circle cx="528" cy="530" r="4"/><circle cx="495" cy="600" r="4"/><circle cx="520" cy="670" r="4"/>
+    <circle cx="495" cy="740" r="4"/><circle cx="525" cy="800" r="4"/>
+    <circle cx="375" cy="540" r="4"/><circle cx="640" cy="460" r="4"/>
+  </g>
+</svg>

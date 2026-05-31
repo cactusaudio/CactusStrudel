@@ -40,10 +40,11 @@ export function mixToMono(channels: Float32Array[]): Float32Array {
   if (channels.length === 1) return channels[0]!;
   const length = channels[0]!.length;
   const out = new Float32Array(length);
+  const norm = Math.sqrt(channels.length);
   for (let i = 0; i < length; i++) {
     let sum = 0;
     for (const ch of channels) sum += ch[i] ?? 0;
-    out[i] = sum / channels.length;
+    out[i] = sum / norm;
   }
   return out;
 }

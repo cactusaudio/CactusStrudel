@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# recent — list last N pieces with scores
+set -euo pipefail
+N="${1:-15}"
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+curl -s "$BASE/api/recent?n=$N" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+items=d.get('items',[])
+print(f'total {d.get(\"total\",\"?\")}, showing {len(items)}:')
+for it in items:
+    score=it.get('score_bowei')
+    s=f'{score:>4}' if score is not None else '   ·'
+    name=it.get('name','?')
+    ts=it.get('ts','')
+    extra=(it.get('extra') or '')[:50]
+    print(f'  {name:<20} {s}  {ts}  {extra}')
+"

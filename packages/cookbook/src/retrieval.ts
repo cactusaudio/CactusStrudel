@@ -38,14 +38,16 @@ export interface RetrieveQuery {
 /**
  * Validation states that disqualify an entry from default-mode retrieval.
  * `enabled` mode hides these unless the caller explicitly opts in via
- * `include_diagnostic` (for diagnostic/experimental) or `allow_warnings`
- * (for accepted_with_warning).
+ * `include_diagnostic` (for unvalidated/candidate/diagnostic/experimental)
+ * or `allow_warnings` (for accepted_with_warning).
  */
 const HARD_EXCLUDE: ReadonlySet<string> = new Set([
   'quarantined',
   'rejected',
 ]);
 const DIAGNOSTIC_GATED: ReadonlySet<string> = new Set([
+  'unvalidated',
+  'candidate',
   'diagnostic',
   'experimental',
 ]);

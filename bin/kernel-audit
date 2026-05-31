@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# kernel-audit — check the kernel for content that may not belong:
+#  (a) any kernel/50-spine-derived.md rule that references a spine id that doesn't exist anymore
+#  (b) any prescriptive-style language patterns that might be sneaking back in (heuristic)
+# Read-only; reports findings.
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+KERNEL_DIR="$ROOT/producer-brain/kernel"
+SPINE="$ROOT/producer-brain/failure-spine.jsonl"
+
+ROOT="$ROOT" KERNEL_DIR="$KERNEL_DIR" SPINE="$SPINE" python3 - <<'PY'
+import json, os, re, sys
+
+ROOT = os.environ['ROOT']
+KERNEL_DIR = os.environ['KERNEL_DIR']
+SPINE = os.environ['SPINE']
+
+print('=== kernel-audit ===\n')
+
+# Collect spine ids that are still in the file
+existing_ids = set()
+if os.path.exists(SPINE):
+    with open(SPINE) as f:
+        for line in f:
+            if not line.strip(): continue
+            try:
+                d = json.loads(line)
+                if d.get('id'): existing_ids.add(d['id'])
+            except Exception: pass
+
+# Scan kernel/50-spine-derived.md for spine refs
+derived_path = os.path.join(KERNEL_DIR, '50-spine-derived.md')
+if os.path.exists(derived_path):
+    text = open(derived_path).read()
+    refs = re.findall(r'← (fs-[\w-]+)', text)
+    print(f'kernel/50-spine-derived.md references {len(refs)} spine ids:')
+    for r in refs:
+        mark = '✓' if r in existing_ids else '✗ MISSING in spine.jsonl'
+        print(f'  {r:<20} {mark}')
+    print()
+
+# Heuristic check: prescriptive style language in kernel
+PRESCRIPTIVE_PATTERNS = [
+    (r'(?i)must\s+(have|use|be|emit|include)', 'absolute prescription'),
+    (r'(?i)should\s+(have|use|be|emit|include)', 'should-prescription'),
+    (r'(?i)avoid\s+\w+\s+unless', 'soft prescription with carve-out'),
+    (r'(?i)prefer\s+\w+\s+over\s+\w+', 'preference dictation'),
+    (r'(?i)(audible|inaudible)\s+drum', 'drum-audibility prescription (likely style)'),
+    (r'(?i)reverb\s+mud', 'reverb-mud (mix-style prescription)'),
+    (r'(?i)\b(\d+)-(\d+)\s+(layer|section|role)', 'layer-count prescription'),
+    (r'(?i)repetition\s+first', 'repetition-first style rule'),
+    (r'(?i)groove[s]?\s+(must|should|need)', 'groove prescription'),
+]
+
+print('Heuristic style-prescription scan (kernel/*.md, including derived):\n')
+hit_count = 0
+for fname in sorted(os.listdir(KERNEL_DIR)):
+    if not fname.endswith('.md'): continue
+    fpath = os.path.join(KERNEL_DIR, fname)
+    text = open(fpath).read()
+    for pattern, label in PRESCRIPTIVE_PATTERNS:
+        for m in re.finditer(pattern, text):
+            line_no = text[:m.start()].count('\n') + 1
+            ctx = text.splitlines()[line_no-1][:120]
+            print(f'  {fname}:{line_no}  [{label}]')
+            print(f'    > {ctx}')
+            hit_count += 1
+    # also recurse into style/
+style_dir = os.path.join(KERNEL_DIR, 'style')
+if os.path.isdir(style_dir):
+    for fname in sorted(os.listdir(style_dir)):
+        if not fname.endswith('.md'): continue
+        fpath = os.path.join(style_dir, fname)
+        text = open(fpath).read()
+        for pattern, label in PRESCRIPTIVE_PATTERNS:
+            for m in re.finditer(pattern, text):
+                line_no = text[:m.start()].count('\n') + 1
+                ctx = text.splitlines()[line_no-1][:120]
+                print(f'  style/{fname}:{line_no}  [{label}]')
+                print(f'    > {ctx}')
+                hit_count += 1
+
+if hit_count == 0:
+    print('  (no prescriptive language found — kernel is clean)')
+else:
+    print(f'\n→ {hit_count} potential prescriptions flagged. Review each — some may be legitimate technical statements; others may be stylistic dictates to prune.')
+
+# Kernel size + hash
+sys.path.insert(0, os.path.join(ROOT, 'runtime'))
+import prompt_kernel
+c = prompt_kernel.compile()
+print(f'\nCurrent kernel: hash={c["hash"]}, {len(c["text"])} chars, {len(c["fragments_used"])} fragments.')
+PY

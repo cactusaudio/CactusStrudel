@@ -19,7 +19,7 @@ import { compileSessionGraph } from '@cactus/strudel-compiler';
 import { validateStrudelCode } from '@cactus/strudel-validator';
 import { loadGenre } from '@cactus/genres';
 import { masterTrack } from '@cactus/mastering';
-import { runQualityGates, analyzeWav } from '@cactus/analyzer';
+import { runQualityGates, analyzeDecoded, readWav } from '@cactus/analyzer';
 import { critique } from '@cactus/critic';
 import { decideVerdict, type CookbookImpactRunSummary, type CookbookMode } from '@cactus/audit';
 import { ngramOverlap, ngrams, tokenize } from '@cactus/cookbook';
@@ -182,8 +182,8 @@ export async function runRealRenderImpactAudit(opts: RealImpactOptions): Promise
           codePerMode.get(m)!.push(compiled.code);
 
           const wavPath = path.join(outDir, `${item.genre}__seed${seed}__${m}.wav`);
-          const cps = (graph.brief.bpm ?? 120) / 240;
-          const cycles = Math.min(graph.song.total_bars, 16);
+          const cps = ((graph.brief.bpm ?? 120) / 240) * graph.song.cycles_per_bar;
+          const cycles = Math.min(graph.song.total_bars, 16) * graph.song.cycles_per_bar;
           await render({ code: compiled.code, durationCycles: cycles, cps, outputPath: wavPath });
           renderOk = true;
           sum.rendered += 1;
@@ -195,11 +195,12 @@ export async function runRealRenderImpactAudit(opts: RealImpactOptions): Promise
               targets: { lufs: genreSpec.mix_targets.lufs, true_peak_max: genreSpec.mix_targets.true_peak_max ?? -1 },
             });
           }
-          const features = await analyzeWav(wavPath);
+          const decodedAudio = await readWav(wavPath);
+          const features = await analyzeDecoded(decodedAudio);
           analyzeOk = true;
 
           const gates = await runQualityGates({
-            wavPath, graph, features,
+            wavPath, graph, features, decodedAudio,
             ...(genreSpec ? { genreTargets: {
               lufs: genreSpec.mix_targets.lufs,
               true_peak_max: genreSpec.mix_targets.true_peak_max,

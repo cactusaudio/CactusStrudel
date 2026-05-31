@@ -9,25 +9,29 @@
 // error) is kept — broken→working, not aesthetic tuning.
 
 import { readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { render, shutdown } from '@cactus/renderer';
 
 const ROOT = '/Users/bowei/CactusStrudel';
 const KEY = readFileSync(`${ROOT}/.env.local`, 'utf8').match(/GEMINI_API_KEY=(.+)/)![1]!.trim();
-const MODEL = process.env.PB_MODEL || 'gemini-3.1-pro-preview'; // Pro does everything
+const MODEL = process.env.PB_MODEL || 'gemini-3.1-pro-preview'; // compose + audit-fix (quality/correctness-critical)
+const LISTEN_MODEL = 'gemini-3-flash-preview';                  // self-listen score = cheap batch triage only
 
-function gemini(parts: any[], jsonOut = false): string {
+async function gemini(parts: any[], jsonOut = false, model: string = MODEL): Promise<string> {
   const body: any = { contents: [{ parts }] };
   body.generationConfig = jsonOut
     ? { responseMimeType: 'application/json', temperature: 1.0 }
     : { temperature: 1.1 };
-  const tmp = `/tmp/_gf_${Date.now()}_${Math.random().toString(36).slice(2)}.json`;
-  writeFileSync(tmp, JSON.stringify(body));
-  const out = execSync(
-    `curl -s --max-time 240 -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}" -H "Content-Type: application/json" -d @${tmp}`,
-    { maxBuffer: 64 * 1024 * 1024 },
-  ).toString();
-  const d = JSON.parse(out);
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': KEY,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(240_000),
+  });
+  const d = await res.json() as any;
   if (!d.candidates) throw new Error('gemini: ' + JSON.stringify(d).slice(0, 200));
   return d.candidates[0].content.parts.map((p: any) => p.text || '').join('');
 }
@@ -45,7 +49,17 @@ async function tryRender(code: string, i: number): Promise<{ ok: boolean; kind: 
   try {
     await render({ code, durationCycles: 24, cps: 0.42, outputPath: `/tmp/free${i}.wav` });
     let maxDb = -91;
-    try { maxDb = parseFloat(execSync(`ffmpeg -hide_banner -i /tmp/free${i}.wav -af volumedetect -f null - 2>&1|grep -oE 'max_volume: [-0-9.]+'|grep -oE '[-0-9.]+'`).toString().trim() || '-91'); } catch {}
+    try {
+      const probe = spawnSync('ffmpeg', [
+        '-hide_banner',
+        '-i', `/tmp/free${i}.wav`,
+        '-af', 'volumedetect',
+        '-f', 'null',
+        '-',
+      ], { encoding: 'utf8' });
+      const m = (probe.stderr || '').match(/max_volume:\s*([-0-9.]+)/);
+      if (m) maxDb = parseFloat(m[1]!);
+    } catch {}
     if (maxDb <= -55) return { ok: false, kind: 'silent', msg: `rendered but SILENT (max ${maxDb}dB) — a sound made no audio offline (gm_*/super* are silent here) or no audible notes` };
     return { ok: true, kind: 'ok', msg: `max ${maxDb}dB` };
   } catch (e) {
@@ -86,7 +100,7 @@ async function auditAndFix(code: string, i: number, maxRounds = 4): Promise<stri
     if (r.ok && issues.length === 0) return code;   // compliant + complete
     if (h === maxRounds) return r.ok ? code : null;  // out of rounds: keep if at least audible
     try {
-      code = strip(gemini([{ text: `CODE AUDIT — fix ONLY these compliance/completeness problems:\n- ${issues.join('\n- ')}\n${NO_COMPOSE_EDIT}\n\n${code}` }]));
+      code = strip(await gemini([{ text: `CODE AUDIT — fix ONLY these compliance/completeness problems:\n- ${issues.join('\n- ')}\n${NO_COMPOSE_EDIT}\n\n${code}` }]));
     } catch { return r.ok ? code : null; }
   }
   return null;
@@ -99,7 +113,7 @@ async function auditAndFix(code: string, i: number, maxRounds = 4): Promise<stri
   for (let i = 1; i <= N; i++) {
     try { rmSync(`${process.env.HOME}/Downloads/cactus_gemini_free_${i}.mp3`, { force: true }); } catch {}
     let code: string;
-    try { code = strip(gemini([{ text: PROMPT }])); }
+    try { code = strip(await gemini([{ text: PROMPT }])); }
     catch (e) { console.log(`#${i} compose ERR ${String(e).slice(0, 120)}`); continue; }
 
     const good = await auditAndFix(code, i);
@@ -111,20 +125,35 @@ async function auditAndFix(code: string, i: number, maxRounds = 4): Promise<stri
     // One Pro self-listen for an honest SCORE only (ranking the best-of-N
     // batch / labeling), NOT to trigger any edit. Quality = sample more
     // first-shots + pick, never tune.
-    execSync(`ffmpeg -hide_banner -y -i /tmp/free${i}.wav -t 16 -ac 1 -ar 22050 /tmp/free${i}.mp3 2>/dev/null`);
+    execFileSync('ffmpeg', [
+      '-hide_banner',
+      '-y',
+      '-i', `/tmp/free${i}.wav`,
+      '-t', '16',
+      '-ac', '1',
+      '-ar', '22050',
+      `/tmp/free${i}.mp3`,
+    ], { stdio: ['ignore', 'ignore', 'ignore'] });
     let crit: any = { score: 0, honest_assessment: '?' };
     try {
-      crit = JSON.parse(gemini([
+      crit = JSON.parse(await gemini([
         { text: `This is YOUR OWN first-shot composition, rendered. Listen as a discerning producer and rate it honestly (no revision will happen — this score only ranks a batch).` },
         { inlineData: { mimeType: 'audio/mp3', data: readFileSync(`/tmp/free${i}.mp3`).toString('base64') } },
         { text: `JSON: {"score":1-10,"honest_assessment":"what you actually hear","intent":"what you were going for"}` },
-      ], true));
+      ], true, LISTEN_MODEL));
     } catch (e) { crit = { score: 0, honest_assessment: 'listen failed: ' + String(e).slice(0, 80), intent: '' }; }
     const sc = Number(crit.score) || 0;
 
-    execSync(`ffmpeg -hide_banner -y -i /tmp/free${i}.wav -codec:a libmp3lame -b:a 256k ${process.env.HOME}/Downloads/cactus_gemini_free_${i}.mp3 2>/dev/null`);
+    execFileSync('ffmpeg', [
+      '-hide_banner',
+      '-y',
+      '-i', `/tmp/free${i}.wav`,
+      '-codec:a', 'libmp3lame',
+      '-b:a', '256k',
+      `${process.env.HOME}/Downloads/cactus_gemini_free_${i}.mp3`,
+    ], { stdio: ['ignore', 'ignore', 'ignore'] });
     writeFileSync(`/tmp/free${i}.js`, code);
-    const enc = execSync(`python3 -c "import base64,urllib.parse;print(urllib.parse.quote(base64.b64encode(open('/tmp/free${i}.js','rb').read()).decode()))"`).toString().trim();
+    const enc = encodeURIComponent(Buffer.from(code).toString('base64'));
     results.push({ i, rendered: true, score: sc, assessment: crit.honest_assessment, intent: crit.intent, url: `https://strudel.cc/#${enc}` });
     console.log(`#${i} DELIVERED (first-shot, no tuning) self ${sc}/10 — ${(crit.honest_assessment || '').slice(0, 80)} → ~/Downloads/cactus_gemini_free_${i}.mp3`);
   }

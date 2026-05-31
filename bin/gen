@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# gen [model] [extra] — fire a generation, block until done event
+set -euo pipefail
+MODEL="${1:-}"
+EXTRA="${2:-}"
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+BODY=$(python3 -c "import json; print(json.dumps({'model': '$MODEL', 'extra': '$EXTRA'}))")
+echo "POST /api/run-gf  model='$MODEL' extra='$EXTRA'"
+curl -sN --max-time 600 -X POST -H 'Content-Type: application/json' -d "$BODY" "$BASE/api/run-gf" |
+  while IFS= read -r line; do
+    case "$line" in
+      "event: done")   echo "(done)";;
+      "event: error")  echo "(error)";;
+      "data: "*)
+        ev_data="${line#data: }"
+        echo "$ev_data" | python3 -c "
+import json,sys
+try:
+    d=json.loads(sys.stdin.read())
+    if 'line' in d: print('  '+d['line'])
+    elif 'entry' in d and d['entry']:
+        print('=> '+d['entry']['name']+' ('+d['entry']['dur']+'s, '+d['entry']['mp3']+')')
+    elif 'model' in d: print('start model='+str(d.get('model'))+' extra='+str(d.get('extra')))
+    elif 'error' in d: print('ERROR: '+d['error'])
+except: pass
+" ;;
+    esac
+  done

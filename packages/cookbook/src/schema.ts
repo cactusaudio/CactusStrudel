@@ -45,7 +45,7 @@ export const SourceTypeEnum = z.enum([
   'authored',                 // hand-written by a human
   'generated',                // produced by a generator script
   'transformed',              // mutated from another entry
-  'imported_public_domain',   // imported from public-domain corpus
+  'external_reference_transcription', // transcribed from external reference; license must be proven separately
 ]);
 export type SourceType = z.infer<typeof SourceTypeEnum>;
 
@@ -53,7 +53,7 @@ export type SourceType = z.infer<typeof SourceTypeEnum>;
  * Validation status — lifecycle state of an entry.
  *
  * Default retrieval (G9C: `enabled` mode) excludes:
- *   experimental, diagnostic, quarantined, rejected
+ *   unvalidated, candidate, experimental, diagnostic, quarantined, rejected
  *
  * `accepted_with_warning` is excluded from `enabled_mutating` unless
  * `allow_warnings: true` is passed to retrieve(). `promoted` requires a

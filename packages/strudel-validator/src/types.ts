@@ -12,5 +12,5 @@ export interface ValidationResult {
 
 export function combineResults(...results: ValidationResult[]): ValidationResult {
   const issues = results.flatMap((r) => r.issues);
-  return { ok: issues.every((i) => i.code === 'EMPTY_PATTERN' || results.every((r) => r.ok)), issues };
+  return { ok: results.every((r) => r.ok), issues };
 }

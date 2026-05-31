@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# score <name> <0-10> [note] — score a piece via API
+set -euo pipefail
+[ -z "${1:-}" ] || [ -z "${2:-}" ] && { echo "usage: score <name> <0-10> [note]" >&2; exit 1; }
+NAME="$1"; NUM="$2"; NOTE="${3:-}"
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+BODY=$(python3 -c "
+import json
+print(json.dumps({'name':'$NAME','score':float('$NUM'),'note':'$NOTE'}))")
+curl -s -X POST -H 'Content-Type: application/json' -d "$BODY" "$BASE/api/score" | python3 -m json.tool

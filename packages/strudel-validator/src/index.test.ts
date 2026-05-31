@@ -32,6 +32,7 @@ describe('validateMiniNotation', () => {
   it('accepts groups + alternation + euclid', () => {
     expect(validateMiniNotation('[bd sn]*2').ok).toBe(true);
     expect(validateMiniNotation('<a3 c4 e4>').ok).toBe(true);
+    expect(validateMiniNotation('<g#3 c#4 f#4>').ok).toBe(true);
     expect(validateMiniNotation('bd(3, 8)').ok).toBe(true);
   });
   it('catches unbalanced brackets', () => {
@@ -67,6 +68,12 @@ describe('validateStrudelCode', () => {
     expect(r.ok, JSON.stringify(r.issues)).toBe(true);
   });
 
+  it('validates mini-notation literals inside Strudel calls', () => {
+    const r = validateStrudelCode('stack(s("[bd sn"), note("<g#3 c#4 f#4>"))');
+    expect(r.ok).toBe(false);
+    expect(r.issues.some((i) => i.code === 'MINI_UNCLOSED_OPEN')).toBe(true);
+  });
+
   it('accepts a complex chain with method calls', () => {
     const code = `s("bd*4").every(2, fast(2)).lpf(800).gain(0.9).room(0.3)`;
     expect(validateStrudelCode(code).ok).toBe(true);
@@ -88,6 +95,11 @@ describe('validateStrudelCode', () => {
     const r = validateStrudelCode('setcps(0)');
     expect(r.ok).toBe(false);
     expect(r.issues.some((i) => i.code === 'BAD_CPS')).toBe(true);
+  });
+
+  it('accepts setcpm as the runtime tempo helper', () => {
+    const r = validateStrudelCode('setcpm(120/4)\ns("bd*4")');
+    expect(r.ok, JSON.stringify(r.issues)).toBe(true);
   });
 
   it('catches setBpm wildly out of range', () => {
@@ -112,5 +124,19 @@ describe('validateStrudelCode', () => {
   it('does not flag fast/slow used as both standalone and method', () => {
     const r = validateStrudelCode(`fast(2, s("bd*4")).slow(2)`);
     expect(r.ok).toBe(true);
+  });
+
+  it('tracks local aliases to Strudel functions', () => {
+    const r = validateStrudelCode(`const drums = s; const hats = drums; stack(hats("hh*8"), drums("bd*4"))`);
+    expect(r.ok, JSON.stringify(r.issues)).toBe(true);
+  });
+
+  it('checks computed string-literal method names', () => {
+    const ok = validateStrudelCode(`s("bd*4")["lpf"](800)`);
+    expect(ok.ok, JSON.stringify(ok.issues)).toBe(true);
+
+    const bad = validateStrudelCode(`s("bd*4")["reverb"](0.8)`);
+    expect(bad.ok).toBe(false);
+    expect(bad.issues.some((i) => i.code === 'UNKNOWN_METHOD' && i.message.includes('reverb'))).toBe(true);
   });
 });

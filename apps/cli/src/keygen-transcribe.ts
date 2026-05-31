@@ -178,7 +178,7 @@ export function toCookbookEntry(
     expected_movement: {},
     revision_affordances: [],
     validation_status: 'candidate',
-    source_type: 'imported_public_domain',
+    source_type: 'external_reference_transcription',
     provenance_note: `CORE keygen pack — "${m.name}" ch${ch}; inferred ${role} (meanNote ${s.meanNote.toFixed(0)}, density ${s.density.toFixed(2)}); XM v1.04 Tier-A pitch/rhythm, timbre Tier-B`,
     known_failure_modes: [],
   } as CookbookEntry;

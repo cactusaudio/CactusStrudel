@@ -4,7 +4,7 @@
 // to diverge by design (oscillators vs samples).
 
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { render, shutdown } from '@cactus/renderer';
 import { analyzeWav } from '@cactus/analyzer';
 import { parseXM, channelStats, xmNoteToStrudel } from './keygen-transcribe.js';
@@ -28,7 +28,10 @@ for (let c = 0; c < m.numChannels; c++) {
 // order, as one token grid per channel (1 cycle = whole song so each
 // token = one XM row exactly). Oracle duration is the timing truth.
 const oracleDurSec = (() => {
-  const out = execSync(`openmpt123 --info ${JSON.stringify(XM)} 2>&1`).toString();
+  const out = execFileSync('openmpt123', ['--info', XM], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   const mm = out.match(/Duration\.+:\s*(\d+):(\d+(?:\.\d+)?)/);
   return mm ? parseInt(mm[1]!, 10) * 60 + parseFloat(mm[2]!) : 50.759;
 })();

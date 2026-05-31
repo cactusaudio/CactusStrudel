@@ -1,0 +1,21 @@
+{
+  "hash": "da992068ca18b65f",
+  "fragments_used": [
+    "producer-brain/kernel/00-identity.md",
+    "producer-brain/kernel/10-api-existence.md",
+    "producer-brain/kernel/20-syntax-rules.md",
+    "producer-brain/kernel/30-output-contract.md",
+    "producer-brain/kernel/40-creative-freedom.md",
+    "producer-brain/kernel/50-spine-derived.md"
+  ],
+  "fragment_hashes": {
+    "producer-brain/kernel/00-identity.md": "6e910d9765ce7129c9e640bbd25b16e4dfe8a690686ab811df04bc32b7a20bc0",
+    "producer-brain/kernel/10-api-existence.md": "04d44c5e079f154d63066aaa695e5049a2d5aedd25786bf4a6ff08aca9db7f64",
+    "producer-brain/kernel/20-syntax-rules.md": "e1012dd597e466387c52ee41f7f899381863a3c2484627cfef3de3c84a910879",
+    "producer-brain/kernel/30-output-contract.md": "cab90732665bf9f00623f429d0e46b1d262dcf41b14abb932120cbd4c5e3afc0",
+    "producer-brain/kernel/40-creative-freedom.md": "df51888579f469aa6d263e7c3ece01e07cde8ba5cd3fb65d4f257fe628467653",
+    "producer-brain/kernel/50-spine-derived.md": "7455c2414aa1f7c55586715d8c8f65ad6572c8c7f753f07514688d899c3e0e69"
+  },
+  "text_length": 7061,
+  "compiled_at": "2026-05-31 21:10:03"
+}

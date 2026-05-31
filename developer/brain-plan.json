@@ -1,0 +1,21 @@
+{
+  "goal": "测试 cactus strudel 全功能",
+  "steps": [
+    {
+      "n": 1,
+      "step": "列功能",
+      "done": false
+    },
+    {
+      "n": 2,
+      "step": "逐个测",
+      "done": false
+    },
+    {
+      "n": 3,
+      "step": "写证据",
+      "done": false
+    }
+  ],
+  "updated_at": "2026-05-29 03:13:05"
+}

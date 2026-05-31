@@ -1,4 +1,10 @@
-# Architecture
+# Research Architecture (Historical)
+
+This document describes the TypeScript closed-loop research substrate only.
+It is not the live CactusStrudel product architecture. For current runtime
+ownership, read `docs/LIVE_VS_RESEARCH.md` first. Live generation, catalog,
+Advanced panel, brain chat, save/render, and corpus writes are owned by
+`runtime/serve.py` + `runtime/*.html`.
 
 ## Closed loop
 

@@ -2,7 +2,7 @@
 // boundaries (using brief.bpm to map bars → seconds) and computes per-section
 // rms, lufs proxy, onset count, and spectral centroid.
 
-import { readWav, mixToMono } from './wav-io.js';
+import { readWav, mixToMono, type DecodedAudio } from './wav-io.js';
 import type { SessionGraph } from '@cactus/ir';
 
 export interface SectionAnalysis {
@@ -31,11 +31,18 @@ export async function computeSectionFeatures(
   graph: SessionGraph,
 ): Promise<SectionFeatures> {
   const audio = await readWav(wavPath);
+  return computeSectionFeaturesFromAudio(audio, graph);
+}
+
+export async function computeSectionFeaturesFromAudio(
+  audio: DecodedAudio,
+  graph: SessionGraph,
+): Promise<SectionFeatures> {
   const mono = mixToMono(audio.channels);
   const totalSec = mono.length / audio.sampleRate;
   const cps = (graph.brief.bpm ?? 120) / 240;
-  // Map bar index → second using cps. One cycle = 1 bar by default in our compiler.
-  const barsToSec = (bars: number) => bars / cps;
+  // Map bar index → second using cps and the graph's explicit cycle density.
+  const barsToSec = (bars: number) => (bars * graph.song.cycles_per_bar) / cps;
 
   const out: SectionAnalysis[] = [];
   for (const sec of graph.song.sections) {
@@ -81,14 +88,16 @@ function analyzeSlice(slice: Float32Array, sr: number, id: string, name: string,
   windowedRms.sort((a, b) => a - b);
   const p95 = windowedRms.length > 0 ? windowedRms[Math.floor(0.95 * (windowedRms.length - 1))]! : rms;
   const energyDb = 20 * Math.log10(Math.max(1e-12, p95));
-  // Spectral centroid via FFT-free magnitude-weighted bin estimate using DFT on 2048 frame.
-  const centroid = estimateCentroid(slice, sr);
   // Zero-crossings.
   let zc = 0;
   for (let i = 1; i < slice.length; i++) {
     if ((slice[i - 1]! >= 0) !== (slice[i]! >= 0)) zc++;
   }
   const zcPerSec = (zc * sr) / slice.length;
+  // Cheap per-section brightness proxy. For a sine wave, zero-crossings/sec
+  // is 2× frequency, so this gives a stable centroid-like signal without the
+  // former O(N²) DFT hot path. Full spectral centroid remains in spectral.ts.
+  const centroid = estimateCentroidFromZeroCrossings(zcPerSec, sr);
   // Onset rate via peak-vs-local-mean heuristic on 50ms windows.
   let onsets = 0;
   for (let k = 1; k < windowedRms.length; k++) {
@@ -100,33 +109,7 @@ function analyzeSlice(slice: Float32Array, sr: number, id: string, name: string,
   return { section_id: id, name, start_sec: start, end_sec: end, rms, rms_db: rmsDb, energy_db: energyDb, centroid, zero_crossings_per_sec: zcPerSec, onset_rate: onsetRate };
 }
 
-function estimateCentroid(slice: Float32Array, sr: number): number {
-  // Rough centroid: take a single 2048-sample DFT on the middle of the slice.
-  const N = Math.min(2048, slice.length);
-  if (N < 64) return 0;
-  const start = Math.floor((slice.length - N) / 2);
-  const re = new Float32Array(N);
-  const im = new Float32Array(N);
-  // Hann window
-  for (let n = 0; n < N; n++) {
-    const w = 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)));
-    re[n] = (slice[start + n] ?? 0) * w;
-  }
-  // Naive O(N^2) DFT — fine for analysis at N=2048.
-  const half = Math.floor(N / 2);
-  let weighted = 0;
-  let total = 0;
-  const binHz = sr / N;
-  for (let k = 1; k < half; k++) {
-    let r = 0, i = 0;
-    for (let n = 0; n < N; n++) {
-      const ang = (-2 * Math.PI * k * n) / N;
-      r += re[n]! * Math.cos(ang);
-      i += re[n]! * Math.sin(ang);
-    }
-    const mag = Math.sqrt(r * r + i * i);
-    weighted += mag * (k * binHz);
-    total += mag;
-  }
-  return total > 0 ? weighted / total : 0;
+function estimateCentroidFromZeroCrossings(zeroCrossingsPerSec: number, sr: number): number {
+  if (!Number.isFinite(zeroCrossingsPerSec) || zeroCrossingsPerSec <= 0) return 0;
+  return Math.min(sr / 2, zeroCrossingsPerSec / 2);
 }

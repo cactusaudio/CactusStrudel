@@ -6,9 +6,10 @@ import {
   loadGenre,
 } from '@cactus/genres';
 import {
-  analyzeWav,
+  analyzeDecoded,
   runQualityGates,
-  computeSectionDiagnostics,
+  computeSectionDiagnosticsFromAudio,
+  readWav,
   type QualityGatesReport,
   type SectionDiagnosticsReport,
 } from '@cactus/analyzer';
@@ -17,7 +18,7 @@ import { createBackend, type BackendName, type ProducerBackendResult, type Claud
 import { masterNormalize, guardTruePeak } from '@cactus/mix';
 import { masterTrack } from '@cactus/mastering';
 import type { AnalyzerFeatures, CritiqueEntry, SessionGraph } from '@cactus/ir';
-import { loadSuite, expandPrompts, type ExpandedPrompt } from './prompt-suite.js';
+import { loadSuite, expandPrompts, assertNoEvalContamination, type ExpandedPrompt } from './prompt-suite.js';
 import {
   scoreGenreConfusion, aggregateConfusion, renderConfusionMarkdown,
   type GenreConfusionReport,
@@ -65,6 +66,7 @@ const DEFAULT_SEEDS = 3;
 export async function runAudit(options: RunAuditOptions): Promise<RunAuditResult> {
   const seeds = options.seeds ?? DEFAULT_SEEDS;
   const suites = await loadSuite(options.suite, options.rootDir ? { rootDir: options.rootDir } : {});
+  assertNoEvalContamination(suites);
   const expanded = expandPrompts(suites, seeds);
   await fs.mkdir(options.outDir, { recursive: true });
   const failuresDir = path.join(options.outDir, 'failures');
@@ -230,10 +232,10 @@ async function runOneBackend(
     const out = path.join(rendersDir, `${prompt.id}__seed${prompt.seed}__${backend.name}.wav`);
     try {
       const { render } = await import('@cactus/renderer');
-      const cps = (result.graph.brief.bpm ?? 120) / 240;
-      // Cap to keep audit tractable: at most 16 cycles per render.
-      const totalBars = Math.min(result.graph.song.total_bars, 16);
-      await render({ code: recompiled.code, durationCycles: totalBars, cps, outputPath: out });
+      const cps = ((result.graph.brief.bpm ?? 120) / 240) * result.graph.song.cycles_per_bar;
+      // Cap to keep audit tractable: at most 16 bars, mapped through cycles_per_bar.
+      const totalCycles = Math.min(result.graph.song.total_bars, 16) * result.graph.song.cycles_per_bar;
+      await render({ code: recompiled.code, durationCycles: totalCycles, cps, outputPath: out });
       wavPath = out;
       rendered = true;
     } catch (e) {
@@ -262,11 +264,13 @@ async function runOneBackend(
           // they remain part of the @cactus/mix public API for unit tests.
           void masterNormalize; void guardTruePeak;
         }
-        features = await analyzeWav(wavPath);
+        const decodedAudio = await readWav(wavPath);
+        features = await analyzeDecoded(decodedAudio);
         const gateInput = {
           wavPath,
           graph: result.graph,
           features,
+          decodedAudio,
           ...(genre ? { genreTargets: {
             lufs: genre.mix_targets.lufs,
             true_peak_max: genre.mix_targets.true_peak_max,
@@ -280,7 +284,7 @@ async function runOneBackend(
         confusion = applyGenreDiscriminators(confusion, features, result.graph);
         critiqueEntry = await critique({ graph: result.graph, features });
         if (options.diagnostics) {
-          const sections = await computeSectionDiagnostics(wavPath, result.graph);
+          const sections = await computeSectionDiagnosticsFromAudio(decodedAudio, result.graph);
           await writeDiagnosticReport({
             prompt,
             sections,
@@ -292,8 +296,11 @@ async function runOneBackend(
       }
     }
   } else {
-    // Static-only path: synthesize features from brief BPM target so genre confusion still functions.
-    features = staticFeaturesFromGraph(result.graph);
+    // Static-only path: use only the holdout prompt's declared target, not the
+    // backend graph. This keeps skipRender from letting a producer self-report
+    // its own BPM/mix target as analyzer evidence.
+    features = staticFeaturesFromPrompt(prompt);
+    hard_failures.push('skipRender: audio render/analyzer evidence unavailable; static diagnostics only');
     confusion = await scoreGenreConfusion({ intended_genre: prompt.intent_genre, graph: result.graph, features });
     critiqueEntry = await critique({ graph: result.graph, features });
   }
@@ -310,11 +317,11 @@ async function runOneBackend(
   };
 }
 
-function staticFeaturesFromGraph(graph: SessionGraph): AnalyzerFeatures {
-  const bpm = graph.brief.bpm ?? 120;
+function staticFeaturesFromPrompt(prompt: ExpandedPrompt): AnalyzerFeatures {
+  const bpm = prompt.bpm_target ?? 120;
   return {
     rhythmic: { bpm, bpm_confidence: 0.7, grid_regularity: 0.85, syncopation_proxy: 0.1, onset_density: { low: 2, mid: 2, high: 2 } },
-    loudness: { lufs_integrated: graph.mix_graph.master.lufs_target, lufs_short_max: graph.mix_graph.master.lufs_target + 3, true_peak_db: -1.5 },
+    loudness: { lufs_integrated: -12, lufs_short_max: -9, true_peak_db: -1.5 },
     stereo: { width_low: 0.05, width_mid: 0.4, width_high: 0.6, mono_low_compliance: 0.95 },
     spectral: { centroid: 1500, rolloff: 5000, flatness: 0.12, flux: 0.5, mfcc_mean: [], mfcc_std: [], band_rms: { sub: 0.05, low: 0.05, low_mid: 0.04, mid: 0.06, high_mid: 0.05, high: 0.04, air: 0.02 } },
   };

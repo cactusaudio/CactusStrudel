@@ -36,16 +36,11 @@ export interface GenreMaturity {
  * Evidence-cited maturity table. Updated only with a fresh smoke-real run
  * referenced in `evidence_source`.
  *
- * IMPORTANT — Gap1 reframing: pre-Gap1, idm appeared 0/3 and dub_techno
- * 2/3 "broken". That was a MEASUREMENT ARTIFACT, not reality: the old
- * non_silent_ratio gate hard-failed intentionally-sparse genres for being
- * sparse (hard binary threshold + render-noise flap). After Gap1 (gate is
- * noise-immune + the hard_fail tier means "renderer broke", not "music is
- * sparse"), the post-Gap1 smoke-real --seeds 3 run shows **30/30 pass,
- * 0 hard failures, all 5 core genres 3/3 both modes**. The honest tiering
- * is therefore far better than the pre-Gap1 pessimism. Fixing the truth
- * layer didn't just stabilize verdicts — it revealed that two genres
- * about to be labelled diagnostic/experimental were never broken.
+ * IMPORTANT: a gate calibration fix is evidence about the harness, not by
+ * itself proof that a genre is production-grade. Sparse genres that stopped
+ * hard-failing after Gap1 are no longer "known broken", but they stay
+ * experimental until a fresh real-render audit proves the full producer path
+ * (arrangement, cookbook policy, analyzer/critic, and render) is stable.
  */
 export const GENRE_MATURITY: Record<string, GenreMaturity> = {
   techno: {
@@ -64,24 +59,24 @@ export const GENRE_MATURITY: Record<string, GenreMaturity> = {
   },
   dub_techno: {
     slug: 'dub_techno',
-    tier: 'production',
-    evidence: 'post-Gap1 smoke-real --seeds 3: 3/3 gate pass both modes. Pre-Gap1 "2/3 broken" was a brittle-gate artifact — dub_techno is intentionally sparse, not broken; Gap1 reclassified sparse as calibration_warning',
+    tier: 'experimental',
+    evidence: 'post-Gap1 smoke-real indicates the earlier "2/3 broken" verdict was a brittle-gate artifact, but cookbook activation still remains minimal_only on older render-failure evidence',
     evidence_source: 'Gap1 commit + smoke-real 2026-05-17',
-    next_blocker: null,
+    next_blocker: 'run fresh smoke-real with current renderer/analyzer and reconcile activation-policy evidence before production promotion',
   },
   idm: {
     slug: 'idm',
-    tier: 'production',
-    evidence: 'post-Gap1 smoke-real --seeds 3: 3/3 gate pass both modes. Pre-Gap1 "0/3 hard_fail" was the SAME brittle-gate artifact — idm asymmetric/sparse content was being silence-failed; it renders fine and passes the noise-immune gate',
+    tier: 'experimental',
+    evidence: 'post-Gap1 smoke-real indicates the earlier "0/3 hard_fail" verdict was a brittle-gate artifact, but activation-policy still keeps idm minimal_only pending current-path evidence',
     evidence_source: 'Gap1 commit + smoke-real 2026-05-17',
-    next_blocker: null,
+    next_blocker: 'run fresh smoke-real with current renderer/analyzer and prove asymmetric/sparse arrangements pass without cookbook-policy contradiction',
   },
   ambient: {
     slug: 'ambient',
-    tier: 'production',
-    evidence: 'post-Gap1 smoke-real --seeds 3: 3/3 gate pass both modes. Sparse pad content now correctly calibration_warning, not hard_fail',
+    tier: 'experimental',
+    evidence: 'post-Gap1 smoke-real reclassifies sparse pad content as calibration_warning rather than hard_fail, but activation-policy reports enabled cookbook increased warnings',
     evidence_source: 'Gap1 commit + smoke-real 2026-05-17',
-    next_blocker: null,
+    next_blocker: 'investigate enabled-cookbook warning increase and capture a fresh current smoke-real pass before production promotion',
   },
   house: {
     slug: 'house',

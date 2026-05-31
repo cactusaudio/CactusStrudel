@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cactus·strudel — failure spine</title>
+<style>
+  :root {
+    --bg:#1e1e1e; --panel:#252525; --border:#3f3f3f; --text:#ffffff; --muted:#98989d;
+    --gold:#d4af37; --gold-dim:#8b7523; --gold-bright:#f4d03f;
+    --green:#22c55e; --red:#ef4444; --amber:#fbbf24; --blue:#38bdf8;
+    --mono: ui-monospace, SF Mono, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, SF Pro Text, Helvetica Neue, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 13px; line-height: 1.5;
+  }
+
+  /* Top nav — matches main.html / data.html / settings.html exactly */
+  nav.top {
+    display:flex; align-items:center;
+    padding:clamp(20px,2.5vh,27px) 0 clamp(16px,2vh,24px);
+    background:linear-gradient(180deg, rgba(37,37,37,0.98) 0%, rgba(30,30,30,0.95) 100%);
+    border-bottom:1px solid rgba(255,255,255,0.12);
+    backdrop-filter:blur(40px);
+    -webkit-backdrop-filter:blur(40px);
+    box-shadow:0 2px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    position:sticky; top:0; z-index:100;
+  }
+  nav.top .row {
+    margin: 0; padding: 0 clamp(12px,2vw,32px); width: 100%;
+    display: flex; align-items: center; gap: clamp(12px,2.5vw,40px);
+  }
+  nav.top .brand { display:flex; align-items:center; gap:clamp(8px,1vw,12px); flex-shrink:1; min-width:0; }
+  nav.top .brand-mark {
+    width:clamp(28px,3vw,36px); height:clamp(28px,3vw,36px);
+    border-radius:8px; display:grid; place-items:center; flex-shrink:0;
+  }
+  nav.top .brand-mark img { width:100%; height:100%; object-fit:contain; }
+  nav.top .brand-wordmark { display:flex; flex-direction:column; line-height:1; }
+  nav.top .brand-name { font-size:14px; font-weight:600; color:var(--text); letter-spacing:.02em; }
+  nav.top .brand-name .dot { color:var(--gold); }
+  nav.top .brand-sub {
+    font-size:9.5px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.24em; margin-top:5px;
+  }
+  nav.top .tabs { display:flex; gap:8px; margin:0 0 0 clamp(80px,10vw,160px); align-items:center; }
+  nav.top .tab {
+    padding:7px 16px; border-radius:8px; color:var(--muted); text-decoration:none;
+    font-size:13px; transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  nav.top .tab:hover { background:rgba(255,255,255,0.08); color:var(--text); transform:translateY(-1px); }
+  nav.top .tab.active {
+    background:linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.1) 100%);
+    color:var(--gold); font-weight:600;
+    box-shadow:0 2px 8px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+    border-bottom:2px solid var(--gold);
+  }
+  nav.top .grow { flex:1; }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 24px clamp(12px,2vw,32px); }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(180deg, rgba(212,175,55,0.04), transparent);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin-bottom: 18px;
+    display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap;
+  }
+  .hero h1 {
+    margin: 0; font-size: 14px; font-weight: 600;
+    color: var(--gold); text-transform: uppercase; letter-spacing: .06em;
+  }
+  .hero .lead { color: var(--muted); font-size: 11px; max-width: 540px; }
+  .hero .counts {
+    margin-left: auto; display: flex; gap: 14px; font-family: var(--mono);
+    font-size: 11px; align-items: center;
+  }
+  .hero .counts .n {
+    display: inline-block; min-width: 22px; padding: 2px 7px;
+    border-radius: 10px; font-weight: 600; text-align: center;
+  }
+  .n.total { background: rgba(255,255,255,0.06); color: var(--text); }
+  .n.validated { background: rgba(34,197,94,0.12); color: var(--green); }
+  .n.fixed     { background: rgba(56,189,248,0.12); color: var(--blue); }
+  .n.rejected  { background: rgba(239,68,68,0.12); color: var(--red); }
+  .n.rolledback{ background: rgba(251,191,36,0.12); color: var(--amber); }
+  .n.unknown   { background: rgba(152,152,157,0.12); color: var(--muted); }
+
+  /* Filter bar */
+  .filters {
+    display: flex; gap: 14px; align-items: center; margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .filters .group { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .filters input[type=search] {
+    flex: 1; min-width: 240px;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 7px 10px; font-size: 12px; font-family: var(--mono);
+  }
+  .filters input[type=search]:focus { outline: none; border-color: var(--gold-dim); }
+  .seg { display: flex; gap: 2px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
+  .seg button {
+    background: transparent; border: 0; color: var(--muted); padding: 4px 10px;
+    font-size: 11px; cursor: pointer; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: .04em; font-family: var(--mono);
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: rgba(212,175,55,0.15); color: var(--gold); }
+
+  /* Entry list */
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .entry {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 18px; position: relative;
+  }
+  .entry::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--muted); border-radius: 8px 0 0 8px;
+  }
+  .entry[data-status="validated"]::before  { background: var(--green); }
+  .entry[data-status="rejected"]::before   { background: var(--red); }
+  .entry[data-status="fixed"]::before      { background: var(--blue); }
+  .entry[data-status="rolled-back"]::before{ background: var(--amber); }
+  .entry[data-status="baseline"]::before, .entry[data-status="?"]::before { background: var(--muted); }
+  .entry[data-status="exploratory"]::before{ background: var(--gold); }
+  /* Archived entries — desaturate to signal they're historical */
+  .entry[data-archived="1"] { opacity: 0.72; }
+  .entry[data-archived="1"]:hover { opacity: 1; }
+  .entry .head {
+    display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .entry .id {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 10px;
+    color: var(--text);
+  }
+  .entry .status-pill {
+    font-family: var(--mono); font-size: 9.5px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: .06em;
+  }
+  .status-pill[data-s="validated"]  { background: rgba(34,197,94,0.12); color: var(--green); }
+  .status-pill[data-s="rejected"]   { background: rgba(239,68,68,0.12); color: var(--red); }
+  .status-pill[data-s="fixed"]      { background: rgba(56,189,248,0.12); color: var(--blue); }
+  .status-pill[data-s="rolled-back"]{ background: rgba(251,191,36,0.12); color: var(--amber); }
+  .status-pill[data-s="exploratory"]{ background: rgba(212,175,55,0.12); color: var(--gold); }
+  .status-pill[data-s="baseline"], .status-pill[data-s="?"] { background: rgba(255,255,255,0.06); color: var(--muted); }
+  .entry .ts { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .entry .symptom {
+    font-size: 13px; color: var(--text); margin-bottom: 8px;
+    font-weight: 500; line-height: 1.45;
+  }
+  .entry .field {
+    display: grid; grid-template-columns: 92px 1fr; gap: 8px 14px;
+    font-size: 11.5px; line-height: 1.55; margin-bottom: 5px;
+  }
+  .entry .field .k {
+    color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
+    font-size: 10px; font-family: var(--mono); padding-top: 1px;
+  }
+  .entry .field .v { color: var(--text); }
+  .entry .field.avoid .v {
+    border-left: 2px solid var(--gold);
+    padding-left: 10px;
+    background: rgba(212,175,55,0.05);
+    border-radius: 3px;
+    padding: 4px 10px;
+    color: #f4d03f;
+  }
+  .entry .field.evidence .v {
+    color: var(--muted);
+    font-style: italic;
+  }
+  .entry .field.root .v { color: #e8eef5; }
+  .entry .piece-link {
+    color: var(--gold); text-decoration: none; font-family: var(--mono);
+    padding: 1px 5px; background: rgba(212,175,55,0.08); border-radius: 3px;
+    border: 1px solid rgba(212,175,55,0.2);
+  }
+  .entry .piece-link:hover {
+    background: rgba(212,175,55,0.18); color: var(--gold-bright);
+  }
+  .empty {
+    color: var(--muted); font-style: italic; text-align: center;
+    padding: 40px; border: 1px dashed var(--border); border-radius: 8px;
+  }
+  #resultsCount { font-family: var(--mono); color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="row">
+    <div class="brand">
+      <span class="brand-mark"><img src="uploads/logo green.png" alt="🌵"></span>
+      <span class="brand-wordmark">
+        <span class="brand-name"><b>cactus</b><span class="dot">·</span><b>strudel</b></span>
+        <span class="brand-sub">runtime <span style="color:rgba(255,255,255,0.1);">/</span> producer-brain</span>
+      </span>
+    </div>
+    <div class="tabs">
+      <a class="tab" href="main.html">Main</a>
+      <a class="tab" href="data.html">Data</a>
+      <span class="tab active">Spine</span>
+      <a class="tab" href="settings.html">Settings</a>
+    </div>
+    <span class="grow"></span>
+  </div>
+</nav>
+
+<main>
+
+  <section class="hero">
+    <div>
+      <h1>Failure spine</h1>
+      <p class="lead">Persistent map of what doesn't work and what fixed it. Each entry = a symptom Bowei heard + diagnosed root cause + actionable avoid-rule + concrete piece evidence. Click a piece reference to jump to it in Data.</p>
+    </div>
+    <div class="counts">
+      <span><span class="n total" id="cnt-total">—</span> total</span>
+      <span><span class="n validated" id="cnt-validated">—</span> validated</span>
+      <span><span class="n fixed" id="cnt-fixed">—</span> fixed</span>
+      <span><span class="n rejected" id="cnt-rejected">—</span> rejected</span>
+      <span><span class="n rolledback" id="cnt-rolledback">—</span> rolled-back</span>
+      <span><span class="n unknown" id="cnt-unknown">—</span> baseline</span>
+    </div>
+  </section>
+
+  <!-- Archive notice -->
+  <div id="archiveBanner" style="display:none; margin-bottom:14px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:rgba(255,255,255,0.02); display:flex; align-items:center; gap:12px; font-size:11.5px; color:var(--muted);">
+    <span style="color:var(--muted);">📦 Archive v0 — <span id="archiveCount">0</span> historical entries (research-era, pre-2026-05-28). Not counted in active stats.</span>
+    <span class="grow" style="flex:1;"></span>
+    <button id="archiveToggle" style="background:rgba(255,255,255,0.04); border:1px solid var(--border); color:var(--muted); padding:5px 12px; border-radius:4px; font-size:11px; font-family:var(--mono); cursor:pointer; text-transform:uppercase; letter-spacing:.04em;">show archive</button>
+  </div>
+
+  <div class="filters">
+    <input id="q" type="search" placeholder="search symptom / root cause / rule / evidence…" autocomplete="off">
+    <div class="group">
+      <span>status</span>
+      <div class="seg" id="statusSeg">
+        <button data-v="" class="on">all</button>
+        <button data-v="validated">validated</button>
+        <button data-v="fixed">fixed</button>
+        <button data-v="rejected">rejected</button>
+        <button data-v="rolled-back">rolled-back</button>
+        <button data-v="exploratory">exploratory</button>
+        <button data-v="baseline">baseline</button>
+      </div>
+    </div>
+    <span id="resultsCount">— shown</span>
+  </div>
+
+  <div class="list" id="list"></div>
+
+</main>
+
+<script>
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+
+// Piece-name regex: catches V01-* / ARR-NN / HOOK-NN / HR-NN / FLASH-NN /
+// UI-NNNNNNNN / <CODE>-NNN (DB-001, CHP-001) — Codes are 2-3 letters then dash
+// then digits, optionally with name suffix.
+const PIECE_RE = /\b((?:V|ARR|HOOK|HR|FLASH|UI|EDIT)-?\d{1,16}(?:-[A-Za-z][\w-]*)?|[A-Z]{2,4}-\d{3}(?:-[A-Za-z][\w-]*)?)\b/g;
+
+let SPINE = [];          // active
+let SPINE_ARCHIVE = [];  // archive-v0
+const UI = { q: '', status: '', showArchive: false };
+
+async function loadJSONL(url) {
+  const text = await fetch(url, { cache: 'no-store' }).then(r => r.text());
+  return text.split('\n').filter(l => l.trim()).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+}
+
+async function load() {
+  try {
+    SPINE = await loadJSONL('/producer-brain/failure-spine.jsonl');
+  } catch (e) { SPINE = []; }
+  try {
+    SPINE_ARCHIVE = await loadJSONL('/producer-brain/archive-v0/failure-spine.jsonl');
+  } catch (e) { SPINE_ARCHIVE = []; }
+  // Tag each archived entry so .id rendering can subtly mark them
+  SPINE_ARCHIVE = SPINE_ARCHIVE.map(e => ({ ...e, _archived: true }));
+  renderArchiveBanner();
+  renderCounts();
+  renderList();
+}
+
+function activeSpine() {
+  return UI.showArchive ? [...SPINE, ...SPINE_ARCHIVE] : SPINE;
+}
+
+function renderArchiveBanner() {
+  if (!SPINE_ARCHIVE.length) {
+    $('#archiveBanner').style.display = 'none';
+    return;
+  }
+  $('#archiveBanner').style.display = 'flex';
+  $('#archiveCount').textContent = SPINE_ARCHIVE.length;
+  $('#archiveToggle').textContent = UI.showArchive ? 'hide archive' : 'show archive';
+}
+
+function statusKey(e) {
+  return (e.status || 'baseline').toLowerCase();
+}
+
+function renderCounts() {
+  // Active stats only (archive doesn't count, matches corpus archive-v0 behavior)
+  const counts = { total: SPINE.length, validated: 0, fixed: 0, rejected: 0, 'rolled-back': 0, unknown: 0 };
+  for (const e of SPINE) {
+    const s = statusKey(e);
+    if (s === 'validated')  counts.validated++;
+    else if (s === 'fixed') counts.fixed++;
+    else if (s === 'rejected') counts.rejected++;
+    else if (s === 'rolled-back') counts['rolled-back']++;
+    else counts.unknown++;
+  }
+  $('#cnt-total').textContent = counts.total;
+  $('#cnt-validated').textContent = counts.validated;
+  $('#cnt-fixed').textContent = counts.fixed;
+  $('#cnt-rejected').textContent = counts.rejected;
+  $('#cnt-rolledback').textContent = counts['rolled-back'];
+  $('#cnt-unknown').textContent = counts.unknown;
+}
+
+function linkPieces(text) {
+  if (!text) return '';
+  const escaped = esc(text);
+  return escaped.replace(PIECE_RE, (m) => {
+    const url = `data.html#piece=${encodeURIComponent(m)}`;
+    return `<a class="piece-link" href="${url}" title="jump to ${m} in Data">${m}</a>`;
+  });
+}
+
+function renderList() {
+  const source = activeSpine();
+  const sourceTotal = source.length;
+  let list = source.slice();
+  if (UI.status) list = list.filter(e => statusKey(e) === UI.status);
+  if (UI.q.trim()) {
+    const q = UI.q.trim().toLowerCase();
+    list = list.filter(e => {
+      const blob = [e.id, e.symptom_heard, e.root_cause, e.avoid_rule, e.evidence, e.status, e.ts]
+        .filter(Boolean).join(' ').toLowerCase();
+      return blob.includes(q);
+    });
+  }
+  // newest first (by ts then id)
+  list.sort((a, b) => (b.ts || '').localeCompare(a.ts || '') || (b.id || '').localeCompare(a.id || ''));
+
+  $('#resultsCount').textContent = UI.showArchive
+    ? `${list.length} of ${sourceTotal} shown · (incl. archive)`
+    : `${list.length} of ${sourceTotal} shown`;
+
+  if (!list.length) {
+    const emptyMsg = SPINE.length === 0 && !UI.showArchive
+      ? 'No active failure-spine entries yet. Archive contains the research-era spine — toggle "show archive" above to view.'
+      : 'no entries match the filter';
+    $('#list').innerHTML = `<div class="empty">${esc(emptyMsg)}</div>`;
+    return;
+  }
+  $('#list').innerHTML = list.map(e => {
+    const s = statusKey(e);
+    const sLabel = (e.status || 'baseline').toLowerCase();
+    const archivedAttr = e._archived ? ' data-archived="1"' : '';
+    return `<article class="entry" data-status="${esc(s)}"${archivedAttr}>
+      <div class="head">
+        <span class="id">${esc(e.id || '—')}</span>
+        <span class="status-pill" data-s="${esc(s)}">${esc(sLabel)}</span>
+        ${e._archived ? '<span class="status-pill" data-s="archived" style="background:rgba(255,255,255,0.06); color:var(--muted);">archive v0</span>' : ''}
+        <span class="grow" style="flex:1;"></span>
+        <span class="ts">${esc(e.ts || '')}</span>
+      </div>
+      <div class="symptom">${linkPieces(e.symptom_heard || '')}</div>
+      ${e.root_cause ? `<div class="field root"><span class="k">root cause</span><span class="v">${linkPieces(e.root_cause)}</span></div>` : ''}
+      ${e.avoid_rule ? `<div class="field avoid"><span class="k">avoid rule</span><span class="v">${linkPieces(e.avoid_rule)}</span></div>` : ''}
+      ${e.evidence ? `<div class="field evidence"><span class="k">evidence</span><span class="v">${linkPieces(e.evidence)}</span></div>` : ''}
+    </article>`;
+  }).join('');
+}
+
+// wire filters
+$('#q').addEventListener('input', () => {
+  UI.q = $('#q').value;
+  renderList();
+});
+document.querySelectorAll('#statusSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#statusSeg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    UI.status = b.dataset.v;
+    renderList();
+  });
+});
+$('#archiveToggle').addEventListener('click', () => {
+  UI.showArchive = !UI.showArchive;
+  renderArchiveBanner();
+  renderList();
+});
+
+load();
+</script>
+</body>
+</html>

@@ -75,6 +75,21 @@ describe('revise (G3)', () => {
     expect(locality.drift_severity).toBeGreaterThanOrEqual(0);
   }, 60_000);
 
+  it('records locality requested paths from parsed feedback, separately from applied op paths', async () => {
+    const sessionDir = await newSession();
+    await revise({
+      sessionDir,
+      feedback: '底鼓更硬，低频要稳',
+      bestEffort: true,
+    });
+    const plan = JSON.parse(await fs.readFile(path.join(sessionDir, 'iter_0001.revision-plan.json'), 'utf8'));
+    const locality = JSON.parse(await fs.readFile(path.join(sessionDir, 'iter_0001.locality.json'), 'utf8'));
+
+    expect(plan.requested_paths).toEqual(expect.arrayContaining(['/mix_graph/orbits/0/gain', '/mix_graph/orbits']));
+    expect(plan.applied_paths).toBeDefined();
+    expect(locality.requested_paths).toEqual(plan.requested_paths);
+  }, 60_000);
+
   it('throws when no iterations exist', async () => {
     const empty = path.join(TMP, `no-iters-${Date.now()}`);
     await fs.mkdir(empty, { recursive: true });

@@ -107,13 +107,13 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
 
   // 6. Render (fatal by default; bestEffort makes it informational).
   let wavPath: string | undefined;
+  const cps = ((graph.brief.bpm ?? 120) / 240) * graph.song.cycles_per_bar;
+  const totalCycles = graph.song.total_bars * graph.song.cycles_per_bar;
   if (!options.skipRender) {
     try {
       const { render } = await import('@cactus/renderer');
       wavPath = path.join(sessionDir, 'iter_0000.wav');
-      const cps = (graph.brief.bpm ?? 120) / 240;
-      const totalBars = graph.song.total_bars;
-      const durationCycles = options.durationCyclesOverride ?? totalBars;
+      const durationCycles = options.durationCyclesOverride ?? totalCycles;
       await render({ code: compiled.code, durationCycles, cps, outputPath: wavPath });
     } catch (e) {
       const msg = `render failed: ${e instanceof Error ? e.message : String(e)}`;
@@ -137,7 +137,7 @@ export async function produce(briefText: string, options: ProduceOptions = {}): 
         artifacts: { wav_path: wavPath, stems_paths: {}, spectrogram_paths: [], compiled_code_path: codePath },
         metadata: {
           sample_rate: 48000,
-          duration_sec: graph.song.total_bars / ((graph.brief.bpm ?? 120) / 60),
+          duration_sec: totalCycles / cps,
           channels: 2,
           package_versions: {},
           warnings: [],

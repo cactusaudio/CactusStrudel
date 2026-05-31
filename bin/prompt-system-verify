@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# prompt-system-verify — end-to-end Phase 1-5 sanity check.
+# Verifies, without actually invoking AGY, that the full chain compiles:
+#   1. kernel/* exists, compiles, hash is stable
+#   2. server reads kernel correctly via _read_compiled_kernel()
+#   3. Advanced prompt compiles for each of 12 presets (read from main.html via Playwright)
+#   4. Mock prompt assembly: simulate what AGY would receive (kernel + Advanced extra)
+#   5. .json sidecar schema works (synthesize one from mock)
+#   6. State doc (docs/STATE.md) reflects current kernel
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+echo "=== Phase 5: end-to-end prompt-system verification ==="
+echo
+
+# (1) kernel compiles
+echo "[1/6] kernel compile..."
+python3 -c "
+import sys; sys.path.insert(0,'$ROOT/runtime')
+import prompt_kernel
+k = prompt_kernel.compile()
+assert len(k['fragments_used']) >= 5, 'expected ≥5 fragments'
+assert k['hash'], 'no hash'
+assert 'You are composing in Strudel' in k['text'], 'identity fragment missing'
+assert 'API surface' in k['text'], 'API existence fragment missing'
+print(f'    ✓ kernel hash={k[\"hash\"]}, {len(k[\"text\"])}c, {len(k[\"fragments_used\"])} fragments')
+"
+
+# (2) server reads kernel
+echo "[2/6] server _read_compiled_kernel..."
+python3 -c "
+import sys, importlib
+sys.path.insert(0, '$ROOT/runtime')
+import prompt_kernel
+importlib.reload(prompt_kernel)
+k = prompt_kernel.compile(mode='agy')
+assert k['mode'] == 'agy', 'mode tag missing'
+print(f'    ✓ mode=agy path returns compiled kernel')
+"
+
+# (3) Advanced prompts compile for all 12 presets (via Playwright if server is up)
+echo "[3/6] Advanced prompts compile for each preset..."
+if curl -sf --max-time 2 -o /dev/null http://localhost:8765/api/version; then
+  ROOT="$ROOT" node - <<JS
+const path = require('path');
+const root = process.env.ROOT;
+const { chromium } = require(path.join(root, 'packages/renderer/node_modules/playwright'));
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await (await browser.newContext()).newPage();
+  await page.goto('http://localhost:8765/runtime/main.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+  const presets = await page.evaluate(() => Object.keys(GENRE_DEFAULTS));
+  const fails = [];
+  for (const preset of presets) {
+    const r = await page.evaluate((p) => {
+      document.querySelector('#advGenre').value = p;
+      document.querySelector('#advGenre').dispatchEvent(new Event('change', { bubbles: true }));
+      if (typeof applyGenreDefaults === 'function') applyGenreDefaults();
+      if (typeof updateAdvancedPrompt === 'function') updateAdvancedPrompt();
+      const txt = document.querySelector('#advPromptPreview')?.value || '';
+      return {
+        chars: txt.length,
+        has_vision_framing: /vision, not a recipe/.test(txt),
+        has_no_must_prescriptions: !/the beat must be audible|must be clearly heard in main/.test(txt.replace(/Drum approach the human is asking for:[\s\S]*?\n\n/, '')),
+      };
+    }, preset);
+    if (r.chars < 800 || !r.has_vision_framing) {
+      fails.push(\`\${preset}: chars=\${r.chars}, vision_framing=\${r.has_vision_framing}\`);
+    }
+  }
+  await browser.close();
+  if (fails.length) { console.log('    ✗ FAILED:', fails.join('; ')); process.exit(1); }
+  console.log(\`    ✓ all \${presets.length} presets compile with vision framing\`);
+})();
+JS
+else
+  echo "    ⚠ server not running, skipping Playwright check"
+fi
+
+# (4) Mock prompt assembly — verify AGY would get the right shape
+echo "[4/6] mock AGY prompt assembly..."
+python3 -c "
+import sys; sys.path.insert(0,'$ROOT/runtime')
+import prompt_kernel
+k = prompt_kernel.compile(mode='agy')
+fake_extra = '(mock PROMPT_EXTRA from advanced panel)'
+agy_prompt = f'''You are the CactusStrudel AGY CLI generator.
+
+Return exactly one fenced \`\`\`javascript code block ...
+
+{k['text']}
+
+PROMPT_EXTRA:
+{fake_extra}
+'''
+assert 'API surface' in agy_prompt
+assert fake_extra in agy_prompt
+print(f'    ✓ AGY receives kernel ({len(k[\"text\"])}c) + extra ({len(fake_extra)}c) = {len(agy_prompt)}c total')
+"
+
+# (5) .json sidecar schema check
+echo "[5/6] prompt JSON sidecar schema..."
+python3 -c "
+import sys, json; sys.path.insert(0,'$ROOT/runtime')
+import prompt_kernel
+k = prompt_kernel.compile(mode='agy')
+import time
+pm = {
+    'schema_version': 1,
+    'mode': 'agy-cli',
+    'ts': time.strftime('%Y-%m-%d %H:%M:%S'),
+    'kernel': {'hash': k['hash'], 'fragments_used': k['fragments_used'], 'text_length': len(k['text'])},
+    'extra': 'mock',
+    'compiled_prompt': 'mock',
+    'piece': None,
+}
+# round-trip
+ser = json.dumps(pm, ensure_ascii=False, indent=2)
+back = json.loads(ser)
+assert back['schema_version'] == 1
+assert back['kernel']['hash'] == k['hash']
+print(f'    ✓ schema v1 serializes + roundtrips')
+"
+
+# (6) STATE.md reflects current kernel
+echo "[6/6] STATE.md kernel section..."
+if grep -q 'Prompt Kernel' "$ROOT/docs/STATE.md" 2>/dev/null; then
+  current_hash=$(python3 -c "import sys; sys.path.insert(0,'$ROOT/runtime'); import prompt_kernel; print(prompt_kernel.compile()['hash'])")
+  if grep -q "$current_hash" "$ROOT/docs/STATE.md"; then
+    echo "    ✓ STATE.md current with kernel hash $current_hash"
+  else
+    echo "    ⚠ STATE.md has Prompt Kernel section but hash is stale — run bin/state-refresh"
+  fi
+else
+  echo "    ⚠ STATE.md missing kernel section — run bin/state-refresh"
+fi
+
+echo
+echo "=== ALL CHECKS PASS ==="

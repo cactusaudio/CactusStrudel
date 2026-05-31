@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import type { AnalyzerFeatures, CritiqueEntry, SessionGraph } from '@cactus/ir';
 import { critique } from '@cactus/critic';
 import { parseBrief, buildSessionGraphFromBrief, createSketches, rankCandidates, closedLoopRevise } from '../index.js';
+import { planRevisions } from './revision-planner.js';
 
 describe('createSketches', () => {
   it('creates N sketches from same brief with different seeds', async () => {
@@ -99,6 +100,30 @@ describe('closedLoopRevise (mocked features)', () => {
   });
 });
 
+describe('planRevisions branch coverage', () => {
+  it('maps sound-palette, low-end width, space, and pattern-density targets', async () => {
+    const graph = await buildSessionGraphFromBrief(parseBrief('peak time techno 132 BPM'), { seed: 9 });
+    const targets: CritiqueEntry['targets'] = [
+      target('/sound_palette/layers', 'hat harsh and chord muddy', {
+        chord_hpf_hz: 180,
+        hat_hpf_hz: 600,
+        chord_orbit_gain_db: -1.5,
+        hat_orbit_gain_db: -2,
+      }),
+      target('/mix_graph/orbits', 'low-end must be stable', {}),
+      target('/mix_graph/orbits', 'more space without empty', { pad_room_send_delta: 0.12 }),
+      target('/pattern_bank/patterns', 'chopped drums but stable low', { hat_density: 1 }),
+    ];
+    const patches = planRevisions({ graph, critique: { iteration: 0, scores: defaultScores, targets }, maxPatches: 10 });
+    const paths = patches.flatMap((p) => p.ops.map((o) => o.path));
+
+    expect(paths.some((p) => p.includes('/sound_palette/layers/') && p.endsWith('/params/freq'))).toBe(true);
+    expect(paths.some((p) => /^\/mix_graph\/orbits\/.+\/width$/.test(p))).toBe(true);
+    expect(paths.some((p) => /^\/mix_graph\/orbits\/.+\/room_send$/.test(p))).toBe(true);
+    expect(paths.some((p) => p.startsWith('/pattern_bank/patterns/'))).toBe(true);
+  });
+});
+
 const defaultScores = {
   genre_fit: 0.5,
   groove: 0.5,
@@ -110,3 +135,15 @@ const defaultScores = {
   user_taste_fit: 0,
   technical_validity: 0.5,
 };
+
+function target(path: string, problem: string, evidence: Record<string, unknown>): CritiqueEntry['targets'][number] {
+  return {
+    target_id: uuid(),
+    severity: 0.9,
+    agent: 'test-agent',
+    graph_paths: [path],
+    problem,
+    evidence,
+    revision_instruction: problem,
+  };
+}

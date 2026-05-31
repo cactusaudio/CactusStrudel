@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# guideline-get — print the current PROMPT_BASE
+set -euo pipefail
+BASE="${CACTUS_BASE:-http://localhost:8765}"
+curl -s "$BASE/api/guideline" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+pb=d.get('prompt_base','')
+print(f'=== PROMPT_BASE ({len(pb)} chars) ===', file=sys.stderr)
+print(pb)
+"

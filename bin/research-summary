@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+# research-summary — group revisions by intent and emit a markdown summary to
+# docs/research/summary-<YYYY-MM-DD>.md. If a (kind × target) group shows a
+# strong signal (N≥3, mean_delta ≥ +0.5, std < 0.5), auto-append a proposal
+# to cc-bridge/proposals.jsonl (status=pending) for Bowei to accept/reject.
+set -euo pipefail
+
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+REVISIONS="$ROOT/producer-brain/revisions.jsonl"
+CORPUS="$ROOT/producer-brain/corpus-2026-05-21.jsonl"
+PROMPTS_DIR="$ROOT/producer-brain/prompts"
+DOCS_RESEARCH="$ROOT/docs/research"
+PROPOSALS="$ROOT/runtime/cc-bridge/proposals.jsonl"
+mkdir -p "$DOCS_RESEARCH"
+
+DATE=$(date +%F)
+OUT="$DOCS_RESEARCH/summary-$DATE.md"
+
+ROOT="$ROOT" REVISIONS="$REVISIONS" CORPUS="$CORPUS" PROMPTS_DIR="$PROMPTS_DIR" PROPOSALS="$PROPOSALS" DATE="$DATE" python3 - <<'PY' > "$OUT"
+import json, os, time, statistics, sys
+from collections import defaultdict
+ROOT      = os.environ['ROOT']
+REVISIONS = os.environ['REVISIONS']
+CORPUS    = os.environ['CORPUS']
+PROMPTS_DIR = os.environ['PROMPTS_DIR']
+PROPOSALS = os.environ['PROPOSALS']
+DATE      = os.environ['DATE']
+
+if not os.path.exists(REVISIONS):
+    print('# CactusStrudel Research Summary'); print(); print(f'_Generated: {time.strftime("%Y-%m-%d %H:%M:%S")}_'); print()
+    print('No revisions in database yet.'); sys.exit(0)
+
+rows = [json.loads(l) for l in open(REVISIONS) if l.strip()]
+n_total = len(rows)
+n_with_score_delta = sum(1 for r in rows if r.get('score_delta') is not None)
+n_brain  = sum(1 for r in rows if r.get('source') == 'brain-action')
+n_manual = sum(1 for r in rows if r.get('source') == 'manual-edit')
+n_backfill = sum(1 for r in rows if r.get('source') == 'backfill')
+
+# Group: (intent.kind, intent.target) -> list of score_deltas (only where present)
+groups = defaultdict(list)
+groups_all = defaultdict(list)
+for r in rows:
+    intent = r.get('intent') or {}
+    key = (intent.get('kind') or 'unknown', intent.get('target') or 'global')
+    groups_all[key].append(r)
+    if r.get('score_delta') is not None:
+        groups[key].append(r)
+
+# Group by source × kind too (for brain-vs-manual)
+by_source_kind = defaultdict(list)
+for r in rows:
+    if r.get('score_delta') is None: continue
+    intent = r.get('intent') or {}
+    src = r.get('source','?')
+    kind = intent.get('kind') or 'unknown'
+    by_source_kind[(src, kind)].append(r['score_delta'])
+
+# Print summary
+print(f'# CactusStrudel Research Summary — {DATE}')
+print()
+print(f'_Generated: {time.strftime("%Y-%m-%d %H:%M:%S")}_')
+print()
+print('## Database state')
+print()
+print(f'- Total revisions: **{n_total}**')
+print(f'- With score_delta filled: **{n_with_score_delta}** ({100*n_with_score_delta/n_total:.0f}%)')
+print(f'- By source: brain-action **{n_brain}** · manual-edit **{n_manual}** · backfill **{n_backfill}**')
+print()
+
+print('## By intent (kind × target)')
+print()
+print('| kind | target | n_total | n_with_Δ | mean Δ | std Δ | min Δ | max Δ |')
+print('|---|---|---|---|---|---|---|---|')
+strong_signals = []
+warning_signals = []
+for key in sorted(groups_all.keys()):
+    deltas = [r['score_delta'] for r in groups[key]]
+    n_all = len(groups_all[key])
+    n_d = len(deltas)
+    if n_d == 0:
+        row = f'| {key[0]} | {key[1]} | {n_all} | 0 | — | — | — | — |'
+    else:
+        m = statistics.mean(deltas)
+        s = statistics.stdev(deltas) if n_d > 1 else 0.0
+        row = f'| {key[0]} | {key[1]} | {n_all} | {n_d} | {m:+.2f} | {s:.2f} | {min(deltas):+.2f} | {max(deltas):+.2f} |'
+        # Detect strong signals
+        if n_d >= 3 and m >= 0.5 and s < 0.5:
+            strong_signals.append((key, n_d, m, s))
+        elif n_d >= 3 and m <= -0.3:
+            warning_signals.append((key, n_d, m, s))
+    print(row)
+print()
+
+print('## By source × kind')
+print()
+print('| source | kind | n | mean Δ | std Δ |')
+print('|---|---|---|---|---|')
+for key in sorted(by_source_kind.keys()):
+    deltas = by_source_kind[key]
+    m = statistics.mean(deltas)
+    s = statistics.stdev(deltas) if len(deltas) > 1 else 0.0
+    print(f'| {key[0]} | {key[1]} | {len(deltas)} | {m:+.2f} | {s:.2f} |')
+print()
+
+if strong_signals:
+    print('## 🟢 Strong signals (candidate proposals)')
+    print()
+    for key, n, m, s in strong_signals:
+        print(f'- **{key[0]} on {key[1]}**: n={n}, mean Δ {m:+.2f}, std {s:.2f}. → consider harness-level integration.')
+    print()
+else:
+    print('## 🟢 Strong signals (candidate proposals)')
+    print()
+    print('_None yet — need more score-deltas in the database._')
+    print()
+
+if warning_signals:
+    print('## 🟠 Warning signals')
+    print()
+    for key, n, m, s in warning_signals:
+        print(f'- **{key[0]} on {key[1]}**: n={n}, mean Δ {m:+.2f}, std {s:.2f}. → corrections of this kind tend to lower scores; investigate.')
+    print()
+
+# ── Phase 5: kernel-hash dimension (which kernel produced which scores) ────
+print('## Kernel-hash dimension (Phase 5)')
+print()
+print('Per-piece prompt JSON sidecars carry the kernel hash at generation time.')
+print('Aggregating corpus scores by kernel hash reveals whether prompt-system')
+print('changes are improving or degrading output quality.')
+print()
+# scan corpus + prompts/<base>.json
+corpus_rows = []
+if os.path.exists(CORPUS):
+    corpus_rows = [json.loads(l) for l in open(CORPUS) if l.strip()]
+by_hash = defaultdict(list)
+by_mode = defaultdict(list)
+for c in corpus_rows:
+    pj = c.get('prompt_json')
+    if not pj: continue
+    pj_abs = os.path.join(ROOT, pj) if not pj.startswith('/') else pj
+    if not os.path.exists(pj_abs): continue
+    try:
+        with open(pj_abs) as f: pm = json.load(f)
+    except Exception: continue
+    h = (pm.get('kernel') or {}).get('hash') or 'unknown'
+    mode = pm.get('mode') or 'unknown'
+    score = c.get('score_bowei')
+    by_hash[h].append((c['name'], score))
+    by_mode[mode].append((c['name'], score))
+
+if by_hash:
+    print('| kernel_hash | n_pieces | n_scored | mean score | range |')
+    print('|---|---|---|---|---|')
+    for h, items in sorted(by_hash.items()):
+        sc = [s for (_,s) in items if s is not None]
+        m = f'{statistics.mean(sc):.2f}' if sc else '—'
+        r = f'{min(sc):.1f}–{max(sc):.1f}' if len(sc)>1 else (f'{sc[0]:.1f}' if sc else '—')
+        print(f'| `{h[:16]}` | {len(items)} | {len(sc)} | {m} | {r} |')
+    print()
+else:
+    print('_No pieces with prompt_json sidecar yet (will populate as new AGY pieces generate)._')
+    print()
+
+if by_mode:
+    print('### By mode')
+    print()
+    print('| mode | n_pieces | n_scored | mean score |')
+    print('|---|---|---|---|')
+    for mode, items in sorted(by_mode.items()):
+        sc = [s for (_,s) in items if s is not None]
+        m = f'{statistics.mean(sc):.2f}' if sc else '—'
+        print(f'| {mode} | {len(items)} | {len(sc)} | {m} |')
+    print()
+
+print('## Latest 5 revisions')
+print()
+print('| ts | piece | source | kind | target | Δchars | score_before | score_after | Δscore |')
+print('|---|---|---|---|---|---|---|---|---|')
+for r in rows[-5:]:
+    intent = r.get('intent') or {}
+    sa = r.get('score_after')
+    sd = r.get('score_delta')
+    print(f'| {r.get("ts","")} | {r.get("piece","")} | {r.get("source","")} | {intent.get("kind") or "—"} | {intent.get("target") or "—"} | {r["code"]["delta_chars"]:+d} | {r.get("score_before") or "—"} | {sa if sa is not None else "—"} | {f"{sd:+.2f}" if sd is not None else "—"} |')
+print()
+print('---')
+print()
+print('See `docs/research-database-plan.md` for the schema + workflow.')
+print('Re-run: `bin/research-summary`.')
+
+# Side-effect: auto-propose strong signals (only if no identical pending proposal exists)
+if strong_signals and os.path.exists(os.path.dirname(PROPOSALS)):
+    existing_titles = set()
+    if os.path.exists(PROPOSALS):
+        with open(PROPOSALS) as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        p = json.loads(line)
+                        if p.get('status') == 'pending':
+                            existing_titles.add(p.get('title',''))
+                    except Exception: pass
+    appended = 0
+    for key, n, m, s in strong_signals:
+        title = f'Bake \"{key[0]} on {key[1]}\" pattern into harness (n={n}, +{m:.2f})'
+        if title in existing_titles: continue
+        prop = {
+            'id': f'prop-research-{int(time.time()*1000)}-{key[0]}-{key[1]}',
+            'ts': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'title': title,
+            'body': f'Research database shows {n} {key[0]} edits on {key[1]} produced mean Δscore {m:+.2f} (std {s:.2f}). This is a candidate for harness-level integration — bake a sensible default into PROMPT_BASE or Advanced Generation preset so future generation produces it without manual correction. See docs/research/summary-{DATE}.md.',
+            'diff': None,
+            'source': 'research-summary',
+            'status': 'pending',
+        }
+        with open(PROPOSALS, 'a') as f:
+            f.write(json.dumps(prop, ensure_ascii=False) + '\n')
+        appended += 1
+        time.sleep(0.005)
+    if appended:
+        print(f'_Auto-appended {appended} pending proposal(s) to cc-bridge/proposals.jsonl._', file=sys.stderr)
+PY
+
+echo "wrote: $OUT"
+echo "preview (first 30 lines):"
+echo "----"
+head -30 "$OUT"

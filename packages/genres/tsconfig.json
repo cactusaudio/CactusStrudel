@@ -5,5 +5,5 @@
     "rootDir": "./src"
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "../ir" }, { "path": "../strudel-validator" }]
+  "references": [{ "path": "../cookbook" }, { "path": "../ir" }, { "path": "../strudel-validator" }]
 }

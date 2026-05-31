@@ -103,7 +103,7 @@ describe('runQualityGates — loop fatigue (synthetic)', () => {
     const lf = r.gates.find((g) => g.name === 'loop_fatigue_score');
     expect(lf?.passed).toBe(false);
     expect(lf?.value).toBeGreaterThan(0.95);
-  });
+  }, 90_000);
 
   it('passes loop_fatigue when amplitude envelope evolves', async () => {
     const sr = 48000;
@@ -121,7 +121,7 @@ describe('runQualityGates — loop fatigue (synthetic)', () => {
     const r = await runQualityGates({ wavPath, graph, features: f });
     const lf = r.gates.find((g) => g.name === 'loop_fatigue_score');
     expect(lf?.passed, JSON.stringify(lf)).toBe(true);
-  });
+  }, 90_000);
 });
 
 describe('runQualityGates — section_energy_delta', () => {

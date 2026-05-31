@@ -75,4 +75,11 @@ describe('renderer lifecycle (no boot)', () => {
     await mod.releaseRenderer();
     expect(mod._getLifecycleStateForTests().activeRenders).toBe(0);
   });
+
+  it('uses deterministic strictPort candidates without a pre-bind probe', async () => {
+    const mod = await import('./index.js');
+    expect(mod._candidatePortForTests(6000, 0)).toBe(6000);
+    expect(mod._candidatePortForTests(6000, 1)).toBe(6037);
+    expect(mod._candidatePortForTests(6000, 2)).toBe(6074);
+  });
 });

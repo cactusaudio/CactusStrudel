@@ -171,13 +171,19 @@ export function classifyFailure(input: ClassifyFailureInput): ClassifiedFailure 
   // Render/analyzer mismatch: detected BPM far from intended BPM.
   const intendedBpm = input.graph?.brief.bpm;
   const detectedBpm = input.features?.rhythmic?.bpm;
+  const bpmConfidence = input.features?.rhythmic?.bpm_confidence;
   if (intendedBpm && detectedBpm && Number.isFinite(detectedBpm)) {
     const ratio = detectedBpm / intendedBpm;
     const isHalfDouble = Math.abs(ratio - 1) < 0.1 || Math.abs(ratio - 0.5) < 0.05 || Math.abs(ratio - 2) < 0.1;
-    if (!isHalfDouble && Math.abs(detectedBpm - intendedBpm) > 15) {
+    const confidenceIsActionable = typeof bpmConfidence !== 'number' || bpmConfidence >= 0.5;
+    const totalBars = input.graph?.song?.total_bars;
+    const durationIsActionable = typeof totalBars !== 'number' || totalBars >= 12;
+    if (durationIsActionable && confidenceIsActionable && !isHalfDouble && Math.abs(detectedBpm - intendedBpm) > 15) {
       cats.add('render_analyzer_mismatch');
       evidence.intended_bpm = intendedBpm;
       evidence.detected_bpm = detectedBpm;
+      if (typeof bpmConfidence === 'number') evidence.bpm_confidence = bpmConfidence;
+      if (typeof totalBars === 'number') evidence.total_bars = totalBars;
     }
   }
 

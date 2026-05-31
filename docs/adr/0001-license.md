@@ -19,5 +19,6 @@ The entire `CactusStrudel` monorepo is licensed **AGPL-3.0-or-later**.
 
 - No license-boundary games inside the monorepo.
 - Anyone running CactusStrudel as a network service must offer source per AGPL §13.
+- The local runtime exposes `/api/source-offer` with the license, repo root, and packaged source bundle metadata when a handoff bundle exists.
 - Internal Cactus uses (Bowei's machines, private servers) are unaffected.
 - We may later carve out a permissively-licensed IR-only spec package (`@cactus/ir-spec`) that contains only the SessionGraph JSON Schema and no Strudel/essentia code, if we ever want third-party reuse without AGPL contagion. **Not done now.**

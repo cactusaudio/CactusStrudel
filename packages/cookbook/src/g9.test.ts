@@ -27,6 +27,7 @@ const baseEntry = (over: Partial<CookbookEntry> = {}): CookbookEntry => Cookbook
   compatible_sections: ['main'],
   source_type: 'authored',
   provenance_note: 'test fixture',
+  validation_status: 'accepted',
   ...over,
 });
 

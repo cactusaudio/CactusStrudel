@@ -17,6 +17,19 @@ import { runAudit } from '@cactus/audit';
 import { createBackend, type BackendName } from '@cactus/orchestrator';
 
 const program = new Command();
+
+function parseIntegerOption(value: string | undefined, fallback: number, min?: number): number {
+  const parsed = value === undefined ? NaN : Number.parseInt(value, 10);
+  const n = Number.isFinite(parsed) ? parsed : fallback;
+  return min === undefined ? n : Math.max(min, n);
+}
+
+function parseFloatOption(value: string | undefined, fallback: number, min?: number): number {
+  const parsed = value === undefined ? NaN : Number.parseFloat(value);
+  const n = Number.isFinite(parsed) ? parsed : fallback;
+  return min === undefined ? n : Math.max(min, n);
+}
+
 program
   .name('cactus')
   .description('Autonomous Strudel-centered music producer')
@@ -29,7 +42,7 @@ program
   .option('-n, --count <n>', 'number of candidates', '5')
   .option('--no-render', 'skip rendering audio')
   .action(async (opts: { brief: string; count: string; render: boolean }) => {
-    const n = Math.max(1, parseInt(opts.count, 10) || 1);
+    const n = parseIntegerOption(opts.count, 1, 1);
     const results = [];
     for (let i = 0; i < n; i++) {
       const r = await produce(opts.brief, { skipRender: !opts.render, seed: i + 1 });
@@ -55,9 +68,24 @@ program
   .option('--severity-floor <f>', 'closed-loop severity floor for accept', '0.5')
   .option('--seed <n>', 'PRNG seed for deterministic graph generation')
   .option('--backend <name>', 'rules | claude-shadow | hybrid (default: rules)', 'rules')
-  .action(async (opts: { brief: string; mode: string; render: boolean; bestEffort?: boolean; maxIterations: string; severityFloor: string; seed?: string; backend: string }) => {
+  .action(async (opts: { brief: string; mode: string; render: boolean; bestEffort?: boolean; maxIterations: string; severityFloor: string; seed?: string; backend: string }, cmd: Command) => {
     const seed = opts.seed !== undefined ? parseInt(opts.seed, 10) : undefined;
     const backend = (opts.backend as BackendName) ?? 'rules';
+    const modeWasExplicit = cmd.getOptionValueSource('mode') === 'cli';
+    if (!['draft', 'closed-loop', 'audit'].includes(opts.mode)) {
+      console.log(JSON.stringify({ ok: false, mode: 'produce', error: `invalid --mode: ${opts.mode}` }, null, 2));
+      process.exitCode = 1;
+      return;
+    }
+    if (opts.render === false && modeWasExplicit && opts.mode !== 'draft') {
+      console.log(JSON.stringify({
+        ok: false,
+        mode: 'produce',
+        error: '--no-render is graph/code-only and cannot be combined with --mode closed-loop or --mode audit; use --mode draft',
+      }, null, 2));
+      process.exitCode = 1;
+      return;
+    }
     const mode = opts.render === false ? 'draft' : (opts.mode ?? 'closed-loop');
     const bestEffort = opts.bestEffort === true || opts.render === false;
 
@@ -66,17 +94,19 @@ program
       const r = await produceClosedLoop({
         brief: opts.brief,
         ...(seed !== undefined ? { seed } : {}),
-        maxIterations: Math.max(0, parseInt(opts.maxIterations, 10) || 4),
-        severityFloor: parseFloat(opts.severityFloor) || 0.5,
+        maxIterations: parseIntegerOption(opts.maxIterations, 4, 0),
+        severityFloor: parseFloatOption(opts.severityFloor, 0.5),
         bestEffort,
         emitAuditFailures: false,
       });
-      console.log(JSON.stringify({
+      const report = {
         ok: r.ok, mode: 'produce', sub_mode: 'closed-loop', backend: 'rules',
         sessionDir: r.sessionDir, iterations: r.iterations, stoppedReason: r.stoppedReason,
         finalWavPath: r.finalWavPath, reportPath: r.reportPath,
         hardFailures: r.hardFailures, failureCategories: r.failureCategories,
-      }, null, 2));
+      };
+      console.log(JSON.stringify(report, null, 2));
+      if (!report.ok) process.exitCode = 1;
       return;
     }
     if (backend === 'rules' && mode === 'audit') {
@@ -84,17 +114,19 @@ program
       const r = await produceClosedLoop({
         brief: opts.brief,
         ...(seed !== undefined ? { seed } : {}),
-        maxIterations: Math.max(0, parseInt(opts.maxIterations, 10) || 4),
-        severityFloor: parseFloat(opts.severityFloor) || 0.5,
+        maxIterations: parseIntegerOption(opts.maxIterations, 4, 0),
+        severityFloor: parseFloatOption(opts.severityFloor, 0.5),
         bestEffort,
         emitAuditFailures: true,
       });
-      console.log(JSON.stringify({
+      const report = {
         ok: r.ok, mode: 'produce', sub_mode: 'audit', backend: 'rules',
         sessionDir: r.sessionDir, iterations: r.iterations, stoppedReason: r.stoppedReason,
         finalWavPath: r.finalWavPath, reportPath: r.reportPath,
         hardFailures: r.hardFailures, failureCategories: r.failureCategories,
-      }, null, 2));
+      };
+      console.log(JSON.stringify(report, null, 2));
+      if (!report.ok) process.exitCode = 1;
       return;
     }
     if (backend === 'rules') {
@@ -104,12 +136,14 @@ program
         ...(seed !== undefined ? { seed } : {}),
         bestEffort,
       });
-      console.log(JSON.stringify({
+      const report = {
         ok: r.failures.length === 0, mode: 'produce', sub_mode: 'draft', backend: 'rules',
         session: r.graph.session_id, sessionDir: r.sessionDir,
         wavPath: r.wavPath, featuresPath: r.featuresPath, reportPath: r.reportPath,
         validatorIssues: r.validatorIssues, failures: r.failures,
-      }, null, 2));
+      };
+      console.log(JSON.stringify(report, null, 2));
+      if (!report.ok) process.exitCode = 1;
       return;
     }
     // Non-rules backend: execute via the backend abstraction; no session bundle yet.
@@ -134,7 +168,7 @@ program
   .option('--no-render', 'skip rendering (analyzer-only static path)')
   .option('--challenger <name>', 'add challenger backend (claude-shadow | hybrid)', collect, [])
   .action(async (opts: { suite: string; seeds: string; out?: string; render: boolean; challenger: string[] }) => {
-    const seeds = Math.max(1, parseInt(opts.seeds, 10) || 1);
+    const seeds = parseIntegerOption(opts.seeds, 1, 1);
     const outDir = opts.out ?? path.resolve('sessions', 'audits', new Date().toISOString().replace(/[:.]/g, '-'));
     const r = await runAudit({
       suite: opts.suite,
@@ -143,8 +177,8 @@ program
       skipRender: !opts.render,
       challengers: (opts.challenger as BackendName[]) ?? [],
     });
-    console.log(JSON.stringify({
-      ok: true,
+    const report = {
+      ok: r.champion_fail === 0,
       mode: 'audit',
       suite: opts.suite,
       seeds,
@@ -155,7 +189,9 @@ program
       champion_failures_by_category: r.champion_failures_by_category,
       report: path.join(r.outDir, 'audit-report.md'),
       summary: path.join(r.outDir, 'audit-summary.json'),
-    }, null, 2));
+    };
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.ok) process.exitCode = 1;
   });
 
 function collect(value: string, prev: string[]): string[] {
@@ -169,7 +205,7 @@ program
   .option('--seeds <n>', 'seeds per prompt', '1')
   .option('--no-mix', 'skip post-render mix pass (for diff comparisons against pre-Phase-15 audio)')
   .action(async (opts: { out?: string; seeds: string; mix: boolean }) => {
-    const seeds = Math.max(1, parseInt(opts.seeds, 10) || 1);
+    const seeds = parseIntegerOption(opts.seeds, 1, 1);
     const outDir = opts.out ?? path.resolve('sessions', 'audits', `repair-${new Date().toISOString().replace(/[:.]/g, '-')}`);
     const r = await runAudit({
       suite: 'smoke',
@@ -184,7 +220,7 @@ program
       ? 'no failures classified'
       : Object.entries(r.champion_failures_by_category).map(([cat, n]) => `${cat}=${n}`).join(', ');
     console.log(JSON.stringify({
-      ok: true,
+      ok: r.champion_fail === 0,
       mode: 'audit:repair',
       seeds,
       outDir: r.outDir,
@@ -195,6 +231,9 @@ program
       report: path.join(r.outDir, 'audit-report.md'),
       diagnostics_dir: path.join(r.outDir, 'diagnostics'),
     }, null, 2));
+    if (r.champion_fail > 0) {
+      process.exitCode = 1;
+    }
   });
 
 program
@@ -214,14 +253,16 @@ program
       bestEffort: opts.fatal !== true,
       skipRender: opts.render === false,
     });
-    console.log(JSON.stringify({
+    const report = {
       ok: r.ok, mode: 'revise', session: r.sessionId,
       prev_iter: r.prevIter, next_iter: r.nextIter,
       patches_planned: r.patchesPlanned, patches_applied: r.patchesApplied,
       drift_severity: r.drift_severity, invariant_violations: r.invariant_violations,
       rendered_wav: r.renderedWav, report: r.reportPath,
       hard_failures: r.hardFailures,
-    }, null, 2));
+    };
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.ok) process.exitCode = 1;
   });
 
 // Legacy revise (kept for back-compat) — preserved below as a hidden alternative
@@ -444,7 +485,7 @@ program
       const { runRealRenderImpactAudit } = await import('./cookbook-impact-real.js');
       const r = await runRealRenderImpactAudit({
         suite: opts.suite,
-        seeds: parseInt(opts.seeds, 10),
+        seeds: parseIntegerOption(opts.seeds, 1, 1),
         ...(opts.genres ? { genres: opts.genres.split(',').map((s) => s.trim()) } : {}),
       });
       console.log(JSON.stringify(r, null, 2));
@@ -459,7 +500,7 @@ program
     const outDir = path.resolve(opts.out, ts);
     await fs.mkdir(outDir, { recursive: true });
 
-    const seeds = parseInt(opts.seeds, 10);
+    const seeds = parseIntegerOption(opts.seeds, 1, 1);
     const modes: Array<'minimal' | 'enabled'> = ['minimal', 'enabled'];
     const summaries: Array<{
       mode: typeof modes[number];
@@ -556,7 +597,7 @@ cookbook
       ...(opts.dryRun ? { dryRun: true } : {}),
     });
     await writeCookbookRenderAuditReport(r);
-    console.log(JSON.stringify({
+    const report = {
       ok: r.by_classification.rejected_silent === 0
           && r.by_classification.rejected_render_error === 0
           && r.by_classification.rejected_validation_error === 0,
@@ -564,7 +605,9 @@ cookbook
       out_dir: r.out_dir,
       total: r.total,
       by_classification: r.by_classification,
-    }, null, 2));
+    };
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.ok) process.exitCode = 1;
   });
 
 cookbook
@@ -628,7 +671,7 @@ cookbook
       (!opts.role || e.role === opts.role),
     );
     const div = diversityReport(filtered);
-    console.log(JSON.stringify({
+    const report = {
       ok: loaded.issues.length === 0,
       mode: 'cookbook-audit',
       ...(opts.genre ? { filter_genre: opts.genre } : {}),
@@ -638,7 +681,9 @@ cookbook
       bucket_homogeneity: div.per_bucket_homogeneity,
       near_duplicate_pairs: div.near_duplicate_pairs,
       load_issues: loaded.issues,
-    }, null, 2));
+    };
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.ok) process.exitCode = 1;
   });
 
 async function listIters(dir: string): Promise<number[]> {

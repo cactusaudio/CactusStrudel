@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# spine-promote <fs-id> — promote a spine entry's avoid_rule into
+# producer-brain/kernel/50-spine-derived.md. Only API-existence / silent-failure
+# / render-quality findings should be promoted; aesthetic / stylistic spine
+# entries (REJECTED / ROLLED-BACK style hints) stay in spine and never enter
+# the kernel.
+#
+# This script does NOT enforce that distinction — it's the operator's call.
+# It does refuse to promote an entry that's already promoted (idempotent).
+set -euo pipefail
+
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+SPINE="$ROOT/producer-brain/failure-spine.jsonl"
+KERNEL_DERIVED="$ROOT/producer-brain/kernel/50-spine-derived.md"
+
+FS_ID="${1:-}"
+[ -z "$FS_ID" ] && { echo "usage: spine-promote <fs-id>" >&2; exit 1; }
+
+# Idempotent check
+if grep -q "← $FS_ID" "$KERNEL_DERIVED" 2>/dev/null; then
+  echo "$FS_ID already promoted; skipping (idempotent)." >&2
+  exit 0
+fi
+
+ROOT="$ROOT" FS_ID="$FS_ID" SPINE="$SPINE" KERNEL_DERIVED="$KERNEL_DERIVED" \
+python3 - <<'PY'
+import json, os, sys
+
+ROOT = os.environ['ROOT']
+FS_ID = os.environ['FS_ID']
+SPINE = os.environ['SPINE']
+KERNEL_DERIVED = os.environ['KERNEL_DERIVED']
+
+found = None
+with open(SPINE) as f:
+    for line in f:
+        line = line.strip()
+        if not line: continue
+        try:
+            d = json.loads(line)
+        except Exception: continue
+        if d.get('id') == FS_ID:
+            found = d
+            break
+
+if not found:
+    print(f'ERROR: no spine entry with id={FS_ID}', file=sys.stderr)
+    sys.exit(2)
+
+rule  = (found.get('avoid_rule') or '').strip()
+sym   = (found.get('symptom_heard') or '').strip()[:140]
+cause = (found.get('root_cause') or '').strip()[:200]
+status = found.get('status', '?')
+ts = found.get('ts', '')
+
+# Operator sanity check
+if not rule:
+    print(f'WARN: {FS_ID} has no avoid_rule text; appending symptom_heard instead', file=sys.stderr)
+    rule = f'(no formal avoid_rule; symptom was: {sym})'
+
+block = f"""
+## {FS_ID}  ({status}, {ts})  ← {FS_ID}
+
+**Symptom**: {sym}
+
+**Cause**: {cause}
+
+**Render-quality rule**: {rule}
+"""
+
+with open(KERNEL_DERIVED, 'a') as f:
+    f.write(block)
+
+print(f'promoted {FS_ID} into kernel/50-spine-derived.md (+{len(block)}c)')
+print(f'-- BLOCK ADDED --')
+print(block.rstrip())
+PY
+
+# Refresh kernel.lock since the kernel content changed
+python3 "$ROOT/runtime/prompt_kernel.py" lock
+echo "done. next AGY generation will see the new rule."

@@ -1,6 +1,7 @@
 export {
   loadSuite,
   expandPrompts,
+  assertNoEvalContamination,
   PromptSuiteSchema,
   PromptEntrySchema,
   IntentClass,

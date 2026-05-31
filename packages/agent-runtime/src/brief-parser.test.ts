@@ -76,6 +76,18 @@ describe('parseBrief — mixed Chinese/English', () => {
   });
 });
 
+describe('parseBrief — multi-genre intent ranking', () => {
+  it('prefers the genre the user names first instead of keyword table order', () => {
+    expect(parseBrief('house with techno percussion, 124 BPM').primary_genre).toBe('house');
+    expect(parseBrief('techno with house chords, 130 BPM').primary_genre).toBe('techno');
+  });
+
+  it('keeps specific phrase matches when they begin at the same position', () => {
+    const b = parseBrief('dub techno with house warmth, 122 BPM');
+    expect(b.primary_genre).toBe('dub_techno');
+  });
+});
+
 describe('parseBrief — constraints', () => {
   it('captures no-kick constraint (English)', () => {
     const b = parseBrief('ambient drone 60 BPM, no kick');

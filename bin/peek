@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# peek [N] — quick snapshot: server health + last N corpus + bridge state head
+set -euo pipefail
+N="${1:-5}"
+BIN="$(dirname "$(readlink -f "$0" 2>/dev/null || python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$0")")"
+ROOT="${CACTUS_ROOT:-$(cd "$BIN/.." && pwd)}"
+"$BIN/health"
+echo
+"$BIN/recent" "$N"
+echo
+echo "=== latest spine entry ==="
+tail -1 "$ROOT/producer-brain/failure-spine.jsonl" 2>/dev/null | python3 -c "
+import json,sys
+try:
+  d=json.loads(sys.stdin.read())
+  print(f\"  {d['id']} {d.get('status','?')}  {d.get('symptom_heard','')[:120]}\")
+except: pass
+"
+echo
+echo "=== latest inbox / latest proposal / latest task ==="
+for f in inbox proposals tasks; do
+  echo "-- $f --"
+  tail -1 "$ROOT/runtime/cc-bridge/$f.jsonl" 2>/dev/null | python3 -c "
+import json,sys
+try:
+    d=json.loads(sys.stdin.read())
+    keys=['id','status','title','text','label','tag']
+    summary={k:d.get(k) for k in keys if k in d}
+    print('  '+json.dumps(summary, ensure_ascii=False))
+except: print('  (empty)')
+"
+done

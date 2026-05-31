@@ -60,6 +60,15 @@ describe('applyArrangementCoverage — techno', () => {
     expect(g.song.layer_activation.kick!.sections.sec1).toBe(false);
   });
 
+  it('honors brief.constraints.no_four_on_floor by not coverage-activating kick', () => {
+    const g = tinyGraph('techno', 'main', ['kick', 'hat', 'bass'], 0.7);
+    g.brief.constraints = { no_four_on_floor: true };
+    applyArrangementCoverage(g);
+    expect(g.song.layer_activation.kick!.sections.sec1).toBe(false);
+    expect(g.song.layer_activation.hat!.sections.sec1).toBe(true);
+    expect(g.song.layer_activation.bass!.sections.sec1).toBe(true);
+  });
+
   it('returns mutation report listing changed sections', () => {
     const g = tinyGraph('techno', 'intro', ['kick', 'hat', 'bass'], 0.4);
     const r = applyArrangementCoverage(g);

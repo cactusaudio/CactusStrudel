@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# checkpoint-create <name> [description] — snapshot in-scope prompt-system files
+# for full rollback at any point. Each checkpoint: snapshot.tar.gz + manifest.md
+# + rollback.sh + scope.txt.
+#
+# Scope = the union of every file/dir that any phase of the kernel work might
+# touch, generated dynamically (so newly-created files post-checkpoint are
+# detectable for rollback).
+set -euo pipefail
+ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+NAME="${1:-}"
+DESC="${2:-(no description)}"
+[ -z "$NAME" ] && { echo "usage: checkpoint-create <name> [description]" >&2; exit 1; }
+
+CKPT_DIR="$ROOT/producer-brain/checkpoints/$NAME"
+mkdir -p "$CKPT_DIR"
+
+# Scope: everything the kernel work could touch. Add to this list if a phase
+# introduces new paths.
+SCOPE_PATHS=(
+  "scripts/gemini-fetch.ts"
+  "docs/agy-strudel-generation-brief.md"
+  "docs/agy-strudel-official-brief.md"
+  "runtime/serve.py"
+  "runtime/main.html"
+  "runtime/data.html"
+  "producer-brain/prompts"
+  "producer-brain/kernel"
+  "producer-brain/kernel.lock.json"
+  "producer-brain/corpus.jsonl"
+  "producer-brain/genre-codes.json"
+  "runtime/prompt_kernel.py"
+)
+
+# Capture which paths existed pre-snapshot — anything that DOESN'T exist now
+# but DOES exist later was created by a phase and must be removed on rollback.
+EXISTED=()
+ABSENT=()
+for p in "${SCOPE_PATHS[@]}"; do
+  if [ -e "$ROOT/$p" ]; then EXISTED+=("$p"); else ABSENT+=("$p"); fi
+done
+
+# Snapshot only what existed
+if [ "${#EXISTED[@]}" -gt 0 ]; then
+  (cd "$ROOT" && tar -czf "$CKPT_DIR/snapshot.tar.gz" "${EXISTED[@]}" 2>/dev/null) || {
+    echo "ERROR: tar failed" >&2; exit 2;
+  }
+fi
+
+# scope.txt: every path in scope, marked existed/absent at checkpoint time
+# (use += "" + sentinel guard so empty arrays under `set -u` don't trigger unbound-var)
+: > "$CKPT_DIR/scope.txt"
+set +u
+for p in "${EXISTED[@]}"; do [ -n "$p" ] && echo "existed:$p" >> "$CKPT_DIR/scope.txt"; done
+for p in "${ABSENT[@]}";  do [ -n "$p" ] && echo "absent:$p"  >> "$CKPT_DIR/scope.txt"; done
+set -u
+
+# state snapshots (read-only, for forensic diff)
+bash "$ROOT/bin/health" > "$CKPT_DIR/state-health.txt" 2>&1 || true
+curl -s --max-time 3 http://localhost:8765/api/version > "$CKPT_DIR/state-version.json" 2>&1 || true
+curl -s --max-time 3 'http://localhost:8765/api/recent?n=1' > "$CKPT_DIR/state-corpus-tail.json" 2>&1 || true
+
+# Manifest
+cat > "$CKPT_DIR/manifest.md" <<EOF
+# Checkpoint $NAME
+
+**Created**: $(date '+%Y-%m-%d %H:%M:%S')
+**Description**: $DESC
+
+## In-scope (existed pre-checkpoint, snapshot in tar)
+$(for p in "${EXISTED[@]}"; do echo "- \`$p\`"; done)
+
+## In-scope (absent pre-checkpoint, must be removed on rollback)
+$(for p in "${ABSENT[@]}"; do echo "- \`$p\`"; done)
+
+## Restore
+
+\`\`\`bash
+bash bin/checkpoint-rollback $NAME
+\`\`\`
+
+## Files in this checkpoint dir
+- \`snapshot.tar.gz\` — exact bytes of every existed path
+- \`scope.txt\` — every in-scope path with existed/absent marker
+- \`manifest.md\` — this file
+- \`state-health.txt\`, \`state-version.json\`, \`state-corpus-tail.json\` — live state at checkpoint time
+EOF
+
+# Rollback helper (self-contained)
+cat > "$CKPT_DIR/rollback.sh" <<'RSH'
+#!/usr/bin/env bash
+set -euo pipefail
+CKPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${CACTUS_ROOT:-$(cd "$CKPT_DIR/../../.." && pwd)}"
+echo "[rollback] from $CKPT_DIR"
+
+# Delete every path that was absent at checkpoint time (created by later phases)
+while IFS=: read -r mark path; do
+  if [ "$mark" = "absent" ] && [ -n "$path" ]; then
+    full="$ROOT/$path"
+    if [ -e "$full" ]; then
+      echo "[rollback] removing $path (was absent at checkpoint)"
+      rm -rf "$full"
+    fi
+  fi
+done < "$CKPT_DIR/scope.txt"
+
+# Extract snapshot tar over root — restores every existed path to exact pre-checkpoint state
+if [ -f "$CKPT_DIR/snapshot.tar.gz" ]; then
+  echo "[rollback] extracting snapshot.tar.gz into $ROOT"
+  tar -xzf "$CKPT_DIR/snapshot.tar.gz" -C "$ROOT"
+fi
+
+echo "[rollback] done. Restart server if it's running to pick up changes:"
+echo "  pid=\$(lsof -nP -iTCP:8765 -sTCP:LISTEN -t | head -1); [ -n \"\$pid\" ] && kill \"\$pid\""
+echo "  ./runtime/serve >/tmp/cactus-serve.log 2>&1 & disown"
+RSH
+chmod +x "$CKPT_DIR/rollback.sh"
+
+# Update LATEST pointer
+echo "$NAME" > "$ROOT/producer-brain/checkpoints/.latest"
+
+echo "[checkpoint-create] wrote $CKPT_DIR/"
+echo "  - $(du -h "$CKPT_DIR/snapshot.tar.gz" 2>/dev/null | cut -f1) snapshot.tar.gz"
+echo "  - ${#EXISTED[@]} existed paths, ${#ABSENT[@]} absent paths"
+echo "  - rollback: bash $CKPT_DIR/rollback.sh"

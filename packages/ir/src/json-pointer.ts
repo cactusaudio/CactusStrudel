@@ -11,7 +11,9 @@ export function parsePointer(pointer: string): string[] {
   if (!pointer.startsWith('/')) {
     throw new Error(`JSON pointer must start with '/' or be empty: ${pointer}`);
   }
-  return pointer.slice(1).split('/').map(unescapePointerToken);
+  const tokens = pointer.slice(1).split('/').map(unescapePointerToken);
+  assertNoPrototypeTokens(tokens, pointer);
+  return tokens;
 }
 
 export function getByPointer(obj: unknown, pointer: string): unknown {
@@ -33,43 +35,84 @@ export function getByPointer(obj: unknown, pointer: string): unknown {
 }
 
 export function applyPatch<T>(target: T, ops: ReadonlyArray<{ op: string; path: string; value?: unknown; from?: string }>): T {
-  const out = structuredClone(target) as T;
+  let out = target as unknown;
   for (const op of ops) {
-    apply(out as unknown as Record<string, unknown>, op);
+    out = applyImmutable(out, op);
   }
-  return out;
+  return out as T;
 }
 
-function apply(root: unknown, op: { op: string; path: string; value?: unknown; from?: string }): void {
+function applyImmutable(root: unknown, op: { op: string; path: string; value?: unknown; from?: string }): unknown {
   const tokens = parsePointer(op.path);
   if (tokens.length === 0) {
     throw new Error('Replacing root via JSON Patch not supported');
   }
-  const last = tokens[tokens.length - 1]!;
-  const parent = walkToParent(root, tokens);
   switch (op.op) {
     case 'add':
+      return applyAtPath(root, tokens, (parent, last) => addOnParent(parent, last, structuredClone(op.value)));
     case 'replace':
-      setOnParent(parent, last, op.value);
-      break;
+      return applyAtPath(root, tokens, (parent, last) => replaceOnParent(parent, last, structuredClone(op.value)));
     case 'remove':
-      removeOnParent(parent, last);
-      break;
+      return applyAtPath(root, tokens, removeOnParent);
     case 'move':
       if (op.from === undefined) throw new Error("'move' requires 'from'");
-      moveOp(root, op.from, op.path);
-      break;
+      return moveOp(root, op.from, op.path);
     case 'copy':
       if (op.from === undefined) throw new Error("'copy' requires 'from'");
-      copyOp(root, op.from, op.path);
-      break;
+      return copyOp(root, op.from, op.path);
     case 'test':
+      {
+      const last = tokens[tokens.length - 1]!;
+      const parent = walkToParent(root, tokens);
       if (JSON.stringify(getOnParent(parent, last)) !== JSON.stringify(op.value)) {
         throw new Error(`Patch test failed at ${op.path}`);
       }
-      break;
+      return root;
+      }
     default:
       throw new Error(`Unsupported op: ${op.op}`);
+  }
+}
+
+function applyAtPath(
+  root: unknown,
+  tokens: string[],
+  mutator: (parent: unknown, key: string) => void,
+): unknown {
+  const clonedRoot = cloneContainer(root);
+  let src: unknown = root;
+  let dst: unknown = clonedRoot;
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const token = tokens[i]!;
+    const child = childAt(src, token);
+    const childClone = cloneContainer(child);
+    setExistingChild(dst, token, childClone);
+    src = child;
+    dst = childClone;
+  }
+  mutator(dst, tokens[tokens.length - 1]!);
+  return clonedRoot;
+}
+
+function cloneContainer(value: unknown): unknown {
+  if (Array.isArray(value)) return value.slice();
+  if (typeof value === 'object' && value != null) return { ...(value as Record<string, unknown>) };
+  throw new Error('Cannot patch non-object root/path');
+}
+
+function childAt(parent: unknown, key: string): unknown {
+  if (Array.isArray(parent)) return parent[parseArrayIndex(key, parent.length, 'read')];
+  if (typeof parent === 'object' && parent != null) return (parent as Record<string, unknown>)[key];
+  throw new Error(`Cannot walk to ${key} on non-object`);
+}
+
+function setExistingChild(parent: unknown, key: string, child: unknown): void {
+  if (Array.isArray(parent)) {
+    parent[parseArrayIndex(key, parent.length, 'read')] = child;
+  } else if (typeof parent === 'object' && parent != null) {
+    (parent as Record<string, unknown>)[key] = child;
+  } else {
+    throw new Error(`Cannot walk to ${key} on non-object`);
   }
 }
 
@@ -78,7 +121,7 @@ function walkToParent(root: unknown, tokens: string[]): unknown {
   for (let i = 0; i < tokens.length - 1; i++) {
     const t = tokens[i]!;
     if (Array.isArray(cur)) {
-      cur = cur[Number(t)];
+      cur = cur[parseArrayIndex(t, cur.length, 'read')];
     } else if (typeof cur === 'object' && cur != null) {
       cur = (cur as Record<string, unknown>)[t];
     } else {
@@ -88,47 +131,80 @@ function walkToParent(root: unknown, tokens: string[]): unknown {
   return cur;
 }
 
-function setOnParent(parent: unknown, key: string, value: unknown): void {
+function addOnParent(parent: unknown, key: string, value: unknown): void {
   if (Array.isArray(parent)) {
-    const idx = key === '-' ? parent.length : Number(key);
+    const idx = parseArrayIndex(key, parent.length, 'add');
     parent.splice(idx, 0, value);
   } else if (typeof parent === 'object' && parent != null) {
     (parent as Record<string, unknown>)[key] = value;
   } else {
-    throw new Error(`Cannot set ${key} on non-object`);
+    throw new Error(`Cannot add ${key} on non-object`);
+  }
+}
+
+function replaceOnParent(parent: unknown, key: string, value: unknown): void {
+  if (Array.isArray(parent)) {
+    parent[parseArrayIndex(key, parent.length, 'read')] = value;
+  } else if (typeof parent === 'object' && parent != null) {
+    const record = parent as Record<string, unknown>;
+    if (!Object.prototype.hasOwnProperty.call(record, key)) {
+      throw new Error(`Cannot replace missing key: ${key}`);
+    }
+    record[key] = value;
+  } else {
+    throw new Error(`Cannot replace ${key} on non-object`);
   }
 }
 
 function getOnParent(parent: unknown, key: string): unknown {
-  if (Array.isArray(parent)) return parent[Number(key)];
+  if (Array.isArray(parent)) return parent[parseArrayIndex(key, parent.length, 'read')];
   if (typeof parent === 'object' && parent != null) return (parent as Record<string, unknown>)[key];
   return undefined;
 }
 
 function removeOnParent(parent: unknown, key: string): void {
   if (Array.isArray(parent)) {
-    parent.splice(Number(key), 1);
+    parent.splice(parseArrayIndex(key, parent.length, 'read'), 1);
   } else if (typeof parent === 'object' && parent != null) {
     delete (parent as Record<string, unknown>)[key];
   }
 }
 
-function moveOp(root: unknown, fromPath: string, toPath: string): void {
+function moveOp(root: unknown, fromPath: string, toPath: string): unknown {
   const fromTokens = parsePointer(fromPath);
   const fromParent = walkToParent(root, fromTokens);
   const fromKey = fromTokens[fromTokens.length - 1]!;
   const value = getOnParent(fromParent, fromKey);
-  removeOnParent(fromParent, fromKey);
-  const toTokens = parsePointer(toPath);
-  const toParent = walkToParent(root, toTokens);
-  const toKey = toTokens[toTokens.length - 1]!;
-  setOnParent(toParent, toKey, value);
+  const removed = applyAtPath(root, fromTokens, removeOnParent);
+  return applyAtPath(removed, parsePointer(toPath), (parent, key) => addOnParent(parent, key, value));
 }
 
-function copyOp(root: unknown, fromPath: string, toPath: string): void {
+function copyOp(root: unknown, fromPath: string, toPath: string): unknown {
   const value = getByPointer(root, fromPath);
-  const tokens = parsePointer(toPath);
-  const parent = walkToParent(root, tokens);
-  const last = tokens[tokens.length - 1]!;
-  setOnParent(parent, last, structuredClone(value));
+  return applyAtPath(root, parsePointer(toPath), (parent, key) => addOnParent(parent, key, structuredClone(value)));
+}
+
+function assertNoPrototypeTokens(tokens: string[], pointer: string): void {
+  for (const token of tokens) {
+    if (token === '__proto__' || token === 'constructor' || token === 'prototype') {
+      throw new Error(`JSON pointer contains forbidden prototype token "${token}": ${pointer}`);
+    }
+  }
+}
+
+function parseArrayIndex(token: string, length: number, mode: 'add' | 'read'): number {
+  if (token === '-') {
+    if (mode === 'add') return length;
+    throw new Error('"-" array index is only valid for add');
+  }
+  if (!/^(0|[1-9]\d*)$/.test(token)) {
+    throw new Error(`Invalid array index: ${token}`);
+  }
+  const idx = Number(token);
+  if (mode === 'add') {
+    if (idx > length) throw new Error(`Array add index out of bounds: ${token}`);
+  } else if (idx >= length) {
+    throw new Error(`Array index out of bounds: ${token}`);
+  }
+  return idx;
 }

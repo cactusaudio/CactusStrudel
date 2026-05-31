@@ -20,8 +20,8 @@
 // Chromium audio-thread determinism.
 
 /** Decision band, in dBFS. Centered on the historical -55 dB floor. */
-export const SILENCE_FLOOR_LOW_DB = -57;
-export const SILENCE_FLOOR_HIGH_DB = -53;
+export const SILENCE_FLOOR_LOW_DB = QUALITY_GATE_THRESHOLDS.silence.floor_low_db;
+export const SILENCE_FLOOR_HIGH_DB = QUALITY_GATE_THRESHOLDS.silence.floor_high_db;
 
 /** Window length: 50 ms, clamped to a sane minimum. */
 export function silenceWindow(sampleRate: number): number {
@@ -79,8 +79,8 @@ export function nonSilentRatio(mono: Float32Array, sampleRate: number): number {
  *                            (logged, does NOT block overall_pass)
  *   nsr ≥ SPARSE           → dense → pass / informational
  */
-export const BROKEN_RENDERER_NSR = 0.15;
-export const SPARSE_OK_NSR = 0.6;
+export const BROKEN_RENDERER_NSR = QUALITY_GATE_THRESHOLDS.silence.broken_renderer_nsr;
+export const SPARSE_OK_NSR = QUALITY_GATE_THRESHOLDS.silence.sparse_ok_nsr;
 
 export type NonSilentTier = 'hard_fail' | 'calibration_warning' | 'ok';
 
@@ -89,3 +89,4 @@ export function classifyNonSilent(ratio: number): { tier: NonSilentTier; passed:
   if (ratio < SPARSE_OK_NSR) return { tier: 'calibration_warning', passed: true };
   return { tier: 'ok', passed: true };
 }
+import { QUALITY_GATE_THRESHOLDS } from './quality-gate-config.js';

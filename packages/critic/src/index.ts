@@ -91,8 +91,20 @@ function scoreVector(graph: SessionGraph, f: AnalyzerFeatures, genre?: GenreSpec
     mix_translation: mix,
     memorability_hook: hook,
     originality: orig,
-    user_taste_fit: 0,
+    user_taste_fit: scoreUserTasteFit(graph),
   };
+}
+
+function scoreUserTasteFit(graph: SessionGraph): number {
+  const decisions = graph.preference_graph.decisions;
+  if (decisions.length === 0) return 0.5;
+  const latest = decisions[decisions.length - 1]!;
+  switch (latest.kind) {
+    case 'accept': return 0.75;
+    case 'reject': return 0.25;
+    case 'a_over_b': return 0.6;
+    case 'feedback': return latest.feedback_text?.trim() ? 0.55 : 0.5;
+  }
 }
 
 function scoreTechnical(graph: SessionGraph, f: AnalyzerFeatures): number {
@@ -170,9 +182,9 @@ function scoreOriginality(_graph: SessionGraph): number {
 function revisionTargets(graph: SessionGraph, f: AnalyzerFeatures, genre?: GenreSpec): CritiqueTarget[] {
   const targets: CritiqueTarget[] = [];
 
-  if (f.loudness && Number.isFinite(f.loudness.lufs_integrated ?? NaN) && genre) {
+  if (f.loudness && Number.isFinite(f.loudness.lufs_integrated ?? NaN)) {
     const integrated = f.loudness.lufs_integrated!;
-    const target = genre.mix_targets.lufs;
+    const target = genre?.mix_targets.lufs ?? -10;
     if (Math.abs(integrated - target) > 2) {
       const delta = target - integrated;
       targets.push({
@@ -180,8 +192,8 @@ function revisionTargets(graph: SessionGraph, f: AnalyzerFeatures, genre?: Genre
         severity: Math.min(1, Math.abs(delta) / 6),
         agent: 'producer-mix-engineer',
         graph_paths: ['/mix_graph/master/gain'],
-        problem: `integrated LUFS ${integrated.toFixed(1)} vs genre target ${target.toFixed(1)}`,
-        evidence: { lufs_integrated: integrated, lufs_target: target, delta_db: delta },
+        problem: `integrated LUFS ${integrated.toFixed(1)} vs ${genre ? 'genre' : 'generic'} target ${target.toFixed(1)}`,
+        evidence: { lufs_integrated: integrated, lufs_target: target, target_source: genre ? 'genre' : 'generic', delta_db: delta },
         revision_instruction: `adjust /mix_graph/master/gain by ${delta > 0 ? '+' : ''}${delta.toFixed(1)} dB equivalent`,
       });
     }

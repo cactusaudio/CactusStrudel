@@ -1,5 +1,5 @@
 import type { AnalyzerFeatures } from '@cactus/ir';
-import { readWav, mixToMono } from './wav-io.js';
+import { readWav, mixToMono, type DecodedAudio } from './wav-io.js';
 import { computeSpectralFeatures } from './spectral.js';
 import { computeRhythmFeatures } from './rhythm.js';
 import { computeStereoFeatures } from './stereo.js';
@@ -14,8 +14,11 @@ export async function analyzeWav(
   _options: AnalyzeOptions = {},
 ): Promise<AnalyzerFeatures> {
   const decoded = await readWav(wavPath);
-  const mono = mixToMono(decoded.channels);
+  return analyzeDecoded(decoded);
+}
 
+export async function analyzeDecoded(decoded: DecodedAudio): Promise<AnalyzerFeatures> {
+  const mono = mixToMono(decoded.channels);
   const spectral = await computeSpectralFeatures(mono, decoded.sampleRate);
   const rhythm = await computeRhythmFeatures(mono, decoded.sampleRate);
   const stereo = computeStereoFeatures(decoded.channels, decoded.sampleRate);
@@ -38,7 +41,7 @@ export async function analyzeWav(
 
 export { computeSpectralFeatures, computeRhythmFeatures, computeStereoFeatures, computeLoudness };
 export { generateSpectrogram } from './spectrogram.js';
-export { readWav, mixToMono, resample } from './wav-io.js';
+export { readWav, mixToMono, resample, type DecodedAudio } from './wav-io.js';
 export {
   nonSilentRatio, classifyNonSilent,
   SILENCE_FLOOR_LOW_DB, SILENCE_FLOOR_HIGH_DB,
@@ -47,6 +50,7 @@ export {
 } from './silence.js';
 export {
   computeSectionFeatures,
+  computeSectionFeaturesFromAudio,
   type SectionAnalysis,
   type SectionFeatures,
 } from './section-features.js';
@@ -58,6 +62,7 @@ export {
 } from './quality-gates.js';
 export {
   computeSectionDiagnostics,
+  computeSectionDiagnosticsFromAudio,
   type SectionDiagnostic,
   type SectionDiagnosticsReport,
 } from './section-diagnostics.js';
