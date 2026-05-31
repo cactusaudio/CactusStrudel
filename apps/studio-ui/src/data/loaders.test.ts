@@ -1,12 +1,10 @@
-// G11A: artifact loader tests. Use a Node-fs-backed fetcher to exercise the
-// real disk artifacts. Tests assert: missing-evidence handling never throws,
-// the loader doesn't fabricate fields, the inventory correctly catalogues
-// what's present, the impact-report shape is accurate, ledger reads are
-// safe, and reproduce-command generation is sane.
+// G11A: artifact loader tests. Use a fixture fetcher so CI does not depend on
+// per-machine sessions/audits. Tests assert: missing-evidence handling never
+// throws, the loader doesn't fabricate fields, the inventory correctly
+// catalogues what's present, the impact-report shape is accurate, ledger reads
+// are safe, and reproduce-command generation is sane.
 
 import { describe, it, expect } from 'vitest';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import {
   listSessions, loadSessionInventory, loadSessionSummary,
   loadCookbookTrace, loadCompiledCode, loadQualityGates,
@@ -15,45 +13,84 @@ import {
   type Fetcher,
 } from './loaders.js';
 
-const REPO_ROOT = path.resolve(import.meta.dirname ?? __dirname, '..', '..', '..', '..');
+const SESSION_ID = '11111111-1111-4111-8111-111111111111';
 
-/**
- * A fetcher that resolves /api/<path> and /artifact/<path> against the real
- * filesystem under REPO_ROOT — same semantics as the vite middleware, but
- * runnable in Node.
- */
-function makeFsFetcher(): Fetcher {
+interface DirEntry { name: string; type: 'dir' | 'file'; size?: number; mtime: number }
+
+function dir(entries: Array<Omit<DirEntry, 'mtime'>>): string {
+  return JSON.stringify({
+    kind: 'dir',
+    path: '',
+    entries: entries.map((e, i) => ({ ...e, mtime: 1_780_000_000_000 + i })),
+  });
+}
+
+function makeFixtureFetcher(): Fetcher {
+  const dirs: Record<string, string> = {
+    '/api/sessions': dir([{ name: SESSION_ID, type: 'dir' }]),
+    [`/api/sessions/${SESSION_ID}`]: dir([
+      { name: 'iter_0000.json', type: 'file', size: 180 },
+      { name: 'iter_0000.strudel.js', type: 'file', size: 24 },
+      { name: 'cookbook-trace.json', type: 'file', size: 90 },
+      { name: 'iter_0000.quality-gates.json', type: 'file', size: 100 },
+      { name: 'iter_0000.wav', type: 'file', size: 2048 },
+      { name: 'iter_0000.features.json', type: 'file', size: 50 },
+      { name: 'iter_0000.spectrogram.png', type: 'file', size: 4096 },
+    ]),
+    '/api/audits/cookbook-impact-real': dir([
+      { name: '2026-06-01T00-00-01Z', type: 'dir' },
+      { name: '2026-06-01T00-00-00Z', type: 'dir' },
+    ]),
+    '/api/audits/cookbook-impact-real/2026-06-01T00-00-01Z': dir([]),
+    '/api/audits/cookbook-impact-real/2026-06-01T00-00-00Z': dir([
+      { name: 'cookbook-impact-real-report.json', type: 'file', size: 240 },
+    ]),
+    '/api/learning_ledger/cookbook/promoted_priors': dir([
+      { name: 'g9c.md', type: 'file', size: 20 },
+      { name: 'README.md', type: 'file', size: 20 },
+    ]),
+    '/api/learning_ledger/cookbook/candidate_priors': dir([]),
+    '/api/learning_ledger/cookbook/rejected_priors': dir([]),
+    '/api/learning_ledger/cookbook/regressions': dir([]),
+  };
+
+  const files: Record<string, string> = {
+    [`/api/sessions/${SESSION_ID}/iter_0000.json`]: JSON.stringify({
+      brief: { text: 'fixture techno 130 BPM', primary_genre: 'techno', bpm: 130 },
+      song: { total_bars: 16 },
+      schema_version: 'fixture',
+      created_at: '2026-06-01T00:00:00Z',
+      session_id: SESSION_ID,
+    }),
+    [`/api/sessions/${SESSION_ID}/iter_0000.strudel.js`]: 'stack(s("bd*4"), note("c3"))',
+    [`/api/sessions/${SESSION_ID}/cookbook-trace.json`]: JSON.stringify({
+      mode: 'enabled',
+      genre: 'techno',
+      bpm: 130,
+      picks: [],
+    }),
+    [`/api/sessions/${SESSION_ID}/iter_0000.quality-gates.json`]: JSON.stringify({
+      overall_pass: true,
+      gates: [],
+    }),
+    '/api/audits/cookbook-impact-real/2026-06-01T00-00-00Z/cookbook-impact-real-report.json': JSON.stringify({
+      ok: true,
+      ts: '2026-06-01T00-00-00Z',
+      suite: 'fixture',
+      out_dir: 'fixture',
+      modes: ['enabled'],
+      per_mode: [],
+      per_brief: [],
+      verdict: 'cookbook_positive',
+      notes: [],
+    }),
+    '/api/learning_ledger/cookbook/promoted_priors/g9c.md': '# fixture',
+  };
+
   return async (apiPath) => {
-    const m = apiPath.match(/^\/(api|artifact)\/(.*)$/);
-    if (!m) return mkResp(404, '');
-    const requested = m[2]!;
-    // Mirror the URL_REWRITES table from the vite middleware.
-    const rewritten = requested
-      .replace(/^sessions(\/|$)/, 'apps/cli/sessions$1')
-      .replace(/^audits(\/|$)/, 'apps/cli/audits$1');
-    const target = path.resolve(REPO_ROOT, rewritten);
-    const root = path.resolve(REPO_ROOT);
-    if (!target.startsWith(root)) return mkResp(403, '');
-    let stat;
-    try { stat = await fs.stat(target); } catch { return mkResp(404, ''); }
-    if (stat.isDirectory()) {
-      const entries = await fs.readdir(target, { withFileTypes: true });
-      const list = await Promise.all(entries.filter((e) => !e.name.startsWith('.')).map(async (e) => {
-        const s = await fs.stat(path.join(target, e.name)).catch(() => null);
-        return {
-          name: e.name,
-          type: e.isDirectory() ? 'dir' : 'file',
-          size: e.isFile() && s ? s.size : undefined,
-          mtime: s?.mtimeMs ?? 0,
-        };
-      }));
-      return mkResp(200, JSON.stringify({ kind: 'dir', path: m[2]!, entries: list }));
-    }
-    if (m[1] === 'api') {
-      const text = await fs.readFile(target, 'utf8');
-      return mkResp(200, text);
-    }
-    return mkResp(415, '');
+    if (apiPath in dirs) return mkResp(200, dirs[apiPath]!);
+    if (apiPath in files) return mkResp(200, files[apiPath]!);
+    return mkResp(404, '');
   };
 }
 
@@ -65,7 +102,7 @@ function mkResp(status: number, body: string): Response {
   } as unknown as Response;
 }
 
-const F = makeFsFetcher();
+const F = makeFixtureFetcher();
 
 describe('artifact loader (G11A §10)', () => {
   it('listSessions returns at least one uuid-shaped session', async () => {
