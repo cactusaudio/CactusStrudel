@@ -37,6 +37,6 @@ jobs:
             pnpm install --frozen-lockfile
           }
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @cactus/renderer exec playwright install --with-deps chromium
       - name: Repo truth gate
         run: ./scripts/verify-repo.sh
