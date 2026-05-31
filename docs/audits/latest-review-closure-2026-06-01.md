@@ -2,7 +2,7 @@
 
 Source: `/tmp/review-digest.json`, 104 review items: 18 HIGH, 52 MED, 34 LOW.
 
-Truth gate at time of this matrix: `./scripts/verify-repo.sh` passed after the major hardening pass and final LOW-088 closure, with `pnpm test` 593 passed / 14 skipped, renderer smoke, renderer conformance, produce real-chain conformance, runtime helper/endpoint tests, boundary-doc guards, and `audit:repair` champion pass.
+Truth gate at time of this matrix: `./scripts/verify-repo.sh` passed locally after the major hardening pass and final LOW-088 closure, with `pnpm test` 593 passed / 14 skipped, renderer smoke, renderer conformance, produce real-chain conformance, runtime helper/endpoint tests, boundary-doc guards, and `audit:repair` champion pass. GitHub Actions `verify` also passed on `main` at `e26f652` in run `26720987179`.
 
 Status legend:
 
@@ -16,7 +16,7 @@ Status legend:
 | Severity | Closed | Partial | Open | Deferred |
 | --- | ---: | ---: | ---: | ---: |
 | HIGH | 18 | 0 | 0 | 0 |
-| MED | 51 | 1 | 0 | 0 |
+| MED | 52 | 0 | 0 | 0 |
 | LOW | 34 | 0 | 0 | 0 |
 
 ## High
@@ -78,7 +78,7 @@ Status legend:
 | 048 | CLOSED | Duplicate of 009/023; output paths are passed as subprocess args. |
 | 049 | CLOSED | Duplicate of 001. |
 | 050 | CLOSED | Duplicate of 018. |
-| 051 | PARTIAL | `.github` workflow exists and `origin` is now configured for `git@github.com:cactusaudio/CactusStrudel.git`, but remote CI installation/running policy still needs a real GitHub Actions run to prove. Do not mark closed without remote CI evidence. |
+| 051 | CLOSED | `.github/workflows/verify.yml` exists, `origin` is configured for `git@github.com:cactusaudio/CactusStrudel.git`, and GitHub Actions `verify` passed on `main` at `e26f652` in run `26720987179`: <https://github.com/cactusaudio/CactusStrudel/actions/runs/26720987179>. |
 | 052 | CLOSED | `scripts/verify-repo.sh` runs renderer E2E smoke and renderer conformance under `CACTUS_RENDER_E2E=1`. |
 | 053 | CLOSED | `packages/agent-runtime/src/agents/loop.test.ts` now directly covers revision-planner branches for sound-palette HPF/gain, low-end width, space/room send, and pattern-density patches. |
 | 054 | CLOSED | `packages/session-store/src/index.test.ts` now covers create/append/list/load, overwrite avoidance, migration, and atomic-final-file shape. |
@@ -140,4 +140,4 @@ Status legend:
 
 ## Remaining Recommended Work
 
-1. Remaining MED-051 needs a real remote GitHub CI run to prove the workflow outside the local machine. `origin` is now configured for `git@github.com:cactusaudio/CactusStrudel.git`; close only after `gh run view` shows the workflow completed successfully.
+No remaining work from the latest 104-item review matrix. All HIGH, MED, and LOW items are closed against local truth-gate evidence plus remote GitHub Actions verification where required.
