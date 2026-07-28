@@ -7,6 +7,7 @@ from pathlib import Path
 from .helpers import REPO_ROOT  # noqa: F401 - also installs runtime on sys.path
 
 from v3.service import RuntimeTruth
+from v3.owner import OwnerLease
 from v3_api import V3Application, V3Error
 
 
@@ -25,6 +26,7 @@ class PieceNormalizationTests(unittest.TestCase):
         self.app = object.__new__(V3Application)
         # Match V3Application.__init__: macOS resolves /var to /private/var.
         self.app.repo_root = self.root.resolve()
+        self.app.owner = OwnerLease.acquire(self.root / "owner-state")
         self.app.truth = self.truth
         self.app.db_path = self.root / "runtime.sqlite3"
         self.app.assets_root = self.root / "producer-brain" / "assets"
@@ -32,6 +34,7 @@ class PieceNormalizationTests(unittest.TestCase):
         self.app._publish = lambda *_args, **_kwargs: 1
 
     def tearDown(self) -> None:
+        self.app.owner.release()
         self.temp.cleanup()
 
     def _seed_piece(self) -> tuple[dict, dict]:

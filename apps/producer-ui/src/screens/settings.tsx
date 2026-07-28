@@ -207,7 +207,7 @@ export function AgentSettingsScreen(): JSX.Element {
     const ownership = begin('discard');
     if (!ownership) return;
     try {
-      const result = await api.resetAgentDraft();
+      const result = await api.resetAgentDraft(settings.draft_fingerprint);
       const { document, accepted } = await acceptAuthoritativeReadback(ownership);
       if (!accepted) {
         appStore.toast('Draft reset completed, but a newer Agent draft owns the panel. Its fields were preserved.', 'warn');

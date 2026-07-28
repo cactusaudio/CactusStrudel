@@ -47,11 +47,13 @@ class _ToolExecutor:
         registry: ToolRegistry,
         job_id: str,
         cancel_event: threading.Event,
+        effect_reconciler=None,
     ):
         self.store = store
         self.registry = registry
         self.job_id = job_id
         self.cancel_event = cancel_event
+        self.effect_reconciler = effect_reconciler
 
     def execute(self, call: Mapping[str, Any]) -> Any:
         if self.cancel_event.is_set():
@@ -99,6 +101,38 @@ class _ToolExecutor:
             )
             raise
         except Exception as exc:
+            # A mutating handler can commit its durable effect and then fail
+            # in post-effect work (publish/activity). Reconcile before
+            # recording failure so the committed effect cannot be replayed
+            # as if it never happened.
+            if spec.mutating and self.effect_reconciler is not None:
+                verdict = None
+                try:
+                    verdict = self.effect_reconciler(
+                        {
+                            "job_id": self.job_id,
+                            "call_id": call_id,
+                            "tool_name": name,
+                            "arguments": arguments,
+                        }
+                    )
+                except Exception:  # noqa: BLE001 - the probe stays advisory
+                    verdict = None
+                if verdict is not None and verdict.get("observed") is True:
+                    result = {
+                        "reconciled": True,
+                        "identity": dict(verdict.get("identity") or {}),
+                        "post_effect_error": (
+                            str(exc) or type(exc).__name__
+                        )[:500],
+                    }
+                    self.store.complete_tool_call(
+                        job_id=self.job_id,
+                        call_id=call_id,
+                        result=result,
+                        committed=True,
+                    )
+                    return result
             self.store.fail_tool_call(
                 job_id=self.job_id,
                 call_id=call_id,
@@ -133,6 +167,7 @@ class ResponsesToolLoop:
         registry: ToolRegistry,
         store: BrainJobStore,
         ultra: BoundedUltraCoordinator | None,
+        effect_reconciler=None,
     ) -> LoopResult:
         lead_input = input_text
         if profile.orchestration == "ultra":
@@ -156,6 +191,7 @@ class ResponsesToolLoop:
             registry=registry,
             job_id=job_id,
             cancel_event=cancel_event,
+            effect_reconciler=effect_reconciler,
         )
         previous_id: str | None = None
         next_input: str | list[dict[str, Any]] = lead_input
@@ -361,6 +397,7 @@ class BrainRunnerService:
                 registry=registry,
                 store=self.store,
                 ultra=self.ultra,
+                effect_reconciler=self.effect_reconciler,
             )
             if event.is_set() or self.store.cancellation_requested(job_id):
                 committed = self.store.has_committed_mutation(job_id)

@@ -291,6 +291,23 @@ class CommitIntentTest(unittest.TestCase):
         self.assertEqual(version["receipt_sha256"], registered_sha)
         self.assertEqual(restarted.get_job(job["id"])["status"], "succeeded")
 
+    def test_staging_without_intent_is_reported_as_leftover(self) -> None:
+        job = self._running_job("intent-staging-leftover")
+        staged = self._stage(job, version_id="version_leftover")
+        # Crash before create_commit_intent: staging exists, no intent row.
+        report = self.runtime.reconcile_receipts()
+        leftovers = report["staging_leftovers"]
+        self.assertEqual(len(leftovers), 1)
+        self.assertEqual(leftovers[0]["job_id"], job["id"])
+        self.assertEqual(leftovers[0]["version_id"], "version_leftover")
+        self.assertIsNone(leftovers[0]["intent_status"])
+        self.assertTrue(staged.path.is_dir())
+
+        # After a normal commit the staging directory is gone from the report.
+        self.runtime.commit_rendered_version(**self._commit_kwargs(staged))
+        after = self.runtime.reconcile_receipts()
+        self.assertEqual(after["staging_leftovers"], [])
+
     def test_intent_conflicts_on_second_receipt_for_same_job(self) -> None:
         job = self._running_job("intent-conflict")
         staged = self._stage(job, version_id="version_conflict")

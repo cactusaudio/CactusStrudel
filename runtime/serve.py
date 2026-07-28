@@ -266,7 +266,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if path == "/api/v2/settings/agent/test":
                 return self._json(200, self.app.test_agent_settings(body))
             if path == "/api/v2/settings/agent/reset":
-                return self._json(200, self.app.reset_agent_draft())
+                return self._json(
+                    200,
+                    self.app.reset_agent_draft(
+                        str(body["base_fingerprint"])
+                        if body.get("base_fingerprint")
+                        else None
+                    ),
+                )
             if path == "/api/v2/settings/generation/sync":
                 return self._json(
                     200,

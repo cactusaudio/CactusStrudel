@@ -659,7 +659,48 @@ class RuntimeTruth:
                     statuses=("abandoned",)
                 )
             ],
+            "staging_leftovers": self._staging_leftovers(),
         }
+
+    def _staging_leftovers(self) -> list[dict]:
+        """Staged render directories that never reached a commit intent.
+
+        A crash between staging and intent creation leaves bytes that no
+        adoption or abandonment path names; they are reported here instead of
+        rotting invisibly under `.staging`.
+        """
+
+        staging_root = self.assets.staging_root
+        if not staging_root.is_dir():
+            return []
+        leftovers: list[dict] = []
+        for entry in sorted(staging_root.iterdir()):
+            if not entry.is_dir() or entry.name.startswith(".tmp-"):
+                continue
+            job_id, _, version_id = entry.name.partition("--")
+            intent_status = None
+            try:
+                with self.database.transaction(immediate=False) as conn:
+                    row = conn.execute(
+                        "SELECT status FROM render_commit_intents"
+                        " WHERE job_id = ?",
+                        (job_id,),
+                    ).fetchone()
+                    if row is not None:
+                        intent_status = str(row["status"])
+            except Exception:  # noqa: BLE001 - reporting stays best-effort
+                intent_status = None
+            leftovers.append(
+                {
+                    "classification": "staging_leftover",
+                    "human_decision_required": True,
+                    "staging_dir": self.assets._display_path(entry),
+                    "job_id": job_id,
+                    "version_id": version_id or None,
+                    "intent_status": intent_status,
+                }
+            )
+        return leftovers
 
     def get_version_asset_paths(self, version_id: str) -> dict[str, Path]:
         version = self.store.get_version(version_id)

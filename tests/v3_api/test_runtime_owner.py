@@ -196,6 +196,10 @@ class OwnerFencingTests(unittest.TestCase):
                     input_text="late",
                     toolset_id="music",
                 )
+            # patch_piece writes the canonical DB directly and carries its
+            # own fence (red-team finding: late daemon HTTP handler).
+            with self.assertRaises(OwnershipLost):
+                app.patch_piece("piece-any", {"archived": True})
             # The durable row keeps the pre-release state; the next owner's
             # recovery is the only party allowed to terminalize it.
             self.assertEqual(app.truth.get_job(job["id"])["status"], "running")

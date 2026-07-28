@@ -1260,6 +1260,10 @@ class V3Application:
         return self._piece_public(self.truth.store.get_piece(piece_id))
 
     def patch_piece(self, piece_id: str, patch: Mapping[str, Any]) -> dict[str, Any]:
+        # This path writes the canonical database directly, so it carries its
+        # own owner fence: a daemon handler surviving bounded shutdown must
+        # fail closed instead of mutating under a released lease.
+        self.owner.require("patch piece")
         allowed = {"archived", "name", "tags"}
         unknown = set(patch) - allowed
         if unknown:
@@ -2223,9 +2227,13 @@ class V3Application:
         )
         return document
 
-    def reset_agent_draft(self) -> dict[str, Any]:
+    def reset_agent_draft(
+        self, expected_fingerprint: str | None = None
+    ) -> dict[str, Any]:
         active = self.agent_settings.store.read_active_revision()
-        self.agent_settings.reset_draft()
+        self.agent_settings.reset_draft(
+            expected_fingerprint=expected_fingerprint
+        )
         document = self.agent_settings_public()
         self._publish("settings.updated", self.settings_public())
         self._activity(

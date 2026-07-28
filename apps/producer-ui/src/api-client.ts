@@ -258,11 +258,7 @@ export const api = {
   discoverModels(draft: AgentConnectionDraft): Promise<{ catalog: ModelCatalogItem[]; fingerprint: string }> {
     return mutationRequest('/api/v2/settings/agent/catalog', {
       method: 'POST',
-      json: {
-        base_url: draft.base_url,
-        api_key: draft.api_key,
-        credential_ref: draft.credential_ref,
-      },
+      json: { ...draft },
     });
   },
 
@@ -277,10 +273,10 @@ export const api = {
     });
   },
 
-  resetAgentDraft(): Promise<AgentSettings> {
+  resetAgentDraft(baseFingerprint?: string): Promise<AgentSettings> {
     return mutationRequest('/api/v2/settings/agent/reset', {
       method: 'POST',
-      json: {},
+      json: baseFingerprint ? { base_fingerprint: baseFingerprint } : {},
     });
   },
 

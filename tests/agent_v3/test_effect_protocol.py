@@ -217,6 +217,59 @@ class EffectReconciliationTests(unittest.TestCase):
                 unknown["effect_state"], "reconciliation_required"
             )
 
+    def test_post_effect_failure_reconciles_in_process_not_replay(self) -> None:
+        from runtime.agent.responses_runner import _ToolExecutor
+        from runtime.agent.tools import ToolRegistry, ToolSpec
+        import threading as _threading
+
+        with tempfile.TemporaryDirectory() as td:
+            store = BrainJobStore(Path(td) / "jobs.sqlite3")
+            job = store.create_job(
+                config_revision_id="agentcfg-tested",
+                input_text="commit effect then fail post-work",
+                toolset_id="music",
+            )
+            store.mark_running(job["job_id"])
+            effect_committed = {"done": False}
+
+            def handler(_args, _ctx):
+                effect_committed["done"] = True
+                raise RuntimeError("activity publish failed after commit")
+
+            registry = ToolRegistry("music")
+            registry.register(
+                ToolSpec(
+                    name="generate_first_shots",
+                    description="mutating fixture",
+                    parameters={
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": False,
+                    },
+                    handler=handler,
+                    mutating=True,
+                )
+            )
+            executor = _ToolExecutor(
+                store=store,
+                registry=registry,
+                job_id=job["job_id"],
+                cancel_event=_threading.Event(),
+                effect_reconciler=lambda call: (
+                    {"observed": True, "identity": {"batch_id": "gen_real"}}
+                    if effect_committed["done"]
+                    else {"observed": False, "identity": {}}
+                ),
+            )
+            result = executor.execute(
+                {"name": "generate_first_shots", "call_id": "call-pe", "arguments": {}}
+            )
+            self.assertTrue(result["reconciled"])
+            self.assertIn("activity publish failed", result["post_effect_error"])
+            call = self._call_row(store, job["job_id"], "call-pe")
+            self.assertEqual(call["status"], "completed")
+            self.assertEqual(call["committed"], 1)
+
     def test_effect_state_column_upgrades_existing_database(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "legacy.sqlite3"

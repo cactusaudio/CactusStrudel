@@ -165,7 +165,7 @@ class SettingsTests(unittest.TestCase):
 
     def test_new_key_is_removed_if_draft_save_fails(self):
         class FailingStore(AgentSettingsStore):
-            def save_draft(self, profile):
+            def save_draft(self, profile, *, expected_fingerprint=None):
                 raise OSError("fixture draft write failure")
 
         with tempfile.TemporaryDirectory() as td:
@@ -409,6 +409,61 @@ class DraftCompareAndSwapTests(unittest.TestCase):
             )
             self.assertEqual(
                 refreshed["draft"]["model_id"], "tab-b-model"
+            )
+
+    def test_concurrent_same_base_updates_admit_exactly_one_winner(self):
+        import threading as _threading
+
+        with tempfile.TemporaryDirectory() as td:
+            service = self.make_service(td)
+            base = service.update_draft({"model_id": "base-model"})[
+                "draft_fingerprint"
+            ]
+            outcomes: list[str] = []
+            lock = _threading.Lock()
+            barrier = _threading.Barrier(2)
+
+            def contend(model_id: str) -> None:
+                barrier.wait()
+                try:
+                    service.update_draft(
+                        {"model_id": model_id}, expected_fingerprint=base
+                    )
+                    with lock:
+                        outcomes.append(f"won:{model_id}")
+                except DraftConflict:
+                    with lock:
+                        outcomes.append(f"conflict:{model_id}")
+
+            threads = [
+                _threading.Thread(target=contend, args=(name,))
+                for name in ("tab-a", "tab-b")
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=10)
+            wins = [item for item in outcomes if item.startswith("won:")]
+            conflicts = [
+                item for item in outcomes if item.startswith("conflict:")
+            ]
+            self.assertEqual(len(wins), 1, outcomes)
+            self.assertEqual(len(conflicts), 1, outcomes)
+            final = service.get_state()["draft"]["model_id"]
+            self.assertEqual(f"won:{final}", wins[0])
+
+    def test_reset_draft_requires_current_base_fingerprint(self):
+        with tempfile.TemporaryDirectory() as td:
+            service = self.make_service(td)
+            stale = service.update_draft({"model_id": "before"})[
+                "draft_fingerprint"
+            ]
+            service.update_draft({"model_id": "after"})
+            with self.assertRaises(DraftConflict):
+                service.reset_draft(expected_fingerprint=stale)
+            # The newer draft survives the refused stale reset.
+            self.assertEqual(
+                service.get_state()["draft"]["model_id"], "after"
             )
 
     def test_ui_document_exposes_diff_and_receipts(self):

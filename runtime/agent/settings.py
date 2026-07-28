@@ -71,10 +71,25 @@ class AgentSettingsStore:
                 )
             return value
 
-    def save_draft(self, profile: AgentProfile) -> dict[str, Any]:
+    def save_draft(
+        self,
+        profile: AgentProfile,
+        *,
+        expected_fingerprint: str | None = None,
+    ) -> dict[str, Any]:
         with self._lock:
             state = self.read_state()
             previous = AgentProfile.from_dict(state.get("draft"))
+            if (
+                expected_fingerprint is not None
+                and expected_fingerprint != previous.fingerprint
+            ):
+                # Compare-and-swap under the store lock: two same-base
+                # updates cannot both win; the second sees the moved draft.
+                raise DraftConflict(
+                    "draft changed since this edit was based; reload the "
+                    "draft and reapply the change"
+                )
             if previous.fingerprint == profile.fingerprint:
                 return copy.deepcopy(state)
             state["draft"] = profile.storage_dict()
@@ -556,8 +571,8 @@ class AgentSettingsService:
             expected_fingerprint is not None
             and expected_fingerprint != profile.fingerprint
         ):
-            # Draft compare-and-swap: a second tab editing a stale draft is
-            # rejected instead of silently overwriting the newer one.
+            # Fast-fail for the common stale-tab case; the authoritative
+            # compare-and-swap runs again inside the store lock at save.
             raise DraftConflict(
                 "draft changed since this edit was based; reload the draft "
                 "and reapply the change"
@@ -597,7 +612,9 @@ class AgentSettingsService:
         if pending_credential:
             self.credentials.set(*pending_credential)
         try:
-            self.store.save_draft(profile)
+            self.store.save_draft(
+                profile, expected_fingerprint=expected_fingerprint
+            )
         except Exception:
             if pending_credential:
                 # The new reference has not become durable product truth. Do
@@ -623,7 +640,9 @@ class AgentSettingsService:
             self.reclaim_credential_if_unreferenced(previous_credential_ref)
         return self.get_state()
 
-    def reset_draft(self) -> dict[str, Any]:
+    def reset_draft(
+        self, *, expected_fingerprint: str | None = None
+    ) -> dict[str, Any]:
         """Restore the active profile, or the empty default, as the draft."""
 
         state = self.store.read_state()
@@ -634,7 +653,9 @@ class AgentSettingsService:
             if active
             else AgentProfile()
         )
-        self.store.save_draft(target)
+        self.store.save_draft(
+            target, expected_fingerprint=expected_fingerprint
+        )
         if (
             previous.credential_ref
             and previous.credential_ref != target.credential_ref

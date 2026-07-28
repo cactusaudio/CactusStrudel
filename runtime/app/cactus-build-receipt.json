@@ -2,7 +2,7 @@
   "schema_version": 2,
   "protocol": {
     "name": "cactus-controlled-vite-build-v1",
-    "intent_sha256": "46b8f9d3917a78404ae46af008dfe83f3fcbc701d343d91f92ab971888840906"
+    "intent_sha256": "ec90d5a8c59f7ffc6c9245b62121da2327bf209116b78b2aadd5267340bfa2e7"
   },
   "surface": "producer-ui",
   "task": {
@@ -17,21 +17,21 @@
   },
   "source": {
     "schema_version": 2,
-    "observed_head": "b43ec3187e005ade0dc87179e09b9e4babe1c1bd",
+    "observed_head": "95e4aefdf0f317324f6d21bafbc7f2bc06d83c23",
     "branch": "codex/cactusstrudel-v3",
-    "working_tree_sha256": "7f04ea5cae616a71d85e8e9499e968fb55fbf548abf66bcc09963205f25445bf",
-    "landing_state_sha256": "6cea6faa92b6d28636bc39c8f5fc53efd39acc5f74873a8651205716708a0607",
-    "effective_tree_sha256": "5bfd07591a6a57a06b08fb8b73e6063a056643c7fcdae716d7aee0212bf14c42",
-    "tracked_worktree_sha256": "0f92f67ac3e7987f8cf8b332ae30f657043b11d51c625e65551a09ff89d0b28b",
-    "index_tree_sha256": "7e59ec08ffd470e7a8489a7d1d8b042c6d39cc03812735b13c5058c10de621a2",
-    "index_flags_sha256": "29328eaeb989ae3e581689e3adfd2c9cf082b9cb78d4411b62e6865a36f97045",
-    "untracked_tree_sha256": "3f363edd6af7dc23aad539e732dbd7539b5225cef483ff75954d3f660502bfe3",
-    "staged_state_sha256": "d359ba74c59f050f61db043ffcf137ce501009be460cf096670c858a9e68e4a9",
-    "unstaged_state_sha256": "1d027e973a3c422d82903bb3e4dc5cf3bc67e411476591a9243423e1f0481ebc",
+    "working_tree_sha256": "500802962adc663cebf6ab0d16ab03742c4e5c1a7922187bf668876780c4c2b1",
+    "landing_state_sha256": "9620fb71c8b07e6e50816b9569d762ad32a8ce8822abbc39b6cbc77fc58948d5",
+    "effective_tree_sha256": "a8056438ab6a0ccb52894be5fa6553a89872ca7cd3b46a3306dc4849f7911ca1",
+    "tracked_worktree_sha256": "a8056438ab6a0ccb52894be5fa6553a89872ca7cd3b46a3306dc4849f7911ca1",
+    "index_tree_sha256": "d4a472341fb05348e52c8a6ad707cbfc935817cbf4ea4c540494b42eba653b6c",
+    "index_flags_sha256": "8da7f3b4d1c1944dfd775c6bb41a1150351dfdd41c5f59281d7011e9e6fb01cd",
+    "untracked_tree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "staged_state_sha256": "a8019ab4126ec19f32c9be8e68c03a7b4b6f14bd31870c0d2eb887e3bfd2b2d1",
+    "unstaged_state_sha256": "9a3df9082330542210aa866b046631236c2386bff5cd083a7d5866c575425ca7",
     "staged_changes": 0,
-    "unstaged_changes": 15,
-    "untracked_files": 3,
-    "dirty_entries": 18
+    "unstaged_changes": 12,
+    "untracked_files": 0,
+    "dirty_entries": 12
   },
   "builder": {
     "node": "v26.3.0",
@@ -54,7 +54,7 @@
     "sha256": "cc0a30662c87bc636f75b10502112c49e84b0198c7feda7146c9252c69868eab"
   },
   "inputs": {
-    "sha256": "ff293574e344b4f37d5b1e3905d9adb401a43b8256e24f116163e531a546ab90",
+    "sha256": "7a691b7c5ffb1a5bd5c3a586e8ea0f5a9400ccc82f25a4e0600b17c6b7c1b5c5",
     "files": [
       {
         "path": "apps/producer-ui/index.html",
@@ -77,8 +77,8 @@
       {
         "path": "apps/producer-ui/src/api-client.ts",
         "type": "file",
-        "bytes": 10443,
-        "sha256": "21bcd3c590b0106e91253ce662217303b7f81d8644db849d2645a29f617ffa98"
+        "bytes": 10416,
+        "sha256": "d03d0f8a2d2a0a579e7f4bfe76cd73beb733401af113f3c0bc99dbd92f81f919"
       },
       {
         "path": "apps/producer-ui/src/audio-engine.test.ts",
@@ -155,8 +155,8 @@
       {
         "path": "apps/producer-ui/src/screens/settings.tsx",
         "type": "file",
-        "bytes": 29578,
-        "sha256": "2cf797a2a3b81ac1077ae4d7f594a8fd5f1b0bb9eb8dcb66b33dc0b14b64860d"
+        "bytes": 29604,
+        "sha256": "6253fa3f130736711e65cced40fde92d760526af18dcd745cb8eec864a9d53a0"
       },
       {
         "path": "apps/producer-ui/src/screens/studio.tsx",
@@ -288,7 +288,7 @@
   },
   "outputs": {
     "root": "runtime/app",
-    "sha256": "ad6f087326ec65f0445759fdb43eb31d452744778f2b98a5c821bf52404ac325",
+    "sha256": "15b5f13f395ca7b181151034c3fc804b7dc27517144019886cff09e9169621dc",
     "files": [
       {
         "path": "assets/index-BqfuUHcb.css",
@@ -297,16 +297,16 @@
         "sha256": "2408d1a737638fb47e12e0a3dced39841fef302a726a1932d678277110337c76"
       },
       {
-        "path": "assets/index-DOccKRox.js",
+        "path": "assets/index-CqhTpwJS.js",
         "type": "file",
-        "bytes": 104280,
-        "sha256": "4683213deab45e0df2b20d1d241e53d574d7eb98251b420cba0a226f3e253cec"
+        "bytes": 104258,
+        "sha256": "64bc5e7c9cd96b041e43523ee468cb863b2544911a45a9c75b8a457b769be31f"
       },
       {
         "path": "index.html",
         "type": "file",
         "bytes": 847,
-        "sha256": "e5ec930c993575d6fb846386663788fe1713fb3eeed0d6da3802b3c8b0c04b20"
+        "sha256": "570b4f90d712c043ecd5b8b09e689c57713603c45f34acdad2ca2c6225da0420"
       }
     ]
   }
