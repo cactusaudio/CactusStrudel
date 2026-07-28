@@ -50,6 +50,9 @@ API alias.
 - Brain context pins piece/revision/audio identities.
 - Unknown generation profiles fail; they do not fall back.
 - Reusing an idempotency key with different canonical request bytes fails.
+- Every revision carries `usable`/`usability_reason`. Scoring or promoting an
+  unusable revision fails as 409; static playback of drifted revision bytes
+  also returns 409, while `receipt.json` stays readable as drift evidence.
 
 Trailing slashes are canonicalized consistently for every HTTP verb. JSON
 numbers must be finite JSON numbers; malformed endpoint bodies fail as 400

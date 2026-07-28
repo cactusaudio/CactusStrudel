@@ -267,7 +267,10 @@ class LegacyImporter:
             if score_evidence.get("score") is not None:
                 rating_key = f"{import_key}:rating"
                 before = self._rating_exists(truth, rating_key)
-                truth.rate(
+                # Historical score evidence is migrated at the store layer:
+                # the RuntimeTruth usability gate governs NEW product scoring,
+                # not the transfer of an already-recorded legacy rating.
+                truth.store.rate_version(
                     piece_version_id=version_id,
                     audio_sha256=version["audio_sha256"],
                     score=float(score_evidence["score"]),

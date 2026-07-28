@@ -495,6 +495,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         """Static serving with byte ranges so transport seeking remains real."""
 
         path = Path(self.translate_path(self.path))
+        app = self.server.app
+        if app is not None and hasattr(app, "asset_request_gate"):
+            # DT-003: immutable revision assets are served only while their
+            # bytes still match the registered receipt.
+            refusal = app.asset_request_gate(path)
+            if refusal is not None:
+                status, payload = refusal
+                self._json(status, payload)
+                return None
         if path.is_dir():
             return super().send_head()
         if not path.is_file():

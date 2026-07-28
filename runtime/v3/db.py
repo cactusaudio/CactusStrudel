@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Iterator
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 MIGRATION_1 = r"""
@@ -226,10 +226,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_ratings_source_key
     ON ratings(source_key) WHERE source_key IS NOT NULL;
 """
 
+MIGRATION_3 = r"""
+CREATE TABLE IF NOT EXISTS render_commit_intents (
+    job_id              TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE RESTRICT,
+    piece_id            TEXT NOT NULL,
+    version_id          TEXT NOT NULL UNIQUE,
+    asset_dir           TEXT NOT NULL,
+    receipt_sha256      TEXT NOT NULL UNIQUE,
+    registration_json   TEXT NOT NULL,
+    status              TEXT NOT NULL CHECK (
+                            status IN ('pending', 'promoted', 'registered', 'abandoned')
+                        ),
+    owner_epoch         INTEGER,
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_render_commit_intents_status
+    ON render_commit_intents(status, created_at);
+"""
+
 
 MIGRATIONS: tuple[tuple[int, str], ...] = (
     (1, MIGRATION_1),
     (2, MIGRATION_2),
+    (3, MIGRATION_3),
 )
 
 

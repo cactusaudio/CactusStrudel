@@ -114,6 +114,7 @@ class RuntimeTruthTest(unittest.TestCase):
             "settings_revisions",
             "settings_tests",
             "schema_migrations",
+            "render_commit_intents",
         }
         with self.runtime.database.transaction(immediate=False) as conn:
             actual = {
@@ -123,7 +124,7 @@ class RuntimeTruthTest(unittest.TestCase):
                 )
             }
         self.assertTrue(expected.issubset(actual))
-        self.assertEqual(self.runtime.database.schema_version(), 2)
+        self.assertEqual(self.runtime.database.schema_version(), 3)
 
     def test_schema_migrates_an_existing_v1_database_to_v2(self) -> None:
         path = self.root / "legacy-v1.sqlite3"
@@ -141,7 +142,7 @@ class RuntimeTruthTest(unittest.TestCase):
         connection.execute("INSERT INTO schema_migrations(version) VALUES (1)")
         connection.close()
 
-        self.assertEqual(database.initialize(), 2)
+        self.assertEqual(database.initialize(), 3)
         connection = database.connect()
         rating_columns = {
             row["name"] for row in connection.execute("PRAGMA table_info(ratings)")
@@ -157,13 +158,13 @@ class RuntimeTruthTest(unittest.TestCase):
 
         with ThreadPoolExecutor(max_workers=6) as pool:
             versions = list(pool.map(initialize, range(12)))
-        self.assertEqual(versions, [2] * 12)
+        self.assertEqual(versions, [3] * 12)
         connection = Database(path).connect()
         self.assertEqual(
             connection.execute(
                 "SELECT COUNT(*) AS n FROM schema_migrations"
             ).fetchone()["n"],
-            2,
+            3,
         )
         connection.close()
 

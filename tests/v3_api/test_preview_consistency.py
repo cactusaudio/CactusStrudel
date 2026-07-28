@@ -34,6 +34,12 @@ class _PreviewTruth:
             "code_sha256": "a" * 64,
         }
 
+    @staticmethod
+    def revision_usability(_version, *, action):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(usable=True, reason=None)
+
     def create_job(self, **_kwargs):
         return {
             "id": "preview-job",

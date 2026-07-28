@@ -38,6 +38,38 @@ class ServerContractTests(unittest.TestCase):
         handler._api_error(V3Error("bad request shape"))
         self.assertEqual(captured[0][0], 400)
 
+    def test_asset_gate_refusal_is_served_as_json(self) -> None:
+        class GatedApp:
+            def asset_request_gate(self, path):
+                if str(path).endswith("package.json"):
+                    return 409, {
+                        "error": "revision is not usable for playback",
+                        "detail": "receipt file hash drift: audio.mp3",
+                    }
+                return None
+
+        server, worker = self._start_server(GatedApp())
+        connection = http.client.HTTPConnection(
+            "127.0.0.1", server.server_address[1], timeout=2
+        )
+        try:
+            connection.request("GET", "/package.json")
+            response = connection.getresponse()
+            self.assertEqual(response.status, 409)
+            payload = json.loads(response.read())
+            self.assertEqual(
+                payload["error"], "revision is not usable for playback"
+            )
+            connection.request("GET", "/README.md")
+            allowed = connection.getresponse()
+            self.assertEqual(allowed.status, 200)
+            allowed.read()
+        finally:
+            connection.close()
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=2)
+
     def test_unsatisfiable_range_has_zero_length_http11_framing(self) -> None:
         server = RuntimeServer(("127.0.0.1", 0), Handler, object())
         worker = threading.Thread(target=server.serve_forever, daemon=True)

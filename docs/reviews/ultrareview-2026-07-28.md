@@ -351,10 +351,10 @@ without fixing them.
 | ID | Area | Evidence | Current state |
 |---|---|---|---|
 | RT-OWNER-001 | runtime owner | `[R]` | fixed in source/tests |
-| DT-001 | render commit | `[R]` | open P1 |
+| DT-001 | render commit | `[R]` | fixed in source/tests |
 | DT-002 | reverse reconciliation | `[R]` | fixed in source/tests |
-| DT-003 | exact heard bytes | `[R]` | open P1 |
-| DT-004 | promotion usability | `[R]` | open P1 |
+| DT-003 | exact heard bytes | `[R]` | fixed in source/tests |
+| DT-004 | promotion usability | `[R]` | fixed in source/tests |
 | GEN-TERM-001 | generation finalization | `[S]` | open P1 |
 | BJ-QUEUE-001 | Brain queued recovery | `[R]` | open P1 |
 | BJ-EFFECT-001 | Brain effect receipt | `[R]` | open P1 |
@@ -436,6 +436,14 @@ Blueprint:
 5. on restart, adopt only an exact intent/receipt match;
 6. retain anything else as explicit orphan evidence.
 
+Landed after this review: `render_commit_intents` (migration 3) binds the
+exact receipt plus the full registration payload before the rename;
+registration finalizes the intent in the same transaction; startup adoption
+runs before interrupted-marking and completes only byte-exact matches, with
+mismatches abandoned as retained evidence. Fault tests in
+`tests/v3/test_commit_intent.py` cover crash-after-promote adoption,
+crash-before-promote abandonment, and intent/receipt mismatch refusal.
+
 ### DT-002 — database-to-filesystem reconciliation
 
 `[R]` The former scan walked filesystem receipts toward database rows but could
@@ -472,11 +480,26 @@ usable =
 List may expose an unusable revision with a reason. Playback, scoring,
 promotion, and Brain context must not treat it as valid heard truth.
 
+Landed after this review: `RuntimeTruth.revision_usability` implements exactly
+this predicate with a stat-keyed verification cache; `_revision_public`
+carries `usable`/`usability_reason`, scoring and promotion refuse unusable
+revisions at the facade, and the static server consults
+`asset_request_gate` (drifted bytes 409, staging/unregistered paths never
+served, receipt.json readable as evidence). `tests/v3/test_revision_usability.py`
+pins mutated-audio refusal, restore-recovery, cache behavior, and the
+legacy_partial-with-verified-bytes semantics.
+
 ### DT-004 — promotion accepts unusable targets
 
 `[R]` A `legacy_partial` or missing-asset revision can still become current.
 Promotion must call the shared usability seam and reject targets whose exact
 rendered identity is not available.
+
+Landed after this review: promotion routes through the shared usability seam
+and rejects any target whose exact rendered identity does not verify
+(missing assets, drifted bytes, receipt/database identity mismatch). The
+criterion is receipt/byte truth, not the state label: a legacy_partial
+revision with fully verified bytes remains promotable heard truth.
 
 ### GEN-TERM-001 — parent can terminalize before late child commit
 
@@ -1209,7 +1232,10 @@ Current classification:
 - Pro collaboration skill: installed and product-ready;
 - runtime P0 owner (`RT-OWNER-001`): closed locally with two-process fault
   tests;
-- runtime P1 consistency: blueprint, not closed;
+- render commit intent and revision usability (`DT-001`, `DT-003`, `DT-004`):
+  closed locally with fault tests;
+- remaining runtime P1 consistency (`GEN-TERM-001`, `BJ-*`, `IDEM-001`):
+  blueprint, not closed;
 - effective source/build/served attribution: landed locally and independently
   counterexample-tested;
 - HEAD/fresh-checkout reproduction: awaits an intentional commit;

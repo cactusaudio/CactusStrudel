@@ -82,6 +82,7 @@ class AssetStore:
         repo_root: str | Path,
         assets_root: str | Path | None = None,
         duration_probe: Callable[[Path], float] | None = None,
+        owner=None,
     ):
         self.repo_root = Path(repo_root).expanduser().resolve()
         self.assets_root = (
@@ -91,6 +92,7 @@ class AssetStore:
         )
         self.staging_root = self.assets_root / ".staging"
         self.duration_probe = duration_probe or ffprobe_duration
+        self._owner = owner
         self.staging_root.mkdir(parents=True, exist_ok=True)
 
     def stage_render(
@@ -164,6 +166,36 @@ class AssetStore:
                 self._remove_owned_staging(tmp_path)
             raise
 
+    def build_receipt(
+        self,
+        staged: StagedRender,
+        *,
+        provenance: Mapping[str, Any],
+        promoted_at: str | None = None,
+    ) -> dict:
+        """Compute the exact receipt a promote would write, without promoting.
+
+        Deterministic given the staged bytes, provenance, and timestamp, so a
+        commit intent can bind the receipt identity before the filesystem
+        rename happens.
+        """
+
+        target = self.assets_root / staged.piece_id / staged.version_id
+        receipt_without_sha = {
+            "schema_version": 1,
+            "job_id": staged.job_id,
+            "piece_id": staged.piece_id,
+            "version_id": staged.version_id,
+            "asset_dir": self._display_path(target),
+            "duration_seconds": staged.duration_seconds,
+            "files": staged.files,
+            "provenance": dict(provenance),
+            "promoted_at": promoted_at or utc_now(),
+        }
+        receipt = dict(receipt_without_sha)
+        receipt["receipt_sha256"] = json_sha256(receipt_without_sha)
+        return receipt
+
     def promote(
         self,
         staged: StagedRender,
@@ -172,33 +204,77 @@ class AssetStore:
     ) -> dict:
         """Atomically rename one complete staging directory into live assets."""
 
+        return self.promote_with_receipt(
+            staged,
+            receipt=self.build_receipt(staged, provenance=provenance),
+        )
+
+    def promote_with_receipt(
+        self,
+        staged: StagedRender,
+        *,
+        receipt: Mapping[str, Any],
+    ) -> dict:
+        """Promote the exact staged directory under a precomputed receipt."""
+
+        if self._owner is not None:
+            # The rename into live assets is a state-root publication: a
+            # worker surviving bounded shutdown must fail closed here instead
+            # of promoting an orphan under a released lease.
+            self._owner.require("promote rendered assets")
+        receipt = dict(receipt)
+        for field, expected_value in (
+            ("job_id", staged.job_id),
+            ("piece_id", staged.piece_id),
+            ("version_id", staged.version_id),
+        ):
+            if receipt.get(field) != expected_value:
+                raise ReceiptConflict(f"receipt {field} does not match staging")
+        body = dict(receipt)
+        claimed_sha = str(body.pop("receipt_sha256", ""))
+        if not claimed_sha or json_sha256(body) != claimed_sha:
+            raise ReceiptConflict("receipt digest does not match its contents")
         target = self.assets_root / staged.piece_id / staged.version_id
         existing_receipt = target / "receipt.json"
         if existing_receipt.is_file():
-            receipt = self._load_json(existing_receipt)
+            existing = self._load_json(existing_receipt)
             if (
-                receipt.get("job_id") == staged.job_id
-                and receipt.get("piece_id") == staged.piece_id
-                and receipt.get("version_id") == staged.version_id
+                existing.get("job_id") == staged.job_id
+                and existing.get("piece_id") == staged.piece_id
+                and existing.get("version_id") == staged.version_id
             ):
-                self.verify_receipt(receipt)
+                self.verify_receipt(existing)
+                if existing.get("receipt_sha256") != receipt.get("receipt_sha256"):
+                    # A retried promote may only differ in its promoted_at
+                    # timestamp; any other divergence is a conflicting
+                    # receipt, and the already-promoted one is the truth.
+                    def _timeless(document: Mapping[str, Any]) -> dict:
+                        projection = dict(document)
+                        projection.pop("promoted_at", None)
+                        projection.pop("receipt_sha256", None)
+                        return projection
+
+                    if _timeless(existing) != _timeless(receipt):
+                        raise ReceiptConflict(
+                            f"asset version already exists: {target}"
+                        )
                 if staged.path.exists():
                     staged_meta = self._load_json(staged.path / "staging.json")
                     if not self._same_staging(
                         staged_meta,
                         {
-                            "job_id": receipt["job_id"],
-                            "piece_id": receipt["piece_id"],
-                            "version_id": receipt["version_id"],
-                            "duration_seconds": receipt["duration_seconds"],
-                            "files": receipt["files"],
+                            "job_id": existing["job_id"],
+                            "piece_id": existing["piece_id"],
+                            "version_id": existing["version_id"],
+                            "duration_seconds": existing["duration_seconds"],
+                            "files": existing["files"],
                         },
                     ):
                         raise ReceiptConflict(
                             "existing promoted receipt conflicts with staging bytes"
                         )
                     self._remove_owned_staging(staged.path)
-                return receipt
+                return existing
             raise ReceiptConflict(f"asset version already exists: {target}")
 
         if not staged.path.is_dir():
@@ -213,21 +289,14 @@ class AssetStore:
         }
         if not self._same_staging(live_meta, expected):
             raise ReceiptConflict("staging metadata changed before promote")
+        if receipt.get("files") != staged.files or not math.isclose(
+            float(receipt.get("duration_seconds") or 0.0),
+            staged.duration_seconds,
+            rel_tol=1e-9,
+            abs_tol=1e-9,
+        ):
+            raise ReceiptConflict("receipt does not match the staged bytes")
 
-        promoted_at = utc_now()
-        receipt_without_sha = {
-            "schema_version": 1,
-            "job_id": staged.job_id,
-            "piece_id": staged.piece_id,
-            "version_id": staged.version_id,
-            "asset_dir": self._display_path(target),
-            "duration_seconds": staged.duration_seconds,
-            "files": staged.files,
-            "provenance": dict(provenance),
-            "promoted_at": promoted_at,
-        }
-        receipt = dict(receipt_without_sha)
-        receipt["receipt_sha256"] = json_sha256(receipt_without_sha)
         self._write_json(staged.path / "receipt.json", receipt)
         self._fsync_tree(staged.path)
 

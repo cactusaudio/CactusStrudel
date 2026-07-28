@@ -643,10 +643,145 @@ class TruthStore:
                 },
                 now=now,
             )
+            # Finalize only the intent that names this exact receipt; a
+            # mismatched intent stays pending and is judged (abandoned with
+            # evidence) by the next adoption pass instead of being silently
+            # blessed by a different registration.
+            conn.execute(
+                """
+                UPDATE render_commit_intents
+                   SET status = 'registered', updated_at = ?
+                 WHERE job_id = ? AND receipt_sha256 = ?
+                   AND status IN ('pending', 'promoted')
+                """,
+                (now, job_id, receipt_sha),
+            )
             row = conn.execute(
                 "SELECT * FROM piece_versions WHERE id = ?", (version_id,)
             ).fetchone()
             return self._version_dict(row)
+
+    # ------------------------------------------------------------------
+    # Render commit intents (DT-001)
+
+    def create_commit_intent(
+        self,
+        *,
+        job_id: str,
+        receipt: Mapping[str, Any],
+        registration: Mapping[str, Any],
+        owner_epoch: int | None = None,
+    ) -> dict:
+        """Persist the exact receipt/registration a promote is about to commit.
+
+        The intent is the durable bridge across the filesystem-promote /
+        database-register boundary: recovery adopts a promoted directory only
+        when its receipt matches this intent byte-for-byte.
+        """
+
+        self._require_owner("persist render commit intent")
+        receipt_sha = str(receipt.get("receipt_sha256") or "")
+        if len(receipt_sha) != 64:
+            raise ValueError("commit intent requires the exact receipt_sha256")
+        if str(receipt.get("job_id")) != job_id:
+            raise ReceiptConflict("commit intent receipt job_id mismatch")
+        recorded_receipt = (
+            registration.get("receipt")
+            if isinstance(registration, Mapping)
+            else None
+        )
+        if not isinstance(recorded_receipt, Mapping) or canonical_json(
+            dict(recorded_receipt)
+        ) != canonical_json(dict(receipt)):
+            raise ReceiptConflict(
+                "commit intent registration must embed the exact receipt"
+            )
+        now = utc_now()
+        with self.db.transaction() as conn:
+            job = self._job_row(conn, job_id)
+            if job["status"] not in {"running", "cancel_requested"}:
+                raise InvalidTransition(
+                    f"cannot persist commit intent while job is {job['status']}"
+                )
+            existing = conn.execute(
+                "SELECT * FROM render_commit_intents WHERE job_id = ?",
+                (job_id,),
+            ).fetchone()
+            if existing is not None:
+                if existing["receipt_sha256"] != receipt_sha:
+                    raise ReceiptConflict(
+                        "job already has a commit intent for a different receipt"
+                    )
+                return _decode_json_fields(existing, ("registration_json",))  # type: ignore[return-value]
+            conn.execute(
+                """
+                INSERT INTO render_commit_intents(
+                    job_id, piece_id, version_id, asset_dir, receipt_sha256,
+                    registration_json, status, owner_epoch, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+                """,
+                (
+                    job_id,
+                    str(receipt["piece_id"]),
+                    str(receipt["version_id"]),
+                    str(receipt["asset_dir"]),
+                    receipt_sha,
+                    canonical_json(dict(registration)),
+                    owner_epoch,
+                    now,
+                    now,
+                ),
+            )
+            self._append_event(
+                conn,
+                job_id=job_id,
+                event_type="render.commit_intent",
+                payload={
+                    "receipt_sha256": receipt_sha,
+                    "piece_id": str(receipt["piece_id"]),
+                    "version_id": str(receipt["version_id"]),
+                },
+                now=now,
+            )
+            row = conn.execute(
+                "SELECT * FROM render_commit_intents WHERE job_id = ?",
+                (job_id,),
+            ).fetchone()
+            return _decode_json_fields(row, ("registration_json",))  # type: ignore[return-value]
+
+    def mark_commit_intent(self, job_id: str, *, status: str) -> None:
+        if status not in {"promoted", "abandoned"}:
+            raise ValueError("commit intent may only be marked promoted/abandoned")
+        self._require_owner("update render commit intent")
+        now = utc_now()
+        with self.db.transaction() as conn:
+            allowed_from = "'pending'" if status == "promoted" else "'pending', 'promoted'"
+            conn.execute(
+                f"""
+                UPDATE render_commit_intents
+                   SET status = ?, updated_at = ?
+                 WHERE job_id = ? AND status IN ({allowed_from})
+                """,
+                (status, now, job_id),
+            )
+
+    def list_commit_intents(
+        self, *, statuses: tuple[str, ...] = ("pending", "promoted")
+    ) -> list[dict]:
+        placeholders = ",".join("?" for _ in statuses)
+        with self.db.transaction(immediate=False) as conn:
+            rows = conn.execute(
+                f"""
+                SELECT * FROM render_commit_intents
+                 WHERE status IN ({placeholders})
+                 ORDER BY created_at, job_id
+                """,
+                tuple(statuses),
+            ).fetchall()
+            return [
+                _decode_json_fields(row, ("registration_json",))  # type: ignore[misc]
+                for row in rows
+            ]
 
     def get_piece(self, piece_id: str) -> dict:
         with self.db.transaction(immediate=False) as conn:

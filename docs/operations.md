@@ -67,6 +67,16 @@ Recovery runs only in the process that holds the owner lease, before HTTP
 work is accepted. Job events stamp the recovering `owner_epoch`, so restart
 markings are attributable to the exact owner that made them.
 
+Render commits are intent-guarded: recovery first adopts promoted asset
+directories whose receipts exactly match their durable commit intent
+(finishing those jobs as the succeeded work they were), then marks the
+remaining in-flight jobs interrupted. Abandoned intents and their staging
+directories are retained as evidence and reported by `bin/v3-reconcile`.
+
+Unusable revisions (missing or drifted assets, receipt/identity mismatch)
+stay listed with a reason, but playback returns 409, and scoring, promotion,
+and Brain context refuse them until the exact bytes verify again.
+
 ## Shutdown
 
 SIGINT and SIGTERM take the same bounded path:

@@ -54,6 +54,9 @@ export interface PieceRevision {
   provenance: Provenance;
   promoted?: boolean;
   preview?: boolean;
+  /** DT-003 revision usability: false when bytes/receipt no longer verify. */
+  usable?: boolean;
+  usability_reason?: string | null;
 }
 
 export interface PromptSummary {

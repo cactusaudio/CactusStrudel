@@ -200,6 +200,44 @@ class OwnerFencingTests(unittest.TestCase):
             # recovery is the only party allowed to terminalize it.
             self.assertEqual(app.truth.get_job(job["id"])["status"], "running")
 
+    def test_filesystem_promote_fails_closed_after_release(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            lease = OwnerLease.acquire(root / "state")
+            truth = RuntimeTruth(
+                repo_root=root,
+                db_path=root / "state" / "runtime.sqlite3",
+                assets_root=root / "assets",
+                duration_probe=lambda _: 5.0,
+                owner=lease,
+            )
+            audio = root / "render.mp3"
+            audio.write_bytes(b"ID3" + b"\x00" * 512)
+            job, _ = truth.create_job(
+                kind="generation",
+                payload={"probe": "late-promote"},
+                idempotency_key="late-promote",
+            )
+            truth.start_job(job["id"], worker_id="worker@e1")
+            staged = truth.stage_render(
+                job_id=job["id"],
+                piece_id="piece_late",
+                version_id="version_late",
+                code='s("bd")',
+                audio_path=audio,
+            )
+            receipt = truth.assets.build_receipt(
+                staged, provenance={"provider_route": "x"}
+            )
+            lease.release()
+            # A worker surviving bounded shutdown must not rename into live
+            # assets under a released lease.
+            with self.assertRaises(OwnershipLost):
+                truth.assets.promote_with_receipt(staged, receipt=receipt)
+            self.assertFalse(
+                (root / "assets" / "piece_late" / "version_late").exists()
+            )
+
     def test_shutdown_escalates_when_drain_deadline_passes(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             app = self._build_app(Path(td) / "v3")

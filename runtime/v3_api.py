@@ -1048,6 +1048,13 @@ class V3Application:
     # ------------------------------------------------------------------
     # Piece/read model
 
+    def asset_request_gate(
+        self, file_path: Path
+    ) -> tuple[int, dict[str, Any]] | None:
+        """Gate static serving of immutable revision assets (DT-003)."""
+
+        return self.truth.asset_request_gate(file_path)
+
     def list_pieces(self, *, include_archived: bool = False) -> list[dict[str, Any]]:
         rows = self.truth.list_pieces(
             include_archived=include_archived,
@@ -1827,6 +1834,12 @@ class V3Application:
         source = self.truth.store.get_version(source_revision_id)
         if source["piece_id"] != piece_id:
             raise Conflict("source revision does not belong to piece")
+        source_verdict = self.truth.revision_usability(source, action="play")
+        if not source_verdict.usable:
+            raise Conflict(
+                "preview source revision is not usable: "
+                f"{source_verdict.reason}"
+            )
         job, _ = self.truth.create_job(
             kind="render-preview",
             payload={
@@ -2050,6 +2063,12 @@ class V3Application:
                     raise Conflict(
                         "Brain context audio SHA does not match the pinned revision"
                     )
+                verdict = self.truth.revision_usability(version, action="brain")
+                if not verdict.usable:
+                    raise Conflict(
+                        "Brain context revision is not usable heard truth: "
+                        f"{verdict.reason}"
+                    )
                 with self.truth.database.transaction(immediate=False) as conn:
                     rating = conn.execute(
                         """
@@ -2181,6 +2200,10 @@ class V3Application:
                         "note": piece["active_revision"].get("note"),
                         "model_id": piece["active_revision"]["provenance"].get(
                             "model_id"
+                        ),
+                        "usable": piece["active_revision"].get("usable", True),
+                        "usability_reason": piece["active_revision"].get(
+                            "usability_reason"
                         ),
                     }
                     for piece in self.list_pieces()[: int(args["limit"])]
@@ -2395,11 +2418,20 @@ class V3Application:
         asset_dir = Path(str(version["asset_dir"]))
         if not asset_dir.is_absolute():
             asset_dir = self.repo_root / asset_dir
+        usability = self.truth.revision_usability(version, action="list")
         code_path = asset_dir / "piece.js"
-        try:
-            code = code_path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise V3Error(f"piece code asset is missing: {version['id']}") from exc
+        if not usability.usable:
+            # DT-003: an unusable revision stays listed with its reason, but
+            # its unverified bytes are withheld — drifted code must not reach
+            # the editor, CLI readers, or Brain context as if it were truth.
+            code = ""
+        else:
+            try:
+                code = code_path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise V3Error(
+                    f"piece code asset is missing: {version['id']}"
+                ) from exc
         try:
             relative_audio = (asset_dir / "audio.mp3").resolve().relative_to(
                 self.repo_root
@@ -2424,7 +2456,7 @@ class V3Application:
         prompt_path = asset_dir / "prompt.json"
         receipt_path = asset_dir / "receipt.json"
         prompt_document: Mapping[str, Any] = {}
-        if prompt_path.is_file():
+        if usability.usable and prompt_path.is_file():
             try:
                 parsed_prompt = json.loads(prompt_path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError) as exc:
@@ -2481,6 +2513,8 @@ class V3Application:
             "promoted": version["id"] == piece.get("current_version_id"),
             "preview": version["kind"] == "preview"
             and version["id"] != piece.get("current_version_id"),
+            "usable": usability.usable,
+            "usability_reason": usability.reason,
         }
         for field, path in (
             ("prompt_url", prompt_path),

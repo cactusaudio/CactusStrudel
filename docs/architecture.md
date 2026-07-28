@@ -85,10 +85,39 @@ mutable piece metadata. The UI build does not own jobs.
 
 Rendering writes into same-filesystem staging. Only a successful render with
 non-empty audio, positive duration, full hashes, and a receipt is promoted into
-the final asset directory. That directory rename is atomic; the subsequent
-SQLite registration is a separate transaction. A failure between them can
-leave an orphan promoted receipt for reconciliation, so this is not one atomic
-database-plus-filesystem commit.
+the final asset directory. The directory rename is atomic and the SQLite
+registration is a separate transaction, so a durable `render_commit_intents`
+row binds the exact receipt and full registration payload before the rename.
+At startup — before interrupted-job marking — recovery adopts a promoted
+directory whose receipt matches its intent byte-for-byte and finalizes the
+job/version/model-run rows idempotently; anything else is abandoned and
+retained as explicit orphan evidence for reconciliation. A crash between
+promote and register therefore completes as the succeeded work it truthfully
+was instead of leaving a silent orphan.
+
+## Revision usability
+
+Every product action consumes one `RevisionUsability` verdict
+(`runtime/v3/service.py`):
+
+```text
+usable =
+  database revision exists
+  AND receipt parses
+  AND receipt identity matches database identity
+  AND source/audio bytes match receipt
+  AND revision lifecycle permits the requested action
+```
+
+Listing exposes unusable revisions with their reason; scoring, promotion,
+playback, and Brain context refuse them. The static server consults
+`asset_request_gate` before serving revision bytes: drifted files return 409,
+staging and unregistered asset paths are never served, and `receipt.json`
+stays readable as drift evidence. Verification is receipt/byte-based — a
+`legacy_partial` revision with fully verified bytes remains real heard truth —
+and is cached per revision keyed by file mtime/size so steady assets are not
+re-hashed on every listing. A rating binds to revision ID and exact audio SHA
+only after the served bytes re-verify against the receipt.
 
 ## Event model
 

@@ -192,6 +192,12 @@ class BrainMessageTests(unittest.TestCase):
             store = FakeTruthStore()
             database = FakeDatabase()
 
+            @staticmethod
+            def revision_usability(_version, *, action):
+                from types import SimpleNamespace
+
+                return SimpleNamespace(usable=True, reason=None)
+
         class BrainMustNotRun:
             @staticmethod
             def submit(*_args, **_kwargs):
