@@ -58,3 +58,4 @@ producer-brain/*.jsonl.bak.*
 
 # Machine-local archive bulk: outside active topology, never landed (see ultrareview 2026-07-28 Archive truth)
 /archive/local/
+!/archive/local/README.md
