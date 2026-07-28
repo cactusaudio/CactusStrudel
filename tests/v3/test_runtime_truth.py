@@ -22,7 +22,7 @@ RUNTIME_ROOT = Path(__file__).resolve().parents[2] / "runtime"
 if str(RUNTIME_ROOT) not in sys.path:
     sys.path.insert(0, str(RUNTIME_ROOT))
 
-from v3_api import GenerationRepository  # noqa: E402
+from v3_api import Conflict, GenerationRepository  # noqa: E402
 
 
 class RuntimeTruthTest(unittest.TestCase):
@@ -479,6 +479,13 @@ class RuntimeTruthTest(unittest.TestCase):
             batches.record_child(batch["id"], child["id"])
         batches.set_running(batch["id"], [committed["id"], queued["id"]])
         batches.request_cancel(batch["id"])
+        # GEN-TERM-001: the parent cannot terminalize around a live child.
+        with self.assertRaises(Conflict):
+            batches.finish(
+                batch["id"], status="done", piece_ids=["caller-must-not-win"]
+            )
+        # The runtime cancel path terminalizes the never-started child first.
+        self.runtime.request_cancel(queued["id"])
 
         finished = batches.finish(
             batch["id"],
@@ -490,6 +497,100 @@ class RuntimeTruthTest(unittest.TestCase):
         self.assertEqual(
             finished["piece_ids"],
             [result["version"]["piece_id"]],
+        )
+
+    def test_queued_batch_cancel_terminalizes_recorded_children(self) -> None:
+        batches = GenerationRepository(self.root / "runtime.sqlite3")
+        batch, _ = batches.create(
+            count=2,
+            prompt="cancel while queued",
+            profile_id="fixture",
+            idempotency_key="batch-queued-cancel",
+        )
+        child, _ = self.runtime.create_job(
+            kind="generation",
+            payload={"batch_id": batch["id"], "shot_index": 0},
+            idempotency_key="batch-queued-cancel-child-0",
+        )
+        batches.record_child(batch["id"], child["id"])
+
+        cancelled = batches.request_cancel(batch["id"])
+        self.assertEqual(cancelled["status"], "cancelled")
+        # Same transaction: the recorded child cannot strand behind the
+        # terminal parent even if the process dies right after this commit.
+        self.assertEqual(self.runtime.get_job(child["id"])["status"], "cancelled")
+        with self.assertRaises(Conflict):
+            batches.record_child(batch["id"], "job_late_allocation")
+
+    def test_recovery_sweeps_children_stranded_behind_terminal_parent(
+        self,
+    ) -> None:
+        batches = GenerationRepository(self.root / "runtime.sqlite3")
+        batch, _ = batches.create(
+            count=1,
+            prompt="stranded child",
+            profile_id="fixture",
+            idempotency_key="batch-stranded",
+        )
+        child, _ = self.runtime.create_job(
+            kind="generation",
+            payload={"batch_id": batch["id"], "shot_index": 0},
+            idempotency_key="batch-stranded-child-0",
+        )
+        batches.record_child(batch["id"], child["id"])
+        # Simulate the pre-fix crash artifact: parent terminal, child queued.
+        with self.runtime.database.transaction() as conn:
+            conn.execute(
+                """
+                UPDATE generation_batches
+                   SET status='cancelled', finished_at=?
+                 WHERE id=?
+                """,
+                ("2026-07-28T00:00:00Z", batch["id"]),
+            )
+        self.assertEqual(self.runtime.get_job(child["id"])["status"], "queued")
+
+        batches.recover_interrupted()
+        recovered = self.runtime.get_job(child["id"])
+        self.assertEqual(recovered["status"], "interrupted")
+        self.assertIn(
+            "already terminal at restart",
+            recovered["error_json"]["message"],
+        )
+
+    def test_generation_finish_abandons_live_children_only_explicitly(self) -> None:
+        batches = GenerationRepository(self.root / "runtime.sqlite3")
+        batch, _ = batches.create(
+            count=1,
+            prompt="abandon after bounded drain",
+            profile_id="fixture",
+            idempotency_key="batch-abandon",
+        )
+        child, _ = self.runtime.create_job(
+            kind="generation",
+            payload={"batch_id": batch["id"], "shot_index": 0},
+            idempotency_key="batch-abandon-child-0",
+        )
+        self.runtime.start_job(child["id"], worker_id="worker-live")
+        batches.record_child(batch["id"], child["id"])
+        batches.set_running(batch["id"], [child["id"]])
+
+        with self.assertRaises(Conflict):
+            batches.finish(batch["id"], status="failed", piece_ids=[])
+
+        finished = batches.finish(
+            batch["id"],
+            status="failed",
+            piece_ids=[],
+            error="render worker hung",
+            abandon_running=True,
+        )
+        self.assertEqual(finished["status"], "failed")
+        recovered_child = self.runtime.get_job(child["id"])
+        self.assertEqual(recovered_child["status"], "interrupted")
+        self.assertIn(
+            "abandoned by generation batch finalization",
+            recovered_child["error_json"]["message"],
         )
 
     def test_generation_recovery_reconciles_children_and_interrupts_dangling_jobs(

@@ -53,11 +53,16 @@ Generation and Brain jobs are server-owned. Refreshing or closing a browser
 does not cancel them. On process restart:
 
 - interrupted read-only work may be retried where the store contract allows;
-- completed mutating Brain tool calls retain per-call `committed` markers;
-- cancellation detected after such a commit is reported as
+- durably queued Brain jobs that were never submitted are redispatched;
+- an in-flight mutating Brain call is reconciled against its durable effect
+  by idempotency-key lookup: observed → committed reconciled receipt
+  (`effect_observed`), proven absent → the job requeues safely, undecidable
+  → `reconciliation_required` for a human;
+- cancellation detected after a commit is reported as
   `cancelled_after_commit`;
-- a later non-cancellation failure can still leave the parent Brain job
-  `failed` after an effect committed.
+- a generation parent never terminalizes around a live child: children are
+  drained or explicitly abandoned, and the terminal summary derives from
+  durable child rows.
 
 Activity and `bin/catch-up` provide the first readback. Inspect exact job and
 tool-call receipt rows before retrying; the parent terminal state alone is not

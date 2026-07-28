@@ -187,6 +187,14 @@ class TruthStore:
                 raise NotFound(f"job not found: {job_id}")
             return self._job_dict(row)
 
+    def get_job_by_idempotency_key(self, idempotency_key: str) -> dict | None:
+        with self.db.transaction(immediate=False) as conn:
+            row = conn.execute(
+                "SELECT * FROM jobs WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+            return self._job_dict(row) if row is not None else None
+
     def list_jobs(
         self, *, status: str | None = None, kind: str | None = None, limit: int = 100
     ) -> list[dict]:

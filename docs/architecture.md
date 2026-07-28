@@ -151,15 +151,26 @@ human brief + exact generation profile
 There is no second model pass marketed as validation. A failed mechanical step
 fails visibly; a successful render makes no aesthetic claim.
 
+A best-of-N parent derives its terminal summary only from durable child
+terminal rows: it cannot terminalize while an allocated child is still live.
+The failure path cancels, drains for a bounded interval, and then abandons
+any straggler explicitly — the abandonment is recorded on the child in the
+same finalization transaction, never implied.
+
 ## Agent Brain path
 
 Brain uses the Applied Agent settings revision only. The user message is stored
-once and tool calls are idempotent. Completed mutating calls record a
-`committed` marker, which cancellation handling consults. A later
-non-cancellation failure can still leave the parent job `failed` after a
-mutation committed, and the public terminal summary has no distinct
-`failed_after_commit` outcome. Inspect tool-call receipts before retrying such
-a job. Standard sends the selected supported effort. Ultra runs bounded
+once and tool calls are idempotent. Every mutating call carries an effect
+state (`executing → effect_observed | finalized | reconciliation_required`)
+beside its `committed` marker. The mutating tools create durable rows under
+the deterministic idempotency key `brain:{job_id}:{call_id}`, so restart
+recovery reconciles an in-flight mutating call by lookup, never by replay: an
+observed effect is recorded as a committed reconciled receipt (the job ends
+`failed`/`cancelled_after_commit` with the reason that the conversation is
+not resumable), a proven-absent effect makes the job safely requeueable, and
+an undecidable one stays `reconciliation_required` for a human. Durably
+queued jobs that were never submitted are redispatched at recovery instead of
+stranding. Standard sends the selected supported effort. Ultra runs bounded
 read-only scouts and one lead; only the lead receives mutating product tools,
 and upstream effort is `max`, never `"ultra"`.
 

@@ -206,7 +206,11 @@ class GenerationJobTests(unittest.TestCase):
             set(race_truth.jobs),
         )
         durable = self.app.generation_repo.get(batch["id"])
-        self.assertEqual(durable["child_job_ids"], list(race_truth.jobs))
+        # The raced child is refused durable allocation under a terminal
+        # parent; it is cancelled by the allocation failure path, and a crash
+        # before that cancel is covered by the payload-matching restart sweep
+        # (_interrupt_children_of_terminal_batches).
+        self.assertEqual(durable["child_job_ids"], [])
         self.assertEqual(durable["status"], "cancelled")
 
     def test_child_allocation_is_persisted_incrementally_and_idempotently(self) -> None:

@@ -252,6 +252,7 @@ class BrainRunnerService:
         ultra: BoundedUltraCoordinator | None = None,
         max_workers: int = 2,
         max_tool_rounds: int = 12,
+        effect_reconciler=None,
     ):
         if max_workers < 1 or max_workers > 8:
             raise ValueError("Brain runner max_workers must be 1..8")
@@ -259,6 +260,7 @@ class BrainRunnerService:
         self.settings = settings
         self.toolsets = dict(toolsets)
         self.ultra = ultra
+        self.effect_reconciler = effect_reconciler
         self.loop = ResponsesToolLoop(max_tool_rounds=max_tool_rounds)
         self._pool = ThreadPoolExecutor(
             max_workers=max_workers,
@@ -430,7 +432,9 @@ class BrainRunnerService:
         return self.store.get_job(job_id)
 
     def recover(self) -> dict[str, list[str]]:
-        recovered = self.store.recover_interrupted()
+        recovered = self.store.recover_interrupted(
+            effect_reconciler=self.effect_reconciler
+        )
         for job_id in recovered["queued"]:
             self.start(job_id)
         return recovered

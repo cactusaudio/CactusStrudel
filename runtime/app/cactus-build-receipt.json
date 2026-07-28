@@ -2,7 +2,7 @@
   "schema_version": 2,
   "protocol": {
     "name": "cactus-controlled-vite-build-v1",
-    "intent_sha256": "5fa2ad90126f3aa4f2aa736be83b9828a6497406ee83f5191e31a5be09d2b67d"
+    "intent_sha256": "c7821ed9b01012300c88e5fa59af8473f2bf7398b12a6f655c621f413f19542a"
   },
   "surface": "producer-ui",
   "task": {
@@ -17,21 +17,21 @@
   },
   "source": {
     "schema_version": 2,
-    "observed_head": "b03ff00a7c826cda52bec496263345a3cde0a028",
+    "observed_head": "f250190b68b5c3ae76b7f9dba11fc218f684d1a0",
     "branch": "codex/cactusstrudel-v3",
-    "working_tree_sha256": "9f43578f52a57b8eceda96e1d8d0d5008a7c1dbe85384293fff16ff709d7d8e5",
-    "landing_state_sha256": "b3a250468721a04247058a1eee175da694fb377e50ade4a8e58effcfcd812d93",
-    "effective_tree_sha256": "c7de26bded4e4b375f917d6812a0d8c13d610cac5a6ce5c2be67006d4b73b8ac",
-    "tracked_worktree_sha256": "bb79c20c075a7e88ff0dad684f60a182c920ea886178fda708e23fa91a0c522a",
-    "index_tree_sha256": "5c653e1e1678269d7de6a04298c38e7398793e09982f6a97ef9c2a090eebe817",
-    "index_flags_sha256": "538e9839fa01d22fa9b3ded453f45fe24a66458100b39dd7a74092a84a660332",
-    "untracked_tree_sha256": "701a166378484f8494233f44b43ea2ead550673d2da309bc0069fdf86de585c5",
-    "staged_state_sha256": "0e7b2899ecb8e45095c93703c0672880e09966e6da1b700cbaafeae4bf960d20",
-    "unstaged_state_sha256": "1f8e15bf4cf82f1209ab4291940f106b0513021c8ad7420e40c6f0c846dc0413",
+    "working_tree_sha256": "3a52c54648609543bb45aba25e0e83d0cd50d3a1c17c9ff479c57462a8467464",
+    "landing_state_sha256": "fd9fb40e034973925438b4d28437ba4b43ff3af12b76c42968cea5c64fff6940",
+    "effective_tree_sha256": "664f284ae582d233bb99088a8b0c343fdd5bf529483eb819c94fd05cfbdfe8a6",
+    "tracked_worktree_sha256": "b3554f856be8c9b31b5c064f105f0205f9a798fdfdd14e9b1416c67b913462f6",
+    "index_tree_sha256": "e939ae0919b2692921e85bc88daf2b6e38c47f270022be20cc7936ff7ab0a9d4",
+    "index_flags_sha256": "60a43a27d995952dc36c3840a83fae91bfe4ec8e61509a1096d32acc8d797e34",
+    "untracked_tree_sha256": "48153e6c543fda921ad4a958c5cd5de1e1a786276b262f1d4442ab73f60f1259",
+    "staged_state_sha256": "ce37f6815324fc23403d83da1fdf7ba7d26873f25a7de5d56e32a2fb8c80c356",
+    "unstaged_state_sha256": "d295e4d6ed031c02db3c387b3c7701e6f317f8c2a69e4c058bd377b4ff48b40e",
     "staged_changes": 0,
-    "unstaged_changes": 17,
-    "untracked_files": 3,
-    "dirty_entries": 20
+    "unstaged_changes": 9,
+    "untracked_files": 2,
+    "dirty_entries": 11
   },
   "builder": {
     "node": "v26.3.0",

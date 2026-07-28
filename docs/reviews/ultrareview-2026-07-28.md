@@ -355,9 +355,9 @@ without fixing them.
 | DT-002 | reverse reconciliation | `[R]` | fixed in source/tests |
 | DT-003 | exact heard bytes | `[R]` | fixed in source/tests |
 | DT-004 | promotion usability | `[R]` | fixed in source/tests |
-| GEN-TERM-001 | generation finalization | `[S]` | open P1 |
-| BJ-QUEUE-001 | Brain queued recovery | `[R]` | open P1 |
-| BJ-EFFECT-001 | Brain effect receipt | `[R]` | open P1 |
+| GEN-TERM-001 | generation finalization | `[S]` | fixed in source/tests |
+| BJ-QUEUE-001 | Brain queued recovery | `[R]` | fixed in source/tests |
+| BJ-EFFECT-001 | Brain effect receipt | `[R]` | fixed in source/tests |
 | UI-P1-001…008 | GUI identity/state/layout | `[R]/[S]` | fixed locally |
 | IDEM-001 | restart-level operation receipt | `[S]` | partially fixed; open P1 |
 | RS-001 | HEAD reproduces reviewed source | `[R]` | open landing boundary |
@@ -515,6 +515,15 @@ Blueprint:
 - reject late commits from the wrong owner epoch or attempt;
 - make restart reconciliation finish the same state machine.
 
+Landed after this review: `GenerationRepository.finish` refuses to
+terminalize while an allocated child row is live unless the caller
+explicitly abandons (which interrupts the stragglers in the same
+transaction); the batch failure path cancels, drains futures for a bounded
+interval, then finalizes with explicit abandonment. Late commits on
+restart-interrupted children already fail closed at `register_render_success`
+(InvalidTransition), and the release-fenced stores reject any post-shutdown
+finalization.
+
 ### BJ-QUEUE-001 — queued Brain work can strand on restart
 
 `[R]` A Brain row can be durably queued before runner submission. Recovery
@@ -524,6 +533,10 @@ queued forever.
 Persist dispatch intent and either submit it under the current owner or mark it
 reconciliation-required. Recovery must cover queued dispatches, not only work
 that already began.
+
+Landed after this review: recovery returns every durably queued row —
+including never-submitted stranded dispatches — and the runner redispatches
+them under the current owner, with a `recovered_queued` event per row.
 
 ### BJ-EFFECT-001 — external effect and tool receipt can split
 
@@ -541,6 +554,16 @@ planned → executing → effect_observed → finalized
 The effect identity, target identity, input hash, output identity, owner epoch
 and attempt belong in the durable row. Recovery reconciles the observed effect
 before retrying.
+
+Landed after this review: `brain_tool_calls.effect_state`
+(`executing → effect_observed | finalized | reconciliation_required`) plus a
+per-tool effect reconciler that answers by durable idempotency-key lookup
+(`brain:{job_id}:{call_id}`), never by replay. Observed effects become
+committed reconciled receipts and the job terminalizes truthfully;
+proven-absent effects requeue the job safely; undecidable ones stay
+`reconciliation_required`. `tests/agent_v3/test_effect_protocol.py` and
+`tests/v3_api/test_effect_probes.py` pin all four outcomes and the in-place
+schema upgrade.
 
 ### IDEM-001 — page-lifetime reconciliation is not restart recovery
 
@@ -1234,8 +1257,10 @@ Current classification:
   tests;
 - render commit intent and revision usability (`DT-001`, `DT-003`, `DT-004`):
   closed locally with fault tests;
-- remaining runtime P1 consistency (`GEN-TERM-001`, `BJ-*`, `IDEM-001`):
-  blueprint, not closed;
+- external-effect protocol (`GEN-TERM-001`, `BJ-QUEUE-001`, `BJ-EFFECT-001`):
+  closed locally with fault tests;
+- restart-level operation readback (`IDEM-001` server half): blueprint, not
+  closed;
 - effective source/build/served attribution: landed locally and independently
   counterexample-tested;
 - HEAD/fresh-checkout reproduction: awaits an intentional commit;

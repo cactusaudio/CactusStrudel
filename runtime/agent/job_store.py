@@ -343,8 +343,8 @@ class BrainJobStore:
                 INSERT INTO brain_tool_calls(
                     job_id, call_id, tool_name, args_hash, arguments_json,
                     mutating, status, result_json, error, committed,
-                    started_at, ended_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'running', NULL, NULL, 0, ?, NULL)
+                    effect_state, started_at, ended_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 'running', NULL, NULL, 0, ?, ?, NULL)
                 """,
                 (
                     job_id,
@@ -353,6 +353,7 @@ class BrainJobStore:
                     args_hash,
                     canonical_json(dict(arguments)),
                     int(mutating),
+                    "executing" if mutating else "finalized",
                     now,
                 ),
             )
@@ -384,7 +385,7 @@ class BrainJobStore:
                 """
                 UPDATE brain_tool_calls
                 SET status = 'completed', result_json = ?, committed = ?,
-                    ended_at = ?
+                    effect_state = 'finalized', ended_at = ?
                 WHERE job_id = ? AND call_id = ? AND status = 'running'
                 """,
                 (result_json, int(committed), now, job_id, call_id),
@@ -409,7 +410,8 @@ class BrainJobStore:
             conn.execute(
                 """
                 UPDATE brain_tool_calls
-                SET status = 'failed', error = ?, ended_at = ?
+                SET status = 'failed', error = ?, effect_state = 'finalized',
+                    ended_at = ?
                 WHERE job_id = ? AND call_id = ? AND status = 'running'
                 """,
                 (error[:1000], now, job_id, call_id),
@@ -470,12 +472,27 @@ class BrainJobStore:
             for row in rows
         ]
 
-    def recover_interrupted(self) -> dict[str, list[str]]:
-        """Recover after process loss without replaying an uncertain mutation."""
+    def recover_interrupted(
+        self,
+        *,
+        effect_reconciler: Any | None = None,
+    ) -> dict[str, list[str]]:
+        """Recover after process loss without replaying an uncertain mutation.
+
+        BJ-EFFECT-001: an in-flight mutating call is reconciled against its
+        durable effect before any decision. `effect_reconciler(call)` may
+        return {"observed": bool, "identity": {...}} — observed effects are
+        recorded as committed reconciled receipts; a probe that proves no
+        effect landed makes the job safely requeueable; an unknown outcome
+        stays `reconciliation_required`.
+        BJ-QUEUE-001: durably queued jobs that were never submitted are
+        returned for redispatch instead of stranding forever.
+        """
 
         self._require_owner("recover interrupted brain jobs")
         queued: list[str] = []
         failed: list[str] = []
+        reconciled: list[str] = []
         now = utc_now()
         with self._tx() as conn:
             jobs = conn.execute(
@@ -486,50 +503,166 @@ class BrainJobStore:
             ).fetchall()
             for row in jobs:
                 job_id = row["job_id"]
-                uncertain = conn.execute(
+                in_flight = conn.execute(
                     """
-                    SELECT call_id, status, committed FROM brain_tool_calls
-                    WHERE job_id = ? AND mutating = 1
-                        AND (status = 'running' OR committed = 1)
+                    SELECT call_id, tool_name, arguments_json
+                    FROM brain_tool_calls
+                    WHERE job_id = ? AND mutating = 1 AND status = 'running'
+                    ORDER BY started_at, call_id
+                    """,
+                    (job_id,),
+                ).fetchall()
+                committed_before = conn.execute(
+                    """
+                    SELECT 1 FROM brain_tool_calls
+                    WHERE job_id = ? AND mutating = 1 AND committed = 1
+                        AND status != 'running'
                     LIMIT 1
                     """,
                     (job_id,),
                 ).fetchone()
-                if uncertain:
-                    if (
-                        row["status"] == "cancel_requested"
-                        and bool(uncertain["committed"])
-                    ):
-                        status = "cancelled_after_commit"
-                        error = "cancelled after a mutating tool committed"
+                unresolved = False
+                observed_any = bool(committed_before)
+                for call in in_flight:
+                    verdict = None
+                    if effect_reconciler is not None:
+                        try:
+                            verdict = effect_reconciler(
+                                {
+                                    "job_id": job_id,
+                                    "call_id": call["call_id"],
+                                    "tool_name": call["tool_name"],
+                                    "arguments": json.loads(
+                                        call["arguments_json"]
+                                    ),
+                                }
+                            )
+                        except Exception:  # noqa: BLE001 - probe stays advisory
+                            verdict = None
+                    if verdict is not None and verdict.get("observed") is True:
+                        observed_any = True
                         conn.execute(
                             """
-                            UPDATE brain_jobs SET status = ?, error = ?,
-                                updated_at = ?, ended_at = ?
-                            WHERE job_id = ?
+                            UPDATE brain_tool_calls
+                            SET status = 'completed', committed = 1,
+                                effect_state = 'effect_observed',
+                                result_json = ?, ended_at = ?
+                            WHERE job_id = ? AND call_id = ?
                             """,
-                            (status, error, now, now, job_id),
+                            (
+                                canonical_json(
+                                    {
+                                        "reconciled": True,
+                                        "identity": dict(
+                                            verdict.get("identity") or {}
+                                        ),
+                                    }
+                                ),
+                                now,
+                                job_id,
+                                call["call_id"],
+                            ),
                         )
                         self._insert_event(
-                            conn, job_id, status, {"error": error}
+                            conn,
+                            job_id,
+                            "tool_reconciled",
+                            {
+                                "call_id": call["call_id"],
+                                "observed": True,
+                                "identity": dict(verdict.get("identity") or {}),
+                            },
                         )
-                        continue
-                    error = (
-                        "process stopped during a mutating tool call; "
-                        "manual reconciliation is required"
-                    )
+                    elif verdict is not None and verdict.get("observed") is False:
+                        conn.execute(
+                            """
+                            UPDATE brain_tool_calls
+                            SET status = 'failed', effect_state = 'finalized',
+                                error = ?, ended_at = ?
+                            WHERE job_id = ? AND call_id = ?
+                            """,
+                            (
+                                "no effect observed at recovery; "
+                                "safe to retry as a new call",
+                                now,
+                                job_id,
+                                call["call_id"],
+                            ),
+                        )
+                        self._insert_event(
+                            conn,
+                            job_id,
+                            "tool_reconciled",
+                            {"call_id": call["call_id"], "observed": False},
+                        )
+                    else:
+                        unresolved = True
+                        conn.execute(
+                            """
+                            UPDATE brain_tool_calls
+                            SET effect_state = 'reconciliation_required'
+                            WHERE job_id = ? AND call_id = ?
+                            """,
+                            (job_id, call["call_id"]),
+                        )
+                if unresolved:
+                    # An unresolved call never hides a known committed effect
+                    # or a cancellation: the terminal state reports both.
+                    if observed_any and row["status"] == "cancel_requested":
+                        status = "cancelled_after_commit"
+                        error = (
+                            "cancelled after a mutating tool committed; "
+                            "another call still requires manual reconciliation"
+                        )
+                    elif observed_any:
+                        status = "failed"
+                        error = (
+                            "a mutating effect committed; another call still "
+                            "requires manual reconciliation"
+                        )
+                    else:
+                        status = "failed"
+                        error = (
+                            "process stopped during a mutating tool call; "
+                            "manual reconciliation is required"
+                        )
                     conn.execute(
                         """
-                        UPDATE brain_jobs SET status = 'failed', error = ?,
+                        UPDATE brain_jobs SET status = ?, error = ?,
                             updated_at = ?, ended_at = ?
                         WHERE job_id = ?
                         """,
-                        (error, now, now, job_id),
+                        (status, error, now, now, job_id),
                     )
-                    self._insert_event(
-                        conn, job_id, "failed", {"error": error}
+                    self._insert_event(conn, job_id, status, {"error": error})
+                    if status == "failed":
+                        failed.append(job_id)
+                    continue
+                if observed_any:
+                    if row["status"] == "cancel_requested":
+                        status = "cancelled_after_commit"
+                        error = "cancelled after a mutating tool committed"
+                    else:
+                        status = "failed"
+                        error = (
+                            "mutating effect observed and reconciled; "
+                            "the model conversation is not resumable"
+                        )
+                    conn.execute(
+                        """
+                        UPDATE brain_jobs SET status = ?, error = ?,
+                            updated_at = ?, ended_at = ?
+                        WHERE job_id = ?
+                        """,
+                        (status, error, now, now, job_id),
                     )
-                    failed.append(job_id)
+                    self._insert_event(conn, job_id, status, {"error": error})
+                    if status == "failed":
+                        # `failed` stays the complete failure list;
+                        # `reconciled` marks the subset whose effect was
+                        # observed and recorded.
+                        failed.append(job_id)
+                        reconciled.append(job_id)
                     continue
                 if row["status"] == "cancel_requested":
                     conn.execute(
@@ -559,7 +692,21 @@ class BrainJobStore:
                 )
                 self._insert_event(conn, job_id, "recovered_queued", {})
                 queued.append(job_id)
-        return {"queued": queued, "failed": failed}
+            # BJ-QUEUE-001: durably queued rows with no runner are stranded
+            # dispatch intents; return them for redispatch under this owner.
+            stranded = conn.execute(
+                "SELECT job_id FROM brain_jobs WHERE status = 'queued'"
+            ).fetchall()
+            for row in stranded:
+                if row["job_id"] not in queued:
+                    self._insert_event(
+                        conn,
+                        row["job_id"],
+                        "recovered_queued",
+                        {"stranded": True},
+                    )
+                    queued.append(row["job_id"])
+        return {"queued": queued, "failed": failed, "reconciled": reconciled}
 
     def _initialize(self) -> None:
         with closing(self._connect()) as conn:
@@ -603,6 +750,7 @@ class BrainJobStore:
                     result_json TEXT,
                     error TEXT,
                     committed INTEGER NOT NULL DEFAULT 0,
+                    effect_state TEXT NOT NULL DEFAULT 'finalized',
                     started_at TEXT NOT NULL,
                     ended_at TEXT,
                     PRIMARY KEY(job_id, call_id),
@@ -628,6 +776,19 @@ class BrainJobStore:
             if "idempotency_key" not in columns:
                 conn.execute(
                     "ALTER TABLE brain_jobs ADD COLUMN idempotency_key TEXT"
+                )
+            call_columns = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(brain_tool_calls)")
+            }
+            if "effect_state" not in call_columns:
+                # BJ-EFFECT-001: pre-upgrade rows are terminal or will be
+                # reclassified by recovery; 'finalized' is the safe backfill.
+                conn.execute(
+                    """
+                    ALTER TABLE brain_tool_calls
+                    ADD COLUMN effect_state TEXT NOT NULL DEFAULT 'finalized'
+                    """
                 )
             conn.execute(
                 """

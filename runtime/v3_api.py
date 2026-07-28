@@ -9,6 +9,7 @@ tools all exercise the same state transitions.
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import wait as futures_wait
 from contextlib import closing
 from dataclasses import dataclass
 from hashlib import sha256
@@ -59,6 +60,7 @@ _TERMINAL_BATCH = frozenset(
 _DEFAULT_RENDER_WALL_TIMEOUT_SECONDS = 600.0
 _RENDER_POLL_SECONDS = 0.1
 _RENDER_TERM_GRACE_SECONDS = 5.0
+_BATCH_ABANDON_DRAIN_SECONDS = 30.0
 
 
 class V3Error(RuntimeError):
@@ -395,6 +397,14 @@ class GenerationRepository:
             raise NotFound(f"generation job not found: {batch_id}")
         return self._decode(row)
 
+    def get_by_idempotency_key(self, idempotency_key: str) -> dict[str, Any] | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT * FROM generation_batches WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+        return self._decode(row) if row is not None else None
+
     def list(self, *, limit: int = 100) -> list[dict[str, Any]]:
         with closing(self._connect()) as conn:
             rows = conn.execute(
@@ -419,11 +429,17 @@ class GenerationRepository:
             conn.execute("BEGIN IMMEDIATE")
             try:
                 row = conn.execute(
-                    "SELECT count, child_job_ids_json FROM generation_batches WHERE id=?",
+                    "SELECT status, count, child_job_ids_json"
+                    "  FROM generation_batches WHERE id=?",
                     (batch_id,),
                 ).fetchone()
                 if row is None:
                     raise NotFound(f"generation job not found: {batch_id}")
+                if row["status"] not in {"queued", "running"}:
+                    raise Conflict(
+                        "cannot allocate a child for a "
+                        f"{row['status']} generation batch"
+                    )
                 child_ids = list(json.loads(row["child_job_ids_json"]))
                 if normalized not in child_ids:
                     if len(child_ids) >= int(row["count"]):
@@ -496,7 +512,9 @@ class GenerationRepository:
         now = utc_now()
         with self._lock, closing(self._connect()) as conn, conn:
             row = conn.execute(
-                "SELECT status FROM generation_batches WHERE id=?", (batch_id,)
+                "SELECT status, child_job_ids_json FROM generation_batches"
+                " WHERE id=?",
+                (batch_id,),
             ).fetchone()
             if row is None:
                 raise NotFound(f"generation job not found: {batch_id}")
@@ -508,6 +526,16 @@ class GenerationRepository:
                      WHERE id=?
                     """,
                     (now, now, batch_id),
+                )
+                # A queued parent may already have recorded queued children;
+                # cancel them in the same transaction so a crash right after
+                # this commit cannot strand them behind a terminal parent.
+                self._interrupt_dangling_children(
+                    conn,
+                    self._dedupe_ids(list(json.loads(row["child_job_ids_json"]))),
+                    reason="parent generation batch cancelled before start",
+                    now=now,
+                    terminal_status="cancelled",
                 )
             elif row["status"] == "running":
                 conn.execute(
@@ -526,6 +554,7 @@ class GenerationRepository:
         status: str,
         piece_ids: list[str],
         error: str | None = None,
+        abandon_running: bool = False,
     ) -> dict[str, Any]:
         self._require_owner("finalize generation batch")
         if status not in _TERMINAL_BATCH:
@@ -543,6 +572,27 @@ class GenerationRepository:
                     conn.commit()
                     return self._decode(row)
                 child_ids = self._canonical_child_ids(conn, row)
+                # GEN-TERM-001: the parent terminal summary derives only from
+                # durable child terminal rows. A live child either drains
+                # first or is explicitly abandoned in this same transaction —
+                # the parent can never terminalize around it silently.
+                dangling = self._dangling_child_ids(conn, child_ids)
+                if dangling:
+                    if not abandon_running:
+                        raise Conflict(
+                            "generation batch cannot terminalize while "
+                            f"{len(dangling)} child job(s) are still live; "
+                            "drain them or abandon explicitly"
+                        )
+                    self._interrupt_dangling_children(
+                        conn,
+                        dangling,
+                        reason=(
+                            "abandoned by generation batch finalization "
+                            "after bounded drain"
+                        ),
+                        now=now,
+                    )
                 committed, has_truth_schema = self._committed_piece_ids(
                     conn, child_ids
                 )
@@ -592,6 +642,10 @@ class GenerationRepository:
         with self._lock, closing(self._connect()) as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
+                # A crash between a queued parent's cancellation and its
+                # children's cancellation can strand live children behind a
+                # terminal parent; sweep them before handling live parents.
+                self._interrupt_children_of_terminal_batches(conn, now=now)
                 rows = conn.execute(
                     """
                     SELECT * FROM generation_batches
@@ -737,6 +791,66 @@ class GenerationRepository:
             True,
         )
 
+    def _interrupt_children_of_terminal_batches(
+        self, conn: sqlite3.Connection, *, now: str
+    ) -> None:
+        try:
+            live_children = conn.execute(
+                """
+                SELECT id, payload_json FROM jobs
+                 WHERE kind='generation'
+                   AND status IN ('queued','running','cancel_requested')
+                """
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            if "no such table" in str(exc).lower():
+                return
+            raise
+        for child in live_children:
+            try:
+                payload = json.loads(child["payload_json"])
+            except (TypeError, json.JSONDecodeError):
+                continue
+            batch_id = str(payload.get("batch_id") or "")
+            if not batch_id:
+                continue
+            parent = conn.execute(
+                "SELECT status FROM generation_batches WHERE id=?",
+                (batch_id,),
+            ).fetchone()
+            if parent is None or parent["status"] not in _TERMINAL_BATCH:
+                continue
+            self._interrupt_dangling_children(
+                conn,
+                [str(child["id"])],
+                reason=(
+                    "parent generation batch was already terminal at restart"
+                ),
+                now=now,
+            )
+
+    @staticmethod
+    def _dangling_child_ids(
+        conn: sqlite3.Connection, child_ids: list[str]
+    ) -> list[str]:
+        if not child_ids:
+            return []
+        try:
+            placeholders = ",".join("?" for _ in child_ids)
+            rows = conn.execute(
+                f"""
+                SELECT id FROM jobs
+                 WHERE id IN ({placeholders})
+                   AND status IN ('queued', 'running', 'cancel_requested')
+                """,
+                tuple(child_ids),
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            if "no such table" in str(exc).lower():
+                return []
+            raise
+        return [str(row["id"]) for row in rows]
+
     @staticmethod
     def _interrupt_dangling_children(
         conn: sqlite3.Connection,
@@ -744,7 +858,10 @@ class GenerationRepository:
         *,
         reason: str,
         now: str,
+        terminal_status: str = "interrupted",
     ) -> None:
+        if terminal_status not in {"interrupted", "cancelled"}:
+            raise V3Error("dangling children may only be interrupted/cancelled")
         if not child_ids:
             return
         try:
@@ -766,18 +883,29 @@ class GenerationRepository:
             conn.execute(
                 """
                 UPDATE jobs
-                   SET status='interrupted', error_json=?,
+                   SET status=?, error_json=?,
                        finished_at=?, updated_at=?
                  WHERE id=?
                 """,
-                (canonical_json({"message": reason}), now, now, row["id"]),
+                (
+                    terminal_status,
+                    canonical_json({"message": reason}),
+                    now,
+                    now,
+                    row["id"],
+                ),
             )
             conn.execute(
                 """
                 INSERT INTO job_events(job_id,event_type,payload_json,created_at)
-                VALUES (?,'job.interrupted',?,?)
+                VALUES (?,?,?,?)
                 """,
-                (row["id"], canonical_json({"message": reason}), now),
+                (
+                    row["id"],
+                    f"job.{terminal_status}",
+                    canonical_json({"message": reason}),
+                    now,
+                ),
             )
 
     @staticmethod
@@ -1506,6 +1634,7 @@ class V3Application:
         cancel_event: threading.Event,
     ) -> None:
         child_ids: list[str] = []
+        future_to_child: dict[Any, str] = {}
         try:
             batch = self.generation_repo.get(batch_id)
             if batch["status"] == "cancelled":
@@ -1575,18 +1704,30 @@ class V3Application:
                 self._publish("piece.created", self.get_piece(piece_id))
             self._publish("job.updated", self.generation_job(batch_id))
         except Exception as exc:
+            was_cancelled = cancel_event.is_set()
+            cancel_event.set()
             for child_id in child_ids:
                 try:
                     self.truth.request_cancel(child_id)
                 except (NotFound, InvalidTransition):
                     pass
+            # GEN-TERM-001: drain allocated shots for a bounded interval so
+            # the terminal summary reflects durable child truth; anything
+            # still live afterwards is explicitly abandoned in the same
+            # finalization transaction, never terminalized around silently.
+            if future_to_child:
+                futures_wait(
+                    list(future_to_child),
+                    timeout=_BATCH_ABANDON_DRAIN_SECONDS,
+                )
             finished: dict[str, Any] | None = None
             try:
                 finished = self.generation_repo.finish(
                     batch_id,
-                    status="cancelled" if cancel_event.is_set() else "failed",
+                    status="cancelled" if was_cancelled else "failed",
                     piece_ids=[],
                     error=(str(exc) or type(exc).__name__)[:1600],
+                    abandon_running=True,
                 )
             except Exception:
                 pass
@@ -2294,7 +2435,59 @@ class V3Application:
             ultra=ultra,
             max_workers=2,
             max_tool_rounds=10,
+            effect_reconciler=self._reconcile_brain_effect,
         )
+
+    def _reconcile_brain_effect(
+        self, call: Mapping[str, Any]
+    ) -> dict[str, Any] | None:
+        """BJ-EFFECT-001 probe: was this mutating tool's durable effect
+        committed?
+
+        The mutating Brain tools create internal durable rows under the
+        deterministic idempotency key `brain:{job_id}:{call_id}`, so the
+        observed effect is a lookup, never a replay. Returns
+        {"observed": bool, "identity": {...}} or None when this probe cannot
+        decide.
+        """
+
+        tool_name = str(call.get("tool_name") or "")
+        arguments = dict(call.get("arguments") or {})
+        effect_key = f"brain:{call.get('job_id')}:{call.get('call_id')}"
+        try:
+            if tool_name == "generate_first_shots":
+                batch = self.generation_repo.get_by_idempotency_key(effect_key)
+                if batch is None:
+                    return {"observed": False, "identity": {}}
+                return {
+                    "observed": True,
+                    "identity": {
+                        "kind": "generation_batch",
+                        "batch_id": batch["id"],
+                        "status": batch["status"],
+                    },
+                }
+            if tool_name == "render_piece_preview":
+                job = self.truth.store.get_job_by_idempotency_key(effect_key)
+                if job is None:
+                    return {"observed": False, "identity": {}}
+                return {
+                    "observed": True,
+                    "identity": {
+                        "kind": "preview_job",
+                        "job_id": job["id"],
+                        "status": job["status"],
+                        "result_version_id": job.get("result_version_id"),
+                    },
+                }
+            # set_piece_archived deliberately has NO probe: its effect is
+            # mutable current state, so "matches requested" can be a
+            # coincidence in either direction. It stays
+            # reconciliation_required — the state is visible, reversible,
+            # and a human resolves it at a glance.
+        except Exception:
+            return None
+        return None
 
     # ------------------------------------------------------------------
     # UI document normalization
