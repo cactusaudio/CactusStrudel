@@ -1,22 +1,38 @@
-# Cactus producer-brain
+# Producer data and prompt assets
 
-Bowei-decided architecture (2026-05-18): **Gemini-3.1-flash-lite
-(native multimodal) composes Strudel → renders → LISTENS to its own
-render → self-critiques → revises.** Claude = governor/curriculum/
-meta-critic (between runs, NOT in-loop). v1 memory = DeepSeek-Gem-
-style **failure-intelligence spine** (`failure-spine.jsonl`): every
-heard defect → durable avoid-rule / taught technique, retrieved into
-the next compose prompt. Interactive bootstrap; promote to resident.
+This directory contains both live v3 assets and deliberately preserved legacy
+evidence. It is not an autonomous self-listening Agent loop.
 
-- `apps/cli/src/producer-brain.ts` — the loop. Run:
-  `tsx src/producer-brain.ts "<brief>" <rounds>`
-- `failure-spine.jsonl` — the accumulating brain (Claude-curated).
-- `run_*.json` — per-run transcript (Gemini's code + its own heard
-  critiques). `candidate_rules_*` — Gemini-proposed rules awaiting
-  Claude curation. `last_best.{strudel.js,url}` — best output.
+## Live
 
-Status: MVP loop proven end-to-end — Gemini genuinely hears its own
-output and self-improves (4→6/10 honest). Plateau at 6/10 on kick/
-bass low-end masking → addressed by curriculum entry fs-010.
-Renderer is the offline (oscillator) subset; final pieces are for
-strudel.cc.
+| Path | Role |
+|---|---|
+| `kernel/` | technical prompt-envelope fragments |
+| `kernel.lock.json` | compiled fragment/hash receipt |
+| `assets/<piece>/<revision>/` | immutable v3 code/audio/prompt/features/receipt |
+
+The kernel permits creative freedom and prevents technical/render failure. It
+does not prescribe taste, arrangement formulas, required layers, or mixing
+recipes.
+
+## Preserved evidence
+
+| Path | Role |
+|---|---|
+| `corpus.jsonl` | original legacy corpus rows |
+| `pieces/`, `audio/`, `prompts/` | exact legacy source assets |
+| `failure-spine.jsonl` | heard findings and historical hypotheses |
+| `revisions.jsonl` | legacy revision research rows |
+
+These files support provenance and dry-run reconciliation. They do not own the
+current piece pointer, current score, jobs, Agent Settings or generation
+profiles. Do not rewrite them to make historical provenance look cleaner.
+
+Old self-critique runs, checkpoints, prototype outputs and research code are
+preserved under `archive/research-v1/` or the ignored `archive/local/`.
+
+## Human boundary
+
+Features, spine entries and aggregate research may suggest what to listen for.
+Only Bowei scores or accepts music. Promotion, scoring, Agent Apply and kernel
+changes remain explicit actions.

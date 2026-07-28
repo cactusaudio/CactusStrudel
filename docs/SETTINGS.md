@@ -1,108 +1,108 @@
-# Settings + Configuration
+# Agent and generation settings
 
-CactusStrudel reads configuration in 3 layers (highest wins):
+## Stable topology
 
-1. **Environment variables**
-2. **`~/.cactus-strudel/config.json`** (mode 0600, machine-local, survives reinstalls)
-3. **Built-in defaults** (in `runtime/user_config.py`)
-
-In the UI, the **Settings page** (`/runtime/settings.html`) edits layer 2. Use
-env vars (layer 1) only for one-off / scripted overrides.
-
-## Schema
-
-```jsonc
-{
-  "cliproxy": {
-    "enabled": true,                              // toggle the CLIProxy route
-    "base_url": "http://127.0.0.1:8318/v1",      // your local CLIProxy gateway
-    "api_key": ""                                 // the gateway's API key
-  },
-  "providers": {
-    "openai":    { "api_key": "", "base_url": "https://api.openai.com/v1" },
-    "anthropic": { "api_key": "", "base_url": "https://api.anthropic.com" },
-    "google":    { "api_key": "", "base_url": "https://generativelanguage.googleapis.com/v1beta" },
-    "xai":       { "api_key": "", "base_url": "https://api.x.ai/v1" }
-  },
-  "agy":  { "bin_path": "~/.local/bin/agy" },
-  "ui":   { "default_slot": "gpt-5.5" },
-  "cc":   { "session_dir": "~/.claude/projects/-Users-bowei" }
-}
+```text
+CactusStrudel → direct native CLIProxy `/v1` → exact selected model
 ```
 
-## Dispatch model
+There is no shim, Router/Core, `84xx` port, vendor fallback,
+`/chat/completions` fallback, model alias fallback, or hidden effort fallback.
+The authenticated live catalog is authoritative for currently available IDs.
+Exact capability enrichment lives in `runtime/agent/capabilities.py`.
 
-Each of the 7 generation slots has two routing paths defined in
-`runtime/serve.py` `BACKEND_REGISTRY`:
+## Agent Settings lifecycle
 
-| Slot | Vendor | CLIProxy model | Direct vendor model |
-|---|---|---|---|
-| GPT 5.5 | openai | `gpt-5.5(high)` | `gpt-5-mini` |
-| GPT 5.5x | openai | `gpt-5.5(xhigh)` | `gpt-5` |
-| AGY CLI | agy | — | — |
-| Opus 4.8 | anthropic | `claude-opus-4-8(xhigh)` | `claude-opus-4-8` |
-| Gemini Flash | google | `gemini-3-flash-agent(high)` | `gemini-2.5-flash` |
-| Gemini Pro | google | `gemini-pro-agent(high)` | `gemini-2.5-pro` |
-| Grok Build | xai | `grok-build-0.1(high)` | `grok-2-1212` |
-
-At dispatch time, `_resolve_slot_route(slot)` picks one:
-
-```
-if vendor == 'agy' and AGY binary exists:                → mode='agy'
-elif cliproxy.enabled and cliproxy.api_key present:      → mode='cliproxy'
-elif providers[vendor].api_key present:                  → mode='direct'
-else:                                                     → unavailable, reason="..."
+```text
+Draft → authenticated Catalog → exact model → Test → Apply → readback
 ```
 
-Slots that resolve to no route are marked **red unavailable** in the UI
-(`/api/backends` returns `available:false, reason:"..."`).
+The draft contains:
 
-## Env var overrides
+- Base URL;
+- Keychain credential reference;
+- exact model ID;
+- supported reasoning effort or `null`;
+- Standard or Ultra orchestration.
 
-These env vars override the corresponding config fields:
+Changing endpoint, credential, model, effort, or orchestration changes the
+fingerprint. Apply accepts only a current successful Test for the exact same
+fingerprint. Test is evidence, not activation.
 
-| Env | Overrides |
-|---|---|
-| `CLIPROXY_ENABLED` | `cliproxy.enabled` (`true`/`false`) |
-| `CLIPROXY_BASE_URL` | `cliproxy.base_url` |
-| `CLIPROXY_API_KEY` | `cliproxy.api_key` |
-| `OPENAI_API_KEY` | `providers.openai.api_key` |
-| `ANTHROPIC_API_KEY` | `providers.anthropic.api_key` |
-| `GOOGLE_API_KEY` | `providers.google.api_key` |
-| `XAI_API_KEY` | `providers.xai.api_key` |
-| `AGY_BIN` | `agy.bin_path` |
-| `CC_SESSION_DIR` | `cc.session_dir` |
-| `CACTUS_DEFAULT_SLOT` | `ui.default_slot` |
-| `CACTUS_ROOT` | Project root (default = derived from `runtime/serve.py` location) |
+Only Bowei performs Apply. Brain has no tool that can Test or Apply settings.
 
-## API endpoints
+## Test receipt
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/api/settings` | GET | Return current config (API keys masked as `••••• (set)`) |
-| `/api/settings` | PUT | Update config; masked keys are preserved (only changed when overwritten) |
-| `/api/settings/test-backend` | POST | Test connectivity (`{target: "cliproxy"\|"agy"\|<vendor>}` → `{ok, detail, latency_ms}`) |
-| `/api/setup-status` | GET | `{needs_setup: bool, available_count, total, unavailable: [{slot, label, reason}]}` |
-| `/api/backends` | GET | Per-slot availability + mode (cliproxy/direct/agy) |
+A successful Test has three stages:
 
-## First-run UX
+1. authenticated `/models`; selected exact ID is present;
+2. selected model calls inert `agent_probe`;
+3. the client returns `function_call_output` and receives final `READY`/`OK`.
 
-When `serve.py` boots with no `~/.cactus-strudel/config.json` and no env vars
-configured:
-- `/api/backends` reports all CLIProxy/direct slots as `available:false`
-- Only `AGY CLI` is available IF `~/.local/bin/agy` exists
-- `main.html` shows a gold banner: "⚙ No backends configured yet — Set up Settings →"
-- User clicks → fills CLIProxy section OR direct vendor section OR both
-- Save → reload → all slots that have a valid route become green-available
+Each stage records latency and request identity. A failed or stale Test remains
+visible and cannot be Applied.
 
-## Key security
+## Reasoning and Ultra
 
-API keys are stored in plaintext JSON at `~/.cactus-strudel/config.json` with
-file mode `0600` (owner-read-only). Config directory itself is mode `0700`.
+- Model effort and orchestration are separate settings.
+- Supported GPT effort values are `low`, `medium`, `high`, `xhigh`, `max`.
+- `"ultra"` is never sent as upstream effort or added to a model ID.
+- Standard sends the chosen supported effort.
+- Ultra keeps that choice visible but sends upstream `max` for bounded scouts
+  and lead.
+- Ultra uses at most two read-only, tool-free scouts and one lead. Only the
+  lead receives product tools.
+- A failed scout fails the Ultra job; it does not silently degrade to Standard.
 
-UI **never returns raw keys** in `/api/settings` GET — fields with a non-empty
-key return `••••• (set)`. On PUT, that masked sentinel means "keep the existing
-key unchanged"; an actual new string overwrites.
+## Generation settings
 
-Future hardening (not yet implemented): move keys to macOS keychain via
-`security` CLI.
+Generation and Brain activation are intentionally separate:
+
+- `settings/generation/sync` requires the current matching passing Agent Test
+  and its authenticated catalog;
+- sync publishes only profiles whose exact IDs are present;
+- sync never Applies Agent settings;
+- the Studio default must be one exact configured profile ID;
+- unchanged sync/default operations are no-ops with readback.
+
+At queue time, every generation batch durably snapshots the exact immutable
+generation configuration and compiled prompt kernel. All 1/2/4 children use
+that same snapshot even if Settings or kernel source changes while they wait.
+Every generation receipt records the exact base route, model ID, effort,
+orchestration, settings revision, prompt-kernel hash, validator mode, response
+hash, render hashes and job identity.
+
+## Persistence
+
+- Settings JSON: `~/.cactus-strudel/v3/agent/`.
+- Current generation pointer: `~/.cactus-strudel/v3/generation.json`.
+- Immutable generation revisions:
+  `~/.cactus-strudel/v3/generation-revisions/gencfg-*.json`.
+- Operational jobs/receipts: `~/.cactus-strudel/v3/runtime.sqlite3`.
+- Key bytes: macOS Keychain service `com.cactusstrudel.agent.v3`.
+- Browser and repo files receive only masked state or credential references.
+
+Replacing or resetting a candidate removes now-unreferenced candidate
+credentials while preserving any reference pinned by draft state, every
+immutable Applied Agent revision, or every immutable generation revision.
+
+## Environment boundary
+
+Historical `CLIPROXY_*` and `CACTUS_AGENT_*` variables do not override the
+panel. The in-product Applied revision is the sole Brain route/model/effort
+authority. Operational variables such as the server port or state-root path
+remain process controls, not Agent configuration.
+
+## Verification boundary
+
+Use the UI or exact API readback to distinguish:
+
+- candidate saved;
+- catalog discovered;
+- Test passed;
+- settings Applied;
+- generation profiles synchronized;
+- Studio default changed;
+- a job actually used that configuration.
+
+Do not infer one state from another.

@@ -1,29 +1,63 @@
 #!/usr/bin/env bash
-# piece <name> — show entry + code + prompt snapshot for a piece
+# piece <name-or-id> — show one v3 piece, immutable revisions, code, and provenance
 set -euo pipefail
-[ -z "${1:-}" ] && { echo "usage: piece <name>" >&2; exit 1; }
-NAME="$1"
-BASE="${CACTUS_BASE:-http://localhost:8765}"
-ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
-echo "=== entry ==="
-ROOT="$ROOT" curl -s "$BASE/api/piece?name=$NAME" | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-e=d.get('entry',{}); code=d.get('code','')
-print(json.dumps(e, indent=2, ensure_ascii=False))
+if [[ "${1:-}" == "--help" || -z "${1:-}" ]]; then
+  echo "usage: bin/piece <piece-name-or-id>"
+  echo "Reads the active and archived v3 library; it does not change state."
+  [[ -n "${1:-}" ]] && exit 0 || exit 2
+fi
+
+TARGET="$1"
+BASE="${CACTUS_BASE:-http://127.0.0.1:8765}"
+
+TARGET="$TARGET" curl -fsS --max-time 15 "$BASE/api/v2/pieces?archived=all" |
+  TARGET="$TARGET" python3 -c '
+import json, os, sys
+data = json.load(sys.stdin)
+target = os.environ["TARGET"]
+pieces = data.get("pieces", [])
+matches = [
+    piece for piece in pieces
+    if piece.get("id") == target or piece.get("name") == target
+]
+if not matches:
+    print(f"piece not found: {target}", file=sys.stderr)
+    raise SystemExit(3)
+if len(matches) > 1:
+    print(f"piece name is ambiguous; use the stable ID: {target}", file=sys.stderr)
+    for piece in matches:
+        print("  {}  {}".format(piece.get("id"), piece.get("name")), file=sys.stderr)
+    raise SystemExit(4)
+
+piece = matches[0]
+active_id = piece.get("active_revision_id")
+print("=== piece ===")
+summary = {key: piece.get(key) for key in (
+    "id", "name", "created_at", "updated_at", "archived", "collection",
+    "tags", "active_revision_id", "duplicate_of", "recovery",
+)}
+print(json.dumps(summary, indent=2, ensure_ascii=False))
 print()
-print('=== code ('+str(len(code))+' chars) ===')
+print("=== immutable revisions ===")
+for rev in piece.get("revisions", []):
+    marker = "*" if rev.get("id") == active_id else " "
+    score = rev.get("score")
+    score_text = f"{score:.1f}" if isinstance(score, (int, float)) else "·"
+    revision_id = rev.get("id")
+    audio_sha = str(rev.get("audio_sha") or "")[:12]
+    created_at = rev.get("created_at", "")
+    print(
+        f"{marker} {revision_id}  score {score_text}  "
+        f"audio {audio_sha}…  {created_at}"
+    )
+
+active = piece.get("active_revision") or {}
+print()
+print("=== active provenance ===")
+print(json.dumps(active.get("provenance") or {}, indent=2, ensure_ascii=False))
+print()
+code = active.get("code") or ""
+print(f"=== active code ({len(code)} chars) ===")
 print(code)
-prompt_rel=e.get('prompt')
-if prompt_rel:
-    import os
-    p=os.path.join(os.environ['ROOT'], prompt_rel)
-    if os.path.exists(p):
-        print()
-        print('=== prompt snapshot ('+str(os.path.getsize(p))+' bytes) ===')
-        print(open(p).read())
-    else:
-        print()
-        print('(prompt file missing at', p, ')')
-"
+'

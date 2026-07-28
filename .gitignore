@@ -4,32 +4,29 @@ dist/
 .cache/
 *.tsbuildinfo
 coverage/
+.pytest_cache/
+.ruff_cache/
 .DS_Store
 .env
 .env.*
 !.env.example
 
-# Runtime artifacts
-sessions/*/
-!sessions/.gitkeep
-apps/cli/sessions/
-
-# G7 learning ledger — append-only per-machine; not part of source.
-docs/learning-ledger.jsonl
-apps/cli/docs/learning-ledger.jsonl
-refs/*
-!refs/README.md
-!refs/.gitkeep
-
-# Build artifacts
-apps/renderer-page/dist/
-apps/cli/dist/
-packages/*/dist/
-
-# Playwright
+# Browser/build output
 test-results/
 playwright-report/
 playwright/.cache/
+.playwright-cli/
+/output/
+
+# Local-only archives. Tracked historical source belongs under
+# archive/research-v1; bulky generated evidence and reference corpora do not.
+archive/local/*
+!archive/local/README.md
+
+# Ephemeral handoff snapshots. The generator and format contract are tracked;
+# the latest machine/session snapshot is not.
+handoffs/*.md
+!handoffs/README.md
 
 # Editor
 .vscode/
@@ -51,25 +48,13 @@ playwright/.cache/
 __pycache__/
 *.pyc
 
-# Local runtime/private operator state
-.runtime-bak-attic/
-runtime/cc-bridge/.kick
-runtime/cc-bridge/*.jsonl
-runtime/cc-bridge/brain-edit-backups/
-runtime/uploads/
+# Frozen runtime-v2 private evidence is machine-local.
+archive/runtime-v2/data/cc-bridge/
 
-# G9 audit:cookbook-impact output dirs (per-machine scratch)
-apps/cli/audits/
-/audits/
-
-# G11A studio-ui build output
-apps/studio-ui/dist/
-
-
-# Generated audio renders — big binary, regenerable from .js sources
+# Large media/evidence is retained outside active source.
 producer-brain/audio/
-producer-brain/archive-v0/
-producer-brain/checkpoints/
-producer-brain/midi/
-producer-brain/dev-mode-audit.jsonl
+producer-brain/assets/
 producer-brain/*.jsonl.bak.*
+
+# Machine-local archive bulk: outside active topology, never landed (see ultrareview 2026-07-28 Archive truth)
+/archive/local/

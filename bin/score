@@ -1,10 +1,95 @@
 #!/usr/bin/env bash
-# score <name> <0-10> [note] — score a piece via API
+# score <name-or-id> <0-10> [note...] — score the exact active v3 revision/audio
 set -euo pipefail
-[ -z "${1:-}" ] || [ -z "${2:-}" ] && { echo "usage: score <name> <0-10> [note]" >&2; exit 1; }
-NAME="$1"; NUM="$2"; NOTE="${3:-}"
-BASE="${CACTUS_BASE:-http://localhost:8765}"
-BODY=$(python3 -c "
-import json
-print(json.dumps({'name':'$NAME','score':float('$NUM'),'note':'$NOTE'}))")
-curl -s -X POST -H 'Content-Type: application/json' -d "$BODY" "$BASE/api/score" | python3 -m json.tool
+
+if [[ "${1:-}" == "--help" || -z "${1:-}" || -z "${2:-}" ]]; then
+  echo "usage: bin/score <piece-name-or-id> <0-10> [listening note...]"
+  echo "The score is bound to the piece active revision and exact audio SHA."
+  [[ "${1:-}" == "--help" ]] && exit 0 || exit 2
+fi
+
+TARGET="$1"
+SCORE="$2"
+shift 2
+NOTE="$*"
+BASE="${CACTUS_BASE:-http://127.0.0.1:8765}"
+
+target_json="$(
+  TARGET="$TARGET" curl -fsS --max-time 15 "$BASE/api/v2/pieces?archived=all" |
+    TARGET="$TARGET" python3 -c '
+import json, os, sys
+target = os.environ["TARGET"]
+matches = [
+    piece for piece in json.load(sys.stdin).get("pieces", [])
+    if piece.get("id") == target or piece.get("name") == target
+]
+if not matches:
+    print(f"piece not found: {target}", file=sys.stderr)
+    raise SystemExit(3)
+if len(matches) > 1:
+    print(f"piece name is ambiguous; use the stable ID: {target}", file=sys.stderr)
+    raise SystemExit(4)
+piece = matches[0]
+rev = piece.get("active_revision") or {}
+if not rev.get("id") or not rev.get("audio_sha"):
+    print("piece has no scoreable active revision receipt", file=sys.stderr)
+    raise SystemExit(5)
+print(json.dumps({
+    "piece_id": piece["id"],
+    "piece_name": piece["name"],
+    "revision_id": rev["id"],
+    "audio_sha": rev["audio_sha"],
+}, ensure_ascii=False))
+'
+)"
+
+body="$(
+  TARGET_JSON="$target_json" SCORE="$SCORE" NOTE="$NOTE" python3 -c '
+import json, math, os
+target = json.loads(os.environ["TARGET_JSON"])
+score = float(os.environ["SCORE"])
+if not math.isfinite(score) or not 0 <= score <= 10:
+    raise SystemExit("score must be a finite number from 0 to 10")
+print(json.dumps({
+    "audio_sha": target["audio_sha"],
+    "score": score,
+    "note": os.environ["NOTE"],
+}, ensure_ascii=False))
+'
+)"
+
+read -r piece_id revision_id < <(
+  TARGET_JSON="$target_json" python3 -c '
+import json, os
+target = json.loads(os.environ["TARGET_JSON"])
+print(target["piece_id"], target["revision_id"])
+'
+)
+
+response="$(
+  intent_key="$(python3 -c 'import uuid; print("bin-score-" + uuid.uuid4().hex)')"
+  curl -fsS --max-time 20 \
+    -X PUT \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $intent_key" \
+    --data-binary "$body" \
+    "$BASE/api/v2/pieces/$piece_id/revisions/$revision_id/score"
+)"
+
+TARGET_JSON="$target_json" printf '%s' "$response" |
+  TARGET_JSON="$target_json" python3 -c '
+import json, os, sys
+target = json.loads(os.environ["TARGET_JSON"])
+piece = json.load(sys.stdin).get("piece") or {}
+rev = piece.get("active_revision") or {}
+piece_name = target["piece_name"]
+revision_id = target["revision_id"]
+audio_sha = target["audio_sha"][:12]
+score = rev.get("score")
+print(
+    f"scored {piece_name}  "
+    f"revision {revision_id}  "
+    f"audio {audio_sha}…  "
+    f"score {score}"
+)
+'

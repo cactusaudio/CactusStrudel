@@ -1,68 +1,162 @@
 # Operations
 
-## Run modes (CLI)
+## Start and read back
 
 ```bash
-# Generate a track
-pnpm cactus produce -b 'dark dub techno 130 BPM'           # render + analyze + report
-pnpm cactus produce -b 'dark dub techno 130 BPM' --no-render  # graph + code only
-
-# Multiple candidates with seed fan-out
-pnpm cactus sketch -b 'peak time techno 134 BPM' -n 5
-
-# Revise via natural-language feedback
-pnpm cactus revise -s <session_uuid> -f 'punchier kick, brighter hats'
-
-# Per-orbit stems (one WAV per orbit)
-pnpm cactus stems -s <session_uuid>
-
-# Show why the system made choices
-pnpm cactus explain -s <session_uuid>
-
-# Inspect taste memory across all sessions
-pnpm cactus taste
-
-# Studio UI (read-only viewer)
-pnpm dev:renderer    # renderer-page on :5173 (used by render flow)
-pnpm --filter @cactus/studio-ui dev   # studio UI on :5174
+runtime/serve
+bin/health
+bin/catch-up
 ```
 
-## Session bundle layout
+The server binds `127.0.0.1:8765`; the desktop launcher opens `/studio`.
+`CACTUS_NO_BROWSER=1 runtime/serve` starts without opening a page.
 
+One runtime owner per state root: startup acquires `owner.lock` before the
+port and before any migration/recovery. A second launch against the same
+state root exits with code 3 and mutates nothing, even when its port is
+free; a port conflict on a free state root exits with code 4 before any
+state change. `owner.json` reads back the current epoch and lifecycle stage.
+
+Daily reads:
+
+```bash
+bin/recent 15
+bin/piece <piece-name-or-id>
+bin/v3-truth status
 ```
-sessions/<session_uuid>/
-├── iter_0000.json          ← canonical SessionGraph
-├── iter_0000.strudel.js    ← compiled deterministic Strudel
-├── iter_0000.wav           ← rendered audio (32-bit float, stereo)
-├── iter_0000.features.json ← AnalyzerFeatures (spectral / rhythmic / loudness / stereo)
-├── iter_0000.report.md     ← human-readable summary
-├── iter_0001.json          ← (after revise/loop)
-└── stems/
-    ├── stem_orbit_0__kick.wav
-    ├── stem_orbit_1__hat.wav
-    └── ...
+
+Mutations:
+
+```bash
+bin/gen 2 --profile gemini-pro "human musical brief"
+bin/score <piece-name-or-id> 7.8 "listening note"
 ```
 
-## Render performance
+## State locations
 
-- OfflineAudioContext path: ~3.5s per 4-second render (faster than realtime).
-- Browser process is shared across renders within a single invocation (refcount-managed).
-- 5-sketch + 4-revision loop ≈ 30 renders × 3.5s ≈ 105s wall clock.
+| Data | Location |
+|---|---|
+| canonical database | `~/.cactus-strudel/v3/runtime.sqlite3` |
+| runtime owner lease | `~/.cactus-strudel/v3/owner.lock` + `owner.json` |
+| Agent settings | `~/.cactus-strudel/v3/agent/` |
+| work staging | `~/.cactus-strudel/v3/work/` |
+| immutable assets | `producer-brain/assets/` |
+| served UI | `runtime/app/` |
+| prompt kernel | `producer-brain/kernel/` |
+| legacy source evidence | `producer-brain/{corpus.jsonl,pieces,audio,prompts}` |
 
-## Network requirements
+Do not create a repo-local SQLite database as a second truth store.
 
-- Renderer-page bundles `@strudel/web` locally; no live strudel.cc dependency.
-- Default sample bank (`bd`, `hh`, `cp`, etc.) loads via `samples('github:tidalcycles/dirt-samples')`
-  on first init. Without network, synth-based patterns (`note(...).s('sawtooth')`) still work.
+## Job recovery
 
-## Determinism
+Generation and Brain jobs are server-owned. Refreshing or closing a browser
+does not cancel them. On process restart:
 
-- Same `--seed` + same brief → byte-equal `pattern_bank` (verified by tests).
-- Same SessionGraph → byte-equal Strudel code (compiler is deterministic).
-- Same Strudel code → near-deterministic WAV (chromium-1217 OfflineAudioContext; jitter < 1ms).
+- interrupted read-only work may be retried where the store contract allows;
+- completed mutating Brain tool calls retain per-call `committed` markers;
+- cancellation detected after such a commit is reported as
+  `cancelled_after_commit`;
+- a later non-cancellation failure can still leave the parent Brain job
+  `failed` after an effect committed.
 
-## License obligations (AGPL-3.0-or-later)
+Activity and `bin/catch-up` provide the first readback. Inspect exact job and
+tool-call receipt rows before retrying; the parent terminal state alone is not
+yet a complete effects summary.
 
-- Distributing this code as a network service triggers AGPL §13.
-- Internal Cactus use (Bowei's machines, private servers) is unaffected.
-- See ADR 0001 for context.
+Recovery runs only in the process that holds the owner lease, before HTTP
+work is accepted. Job events stamp the recovering `owner_epoch`, so restart
+markings are attributable to the exact owner that made them.
+
+## Shutdown
+
+SIGINT and SIGTERM take the same bounded path:
+
+```text
+quiesce (refuse new dispatch)
+  → cancel in-flight generation/Brain work
+  → drain up to CACTUS_SHUTDOWN_TIMEOUT (default 10s)
+  → close pools
+  → release ownership (owner.json stage becomes closed)
+```
+
+In-flight work that finalizes inside the drain window records its honest
+terminal state. Work that cannot drain is abandoned with the lease released:
+its late finalization attempts fail closed, and the next owner's recovery
+marks the rows `interrupted`. During quiescing, mutating API calls return
+503 `runtime is shutting down`.
+
+## Backup and restore
+
+There is currently no repo-owned command that captures and restores the
+canonical SQLite database together with immutable assets, Agent state and
+generation revisions. Per-setting revision history and asset receipts are not a
+full runtime backup. Full snapshot/restore automation remains outstanding.
+
+## Builds
+
+```bash
+pnpm --filter @cactus/producer-ui build
+pnpm --filter @cactus/renderer-page build
+node scripts/build-receipt.mjs check producer-ui
+node scripts/build-receipt.mjs check renderer-page
+node scripts/build-receipt.mjs verify-served producer-ui \
+  --base-url http://127.0.0.1:8765
+```
+
+The first command owns `runtime/app/`; the second owns
+`apps/renderer-page/dist/`. Both are controlled builds. They reject task-input
+symlinks, rescan source before publication, replace only their declared output
+tree, and write an adjacent `cactus-build-receipt.json` containing source,
+lockfile, builder, command and output identities.
+
+The renderer driver uses preview output only when its receipt is current and
+the preview server returns the receipted bytes. Otherwise it starts from
+current source. It waits for the old Vite child to exit before reusing a port.
+The Producer UI `verify-served` command compares every receipted file with the
+running server.
+
+Read the effective source separately:
+
+```bash
+bin/source-attest --pretty
+```
+
+This attests current source and Git-exposed index flags without pretending that
+the uncommitted v3 cutover is already reproducible from HEAD.
+
+## Settings and generation
+
+Agent candidate Test does not activate Brain. Apply remains a Bowei-owned UI
+action. Generation profiles can be synchronized from the current matching
+passing Test without applying Agent settings. See `docs/SETTINGS.md`.
+
+## Legacy and archive
+
+- `/legacy/main`, `/legacy/data`, `/legacy/settings`, `/legacy/spine` are
+  script-free screenshot viewers for the frozen GUI evidence. Exact archived
+  HTML remains available only through the archive restore boundary.
+- old bookmark URLs redirect to the new workspace;
+- old mutation APIs return not found;
+- `bin/v3-reconcile` is dry-run by default;
+- `archive/` is not on the operational path.
+
+The archived v2 `tasks.jsonl` remains an input to recovery-candidate
+reconciliation. Do not delete it as generic log debris.
+
+## Handoff and state
+
+```bash
+bin/state-refresh
+bin/handoff start "objective"
+bin/handoff check
+bin/handoff close "outcome"
+```
+
+`docs/STATE.md` is a generated observation with a timestamp. Live readback wins
+if it has changed since generation. Its repository section is derived from the
+effective source attestation, including Git-exposed raw index flags and
+untracked source. Its build section reads both controlled receipts and the
+Producer UI served-byte comparison. Treat STATE as an orientation snapshot:
+the JSON output from `bin/source-attest` and each adjacent build receipt are
+the durable machine-readable identities, while a commit remains a separate
+landing action.

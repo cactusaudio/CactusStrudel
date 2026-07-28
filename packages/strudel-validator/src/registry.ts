@@ -59,6 +59,7 @@ const CORE_TOP_LEVEL: ReadonlyArray<string> = [
   'polymeter','polyrhythm','silence','pure','reify','timeCat','timecat',
   'arrange','stepcat',
   'fast','slow','setcps','setcpm','setCps','setCpm','setBpm','setbpm','mini','m',
+  'mod',
   'register','registerControl',
   'evaluate','evalScope','controls','samples','setSampleBaseUrl',
   'initAudioOnFirstClick','initAudio','getAudioContext','panic','gap',
@@ -73,6 +74,7 @@ const CORE_TOP_LEVEL: ReadonlyArray<string> = [
 //   scale              @strudel/tonal: `export const scale`
 //   add, sub           @strudel/core:  `export const add` / `sub`
 //   struct             @strudel/core:  `Pattern.prototype.struct =`
+//   mask               @strudel/core:  `Pattern.prototype.mask =`
 //   layer              @strudel/core:  Pattern method `layer(...e){` (index.mjs:1122)
 //   superimpose        @strudel/core:  `export const superimpose`
 //   run                @strudel/core:  `export const run`
@@ -84,7 +86,7 @@ const CORE_TOP_LEVEL: ReadonlyArray<string> = [
 // Hand-curated like CORE_TOP_LEVEL; extract-registry only rewrites
 // REGISTRY_LIST so a regen will NOT clobber this list.
 export const TONAL_AND_COMBINATORS: ReadonlyArray<string> = [
-  'scale', 'add', 'sub', 'struct', 'layer', 'superimpose', 'run',
+  'scale', 'add', 'sub', 'struct', 'mask', 'layer', 'superimpose', 'run',
   'rootNotes', 'setDefaultVoicings', 'transpose', 'arp', 'ply',
 ];
 
@@ -95,21 +97,6 @@ export const STRUDEL_FUNCTIONS: ReadonlySet<string> = new Set([
 ]);
 
 // Single-value scalar effects that should not appear twice in the same chain.
-// `.lpf(800).distort(0.4).lpf(800)` is almost always a mental-model error.
-export const SINGLE_USE_EFFECTS: ReadonlySet<string> = new Set([
-  'lpf','hpf','bpf','cutoff','hcutoff','resonance','room','roomsize','delay','delaytime',
-  'speed','gain','pan','crush','distort','shape','vowel','attack','decay','sustain','release',
-]);
-
-// Pattern-shaping methods that may legitimately appear multiple times in a chain
-// (e.g., .every(2, fast(2)).every(3, rev) is fine).
-export const REPEATABLE_METHODS: ReadonlySet<string> = new Set([
-  'every','sometimes','sometimesBy','rarely','often','almostAlways','almostNever','jux',
-  'fast','slow','rev','iter','palindrome','off','press','pressBy','chunk','chunkInto',
-  'when','whenKey','within','inside','outside','firstOf','lastOf','swing','swingBy','seg',
-  'apply','applyN','ply','plyWith','plyForEach','someCycles','someCyclesBy','degradeBy','degrade',
-]);
-
 export function isStrudelFunction(name: string): boolean {
   return STRUDEL_FUNCTIONS.has(name);
 }

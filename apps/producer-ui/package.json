@@ -1,0 +1,22 @@
+{
+  "name": "@cactus/producer-ui",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "build": "node ../../scripts/build-receipt.mjs run producer-ui",
+    "dev": "vite --port 5175",
+    "preview": "vite preview --port 5175",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "preact": "^10.27.2"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.2",
+    "vite": "^6.0.3",
+    "vitest": "^2.1.8"
+  }
+}

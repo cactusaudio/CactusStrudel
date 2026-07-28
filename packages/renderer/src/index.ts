@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import wavefilePkg from 'wavefile';
+import { checkBuildReceipt, verifyServedBuild } from '../../../scripts/build-receipt.mjs';
 const { WaveFile } = wavefilePkg;
 
 /**
@@ -63,20 +64,33 @@ export async function ensureRenderer(): Promise<RendererPageHandle> {
   if (!sharedHandle) {
     sharedHandle = bootRenderer();
   }
+  const handlePromise = sharedHandle;
   activeRenders++;
-  return sharedHandle;
+  try {
+    return await handlePromise;
+  } catch (error) {
+    activeRenders = Math.max(0, activeRenders - 1);
+    if (sharedHandle === handlePromise) sharedHandle = null;
+    throw error;
+  }
 }
 
 export async function releaseRenderer(): Promise<void> {
   activeRenders--;
   if (activeRenders <= 0 && !userWarmed && sharedHandle) {
-    const h = await sharedHandle;
+    const handlePromise = sharedHandle;
     sharedHandle = null;
     activeRenders = 0;
+    let h: RendererPageHandle;
+    try {
+      h = await handlePromise;
+    } catch {
+      return;
+    }
     try { await h.context.close(); } catch { /* */ }
     try { await h.browser.close(); } catch { /* */ }
-    if (h.serverProcess && !h.serverProcess.killed) {
-      h.serverProcess.kill('SIGTERM');
+    if (h.serverProcess) {
+      try { await stopChildProcess(h.serverProcess); } catch { /* best effort */ }
     }
   } else if (activeRenders < 0) {
     activeRenders = 0;
@@ -103,12 +117,20 @@ export async function warmup(): Promise<void> {
 export async function shutdown(): Promise<void> {
   userWarmed = false;
   if (sharedHandle) {
-    const h = await sharedHandle;
+    const handlePromise = sharedHandle;
     sharedHandle = null;
     activeRenders = 0;
+    let h: RendererPageHandle;
+    try {
+      h = await handlePromise;
+    } catch {
+      return;
+    }
     try { await h.context.close(); } catch { /* */ }
     try { await h.browser.close(); } catch { /* */ }
-    if (h.serverProcess && !h.serverProcess.killed) h.serverProcess.kill('SIGTERM');
+    if (h.serverProcess) {
+      try { await stopChildProcess(h.serverProcess); } catch { /* best effort */ }
+    }
   }
 }
 
@@ -127,107 +149,255 @@ export function _candidatePortForTests(start: number, attempt: number): number {
   return candidatePort(start, attempt);
 }
 
-async function bootRenderer(): Promise<RendererPageHandle> {
-  // Start vite dev server (cheap; no build step needed for first run).
-  // Unique port per process: spread the search start by PID so concurrent
-  // render subprocesses rarely scan the same range, then let vite's strictPort
-  // bind attempt be the source of truth. No pre-probe, so no TOCTOU gap.
-  // CACTUS_RENDER_PORT overrides (single-render debugging).
-  const envPort = Number.parseInt(process.env.CACTUS_RENDER_PORT ?? '', 10);
-  const startPort = Number.isFinite(envPort) && envPort > 0
-    ? envPort
-    : 5173 + ((process.pid % 500) * 5);
+export interface RendererServerStartOptions {
+  startPort: number;
+  fixedPort: boolean;
+  repoRoot: string;
+  rendererPageDir: string;
+  maxAttempts?: number;
+  checkBuild?: typeof checkBuildReceipt;
+  verifyServed?: typeof verifyServedBuild;
+  spawnServer?: (mode: 'preview' | 'source', port: number) => ChildProcess;
+  waitUntilReady?: (url: string, timeoutMs: number, process?: ChildProcess) => Promise<void>;
+  warn?: (message: string) => void;
+}
 
-  const distExists = await fs
-    .stat(path.join(RENDERER_PAGE_DIR, 'dist', 'index.html'))
-    .then(() => true)
-    .catch(() => false);
+export interface RendererServerStartResult {
+  serverProcess: ChildProcess;
+  baseUrl: string;
+  mode: 'preview' | 'source';
+  port: number;
+}
 
-  let serverProcess: ChildProcess | undefined;
-  let baseUrl = '';
-  let lastBootError: unknown;
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const port = candidatePort(startPort, attempt);
-    baseUrl = `http://localhost:${port}`;
-    const args = distExists
+function childHasExited(child: ChildProcess): boolean {
+  return child.exitCode !== null || child.signalCode !== null;
+}
+
+async function waitForChildExit(child: ChildProcess, timeoutMs: number): Promise<boolean> {
+  if (childHasExited(child)) return true;
+  return await new Promise<boolean>((resolve) => {
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      child.removeListener('exit', onExit);
+      resolve(value);
+    };
+    const onExit = () => finish(true);
+    timer = setTimeout(() => finish(childHasExited(child)), timeoutMs);
+    child.once('exit', onExit);
+    if (childHasExited(child)) finish(true);
+  });
+}
+
+async function stopChildProcess(child: ChildProcess, timeoutMs = 5_000): Promise<void> {
+  if (childHasExited(child)) return;
+  const termExit = waitForChildExit(child, timeoutMs);
+  if (!child.killed) child.kill('SIGTERM');
+  if (await termExit) return;
+
+  const killExit = waitForChildExit(child, timeoutMs);
+  child.kill('SIGKILL');
+  if (!await killExit) {
+    throw new Error(`renderer vite child ${child.pid ?? 'unknown'} did not exit after SIGTERM/SIGKILL`);
+  }
+}
+
+async function startRendererPageServer(options: RendererServerStartOptions): Promise<RendererServerStartResult> {
+  const checkBuild = options.checkBuild ?? checkBuildReceipt;
+  const verifyServed = options.verifyServed ?? verifyServedBuild;
+  const waitUntilReady = options.waitUntilReady ?? waitForServer;
+  const warn = options.warn ?? ((message: string) => console.warn(message));
+  const spawnServer = options.spawnServer ?? ((mode: 'preview' | 'source', port: number) => {
+    const args = mode === 'preview'
       ? ['exec', 'vite', 'preview', '--port', String(port), '--strictPort']
       : ['exec', 'vite', '--port', String(port), '--strictPort'];
-    serverProcess = spawn('pnpm', args, {
-      cwd: RENDERER_PAGE_DIR,
+    return spawn('pnpm', args, {
+      cwd: options.rendererPageDir,
       stdio: 'pipe',
     });
+  });
+
+  const pageBuild = await checkBuild('renderer-page', options.repoRoot);
+  let mode: 'preview' | 'source' = pageBuild.valid ? 'preview' : 'source';
+  if (mode === 'source') {
+    warn(
+      `[renderer] ignoring apps/renderer-page/dist: ${pageBuild.reasons.join('; ') || 'receipt invalid'}; using current source`,
+    );
+  }
+
+  const maxAttempts = options.maxAttempts ?? 8;
+  let attempt = 0;
+  let retryPort: number | null = null;
+  let lastBootError: unknown;
+  while (attempt < maxAttempts) {
+    const port: number = retryPort ?? candidatePort(options.startPort, attempt);
+    retryPort = null;
+    const baseUrl = `http://localhost:${port}`;
+    const serverProcess = spawnServer(mode, port);
     try {
-      await waitForServer(baseUrl, 30_000, serverProcess);
-      lastBootError = undefined;
-      break;
-    } catch (e) {
-      lastBootError = e;
-      if (serverProcess && !serverProcess.killed) serverProcess.kill('SIGTERM');
-      serverProcess = undefined;
-      if (process.env.CACTUS_RENDER_PORT) break;
+      await waitUntilReady(baseUrl, 30_000, serverProcess);
+      if (mode === 'preview') {
+        const served = await verifyServed('renderer-page', baseUrl, options.repoRoot, 5_000);
+        if (!served.valid) {
+          warn(
+            `[renderer] preview bytes do not match its receipt: ${served.reasons.join('; ')}; falling back to current source`,
+          );
+          // Never reuse the preview's port until the preview child has emitted
+          // exit. `killed` only means a signal was sent; it is not termination.
+          await stopChildProcess(serverProcess);
+          mode = 'source';
+          retryPort = port;
+          continue;
+        }
+      }
+      return { serverProcess, baseUrl, mode, port };
+    } catch (error) {
+      lastBootError = error;
+      try {
+        await stopChildProcess(serverProcess);
+      } catch (stopError) {
+        lastBootError = new AggregateError(
+          [error, stopError],
+          'renderer vite server failed and its child could not be stopped',
+        );
+      }
+      if (options.fixedPort) break;
+      attempt += 1;
     }
   }
-  if (!serverProcess || lastBootError) {
-    throw new Error(`renderer vite server failed to start after port retries: ${lastBootError instanceof Error ? lastBootError.message : String(lastBootError)}`);
-  }
+  throw new Error(
+    `renderer vite server failed to start after port retries: ${lastBootError instanceof Error ? lastBootError.message : String(lastBootError)}`,
+  );
+}
 
-  const browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--use-fake-ui-for-media-stream',
-      '--autoplay-policy=no-user-gesture-required',
-      '--disable-features=IsolateOrigins,site-per-process',
-      // Realtime cyclist scheduler relies on accurate timer callbacks
-      // (rAF / setInterval) to schedule audio events ahead of ctx clock.
-      // Headless Chromium throttles background/invisible-tab timers (≥1s)
-      // → tick callbacks jitter → realtime audio "in-between-beats / 蹭拍"
-      // (Bowei 2026-05-20). Disable throttling explicitly.
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-backgrounding-occluded-windows',
-    ],
+/** Test-only seam for receipt/fallback process-order regressions. */
+export async function _startRendererPageServerForTests(
+  options: RendererServerStartOptions,
+): Promise<RendererServerStartResult> {
+  return await startRendererPageServer(options);
+}
+
+async function bootRenderer(): Promise<RendererPageHandle> {
+  // Start Vite without a pre-probe. --strictPort binding is the source of truth.
+  // CACTUS_RENDER_PORT is a fixed debug port; otherwise spread concurrent
+  // subprocesses across deterministic candidates.
+  const envPort = Number.parseInt(process.env.CACTUS_RENDER_PORT ?? '', 10);
+  const fixedPort = Number.isFinite(envPort) && envPort > 0;
+  const startPort = fixedPort
+    ? envPort
+    : 5173 + ((process.pid % 500) * 5);
+  const repoRoot = path.resolve(RENDERER_PAGE_DIR, '..', '..');
+  const server = await startRendererPageServer({
+    startPort,
+    fixedPort,
+    repoRoot,
+    rendererPageDir: RENDERER_PAGE_DIR,
   });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const { serverProcess, baseUrl } = server;
 
-  page.on('console', (msg) => {
-    const t = msg.text();
-    if (t.startsWith('[cactus]') || msg.type() === 'error') {
-      // Forward important page logs to Node stderr only when debugging
-      if (process.env.CACTUS_RENDER_VERBOSE) console.error(`[page:${msg.type()}] ${t}`);
-    }
-  });
-
-  await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 60_000 });
+  const browserArgs = [
+    '--no-sandbox',
+    '--use-fake-ui-for-media-stream',
+    '--autoplay-policy=no-user-gesture-required',
+    '--disable-features=IsolateOrigins,site-per-process',
+    // Realtime cyclist scheduler relies on accurate timer callbacks
+    // (rAF / setInterval) to schedule audio events ahead of ctx clock.
+    // Headless Chromium throttles background/invisible-tab timers (≥1s)
+    // → tick callbacks jitter → realtime audio "in-between-beats / 蹭拍"
+    // (Bowei 2026-05-20). Disable throttling explicitly.
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
+    '--disable-backgrounding-occluded-windows',
+  ];
+  let browser: Browser;
   try {
-    await page.waitForFunction(
-      () => (window as any).__cactusReady === true || (window as any).__cactusInitError,
-      null,
-      { timeout: 60_000 },
-    );
-  } catch (e) {
-    const log = await page
-      .evaluate(() => (window as any).__cactusBootLog as string[] | undefined)
-      .catch(() => undefined);
-    const err = await page
-      .evaluate(() => (window as any).__cactusInitError as string | undefined)
-      .catch(() => undefined);
-    throw new Error(
-      `renderer-page never became ready. bootLog=${JSON.stringify(log ?? null)} initError=${err ?? 'none'} (orig: ${e instanceof Error ? e.message : String(e)})`,
-    );
+    // The Mac already has a maintained Chrome installation. Prefer it so a
+    // Playwright package update cannot strand production on a missing,
+    // version-pinned browser cache. CI and machines without Chrome retain the
+    // normal bundled-Chromium fallback.
+    const configuredPath = process.env.CACTUS_RENDER_BROWSER_PATH?.trim();
+    browser = await chromium.launch({
+      headless: true,
+      args: browserArgs,
+      ...(configuredPath
+        ? { executablePath: configuredPath }
+        : { channel: 'chrome' as const }),
+    });
+  } catch (chromeError) {
+    try {
+      browser = await chromium.launch({ headless: true, args: browserArgs });
+    } catch (bundledError) {
+      try { await stopChildProcess(serverProcess); } catch { /* best effort */ }
+      throw new Error(
+        `renderer browser failed to launch with installed Chrome (${chromeError instanceof Error ? chromeError.message : String(chromeError)}) and bundled Chromium (${bundledError instanceof Error ? bundledError.message : String(bundledError)})`,
+      );
+    }
   }
-  const initErr = await page.evaluate(() => (window as any).__cactusInitError as string | undefined);
-  if (initErr) throw new Error(`renderer-page init error: ${initErr}`);
+  let context: BrowserContext | undefined;
+  try {
+    context = await browser.newContext();
+    const page = await context.newPage();
 
-  return { browser, context, page, serverProcess, baseUrl };
+    page.on('console', (msg) => {
+      const t = msg.text();
+      if (t.startsWith('[cactus]') || msg.type() === 'error') {
+        // Forward important page logs to Node stderr only when debugging
+        if (process.env.CACTUS_RENDER_VERBOSE) console.error(`[page:${msg.type()}] ${t}`);
+      }
+    });
+    page.on('response', (response) => {
+      if (process.env.CACTUS_RENDER_VERBOSE && response.status() >= 400) {
+        console.error(`[page:http] ${response.status()} ${response.url()}`);
+      }
+    });
+    page.on('requestfailed', (request) => {
+      if (process.env.CACTUS_RENDER_VERBOSE) {
+        console.error(
+          `[page:requestfailed] ${request.url()} ${request.failure()?.errorText ?? ''}`,
+        );
+      }
+    });
+
+    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 60_000 });
+    try {
+      await page.waitForFunction(
+        () => (window as any).__cactusReady === true || (window as any).__cactusInitError,
+        null,
+        { timeout: 60_000 },
+      );
+    } catch (e) {
+      const log = await page
+        .evaluate(() => (window as any).__cactusBootLog as string[] | undefined)
+        .catch(() => undefined);
+      const err = await page
+        .evaluate(() => (window as any).__cactusInitError as string | undefined)
+        .catch(() => undefined);
+      throw new Error(
+        `renderer-page never became ready. bootLog=${JSON.stringify(log ?? null)} initError=${err ?? 'none'} (orig: ${e instanceof Error ? e.message : String(e)})`,
+      );
+    }
+    const initErr = await page.evaluate(() => (window as any).__cactusInitError as string | undefined);
+    if (initErr) throw new Error(`renderer-page init error: ${initErr}`);
+
+    return { browser, context, page, serverProcess, baseUrl };
+  } catch (error) {
+    try { await context?.close(); } catch { /* */ }
+    try { await browser.close(); } catch { /* */ }
+    try { await stopChildProcess(serverProcess); } catch { /* best effort */ }
+    throw error;
+  }
 }
 
 async function waitForServer(url: string, timeoutMs: number, proc?: ChildProcess): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (proc?.exitCode !== null) {
-      throw new Error(`server process exited before ready at ${url} (exit ${proc?.exitCode})`);
+    if (proc && childHasExited(proc)) {
+      throw new Error(
+        `server process exited before ready at ${url} (exit ${proc.exitCode ?? 'signal'}${proc.signalCode ? ` ${proc.signalCode}` : ''})`,
+      );
     }
     try {
       const r = await fetch(url);
@@ -283,6 +453,11 @@ export async function render(input: RenderInput): Promise<RenderResult> {
         ];
         result = retry;
         pcm = base64ToFloat32(result.pcmBase64);
+      }
+      if (peakAbs(pcm) < 1e-4) {
+        throw new Error(
+          `realtime render stayed near-silent after retries (peak=${peakAbs(pcm).toExponential(2)}; ${(result.warnings ?? []).join('; ')})`,
+        );
       }
     }
 

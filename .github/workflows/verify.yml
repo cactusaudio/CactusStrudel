@@ -27,16 +27,5 @@ jobs:
           sudo apt-get install -y ffmpeg ripgrep
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
-      - name: Fetch pinned Strudel renderer source
-        run: |
-          git clone https://codeberg.org/uzu/strudel.git refs/strudel-monorepo
-          cd refs/strudel-monorepo
-          git checkout f73b395648645aabe699f91ba0989f35a6fd8a3c
-          pnpm install --frozen-lockfile || {
-            pnpm approve-builds --all
-            pnpm install --frozen-lockfile
-          }
-      - name: Install Playwright Chromium
-        run: pnpm --filter @cactus/renderer exec playwright install --with-deps chromium
       - name: Repo truth gate
         run: ./scripts/verify-repo.sh

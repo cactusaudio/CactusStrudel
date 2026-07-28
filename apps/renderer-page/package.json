@@ -5,7 +5,7 @@
   "type": "module",
   "license": "AGPL-3.0-or-later",
   "scripts": {
-    "build": "vite build",
+    "build": "node ../../scripts/build-receipt.mjs run renderer-page",
     "dev": "vite --port 5173",
     "preview": "vite preview --port 5173",
     "typecheck": "tsc --noEmit"
@@ -20,6 +20,7 @@
     "@strudel/webaudio": "^1.3.0"
   },
   "devDependencies": {
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vite-plugin-bundle-audioworklet": "^0.1.2"
   }
 }

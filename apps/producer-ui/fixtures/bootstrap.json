@@ -1,0 +1,360 @@
+{
+  "pieces": [
+    {
+      "id": "piece-ldb-001",
+      "name": "LDB-001",
+      "created_at": "2026-07-28T08:00:00Z",
+      "archived": false,
+      "collection": "Main corpus",
+      "tags": ["warehouse", "dub"],
+      "active_revision_id": "rev-ldb-002",
+      "active_revision": {
+        "id": "rev-ldb-002",
+        "piece_id": "piece-ldb-001",
+        "label": "Committed revision",
+        "created_at": "2026-07-28T08:03:00Z",
+        "code": "setcps(0.58)\n\nstack(\n  s(\"bd*4\").bank(\"RolandTR909\").gain(0.88),\n  note(\"<c2 c2 eb2 g1>\").s(\"sawtooth\").lpf(700),\n  note(\"<g4 ~ bb4 d5>\").s(\"triangle\").room(0.28)\n)",
+        "audio_url": "/producer-brain/audio/example.mp3",
+        "audio_sha": "42d1e36ce3cc51a4c3f7a3ef91d34899",
+        "prompt_url": "/producer-brain/prompts/gemini_auto_1779680628163.txt",
+        "receipt_url": "/producer-brain/prompts/gemini_auto_1779680628163.json",
+        "prompt_summary": {
+          "mode": "agy-cli",
+          "producer_brief": "A slow-burning warehouse dub study with a fragile melodic center.",
+          "kernel_hash": "da992068ca18b65f",
+          "model_id": "gemini-pro-agent"
+        },
+        "duration_seconds": 112.4,
+        "score": 7.8,
+        "note": "lead is clean, middle section opens well",
+        "provenance": {
+          "route": "cliproxy.responses",
+          "model_id": "gemini-pro-agent",
+          "reasoning_effort": "default",
+          "orchestration": "standard",
+          "kernel_hash": "da992068ca18b65f",
+          "validator_mode": "deterministic",
+          "repair_applied": false,
+          "job_id": "gen-019fa7"
+        },
+        "promoted": true
+      },
+      "revisions": [
+        {
+          "id": "rev-ldb-002",
+          "piece_id": "piece-ldb-001",
+          "label": "Committed revision",
+          "created_at": "2026-07-28T08:03:00Z",
+          "code": "setcps(0.58)\n\nstack(\n  s(\"bd*4\").bank(\"RolandTR909\").gain(0.88),\n  note(\"<c2 c2 eb2 g1>\").s(\"sawtooth\").lpf(700),\n  note(\"<g4 ~ bb4 d5>\").s(\"triangle\").room(0.28)\n)",
+          "audio_url": "/producer-brain/audio/example.mp3",
+          "audio_sha": "42d1e36ce3cc51a4c3f7a3ef91d34899",
+          "prompt_url": "/producer-brain/prompts/gemini_auto_1779680628163.txt",
+          "receipt_url": "/producer-brain/prompts/gemini_auto_1779680628163.json",
+          "prompt_summary": {
+            "mode": "agy-cli",
+            "producer_brief": "A slow-burning warehouse dub study with a fragile melodic center.",
+            "kernel_hash": "da992068ca18b65f",
+            "model_id": "gemini-pro-agent"
+          },
+          "duration_seconds": 112.4,
+          "score": 7.8,
+          "note": "lead is clean, middle section opens well",
+          "provenance": {
+            "route": "cliproxy.responses",
+            "model_id": "gemini-pro-agent",
+            "reasoning_effort": "default",
+            "orchestration": "standard",
+            "kernel_hash": "da992068ca18b65f",
+            "validator_mode": "deterministic",
+            "repair_applied": false,
+            "job_id": "gen-019fa7"
+          },
+          "promoted": true
+        }
+      ]
+    },
+    {
+      "id": "piece-un-003",
+      "name": "UN-003",
+      "created_at": "2026-07-27T22:19:00Z",
+      "archived": false,
+      "collection": "Main corpus",
+      "tags": ["first-shot"],
+      "active_revision_id": "rev-un-003",
+      "active_revision": {
+        "id": "rev-un-003",
+        "piece_id": "piece-un-003",
+        "created_at": "2026-07-27T22:19:00Z",
+        "code": "stack(s(\"bd sd\").gain(.8), note(\"c2 eb2\").s(\"sawtooth\"))",
+        "audio_url": "/producer-brain/audio/example-2.mp3",
+        "audio_sha": "74e15e7b61fb4f651743e8e92963e4c1",
+        "duration_seconds": 96,
+        "score": 6.9,
+        "provenance": {
+          "route": "legacy_unknown",
+          "model_id": "legacy_unknown",
+          "orchestration": "standard",
+          "validator_mode": "unknown",
+          "legacy": true
+        },
+        "promoted": true
+      },
+      "revisions": [
+        {
+          "id": "rev-un-003",
+          "piece_id": "piece-un-003",
+          "created_at": "2026-07-27T22:19:00Z",
+          "code": "stack(s(\"bd sd\").gain(.8), note(\"c2 eb2\").s(\"sawtooth\"))",
+          "audio_url": "/producer-brain/audio/example-2.mp3",
+          "audio_sha": "74e15e7b61fb4f651743e8e92963e4c1",
+          "duration_seconds": 96,
+          "score": 6.9,
+          "provenance": {
+            "route": "legacy_unknown",
+            "model_id": "legacy_unknown",
+            "orchestration": "standard",
+            "validator_mode": "unknown",
+            "legacy": true
+          },
+          "promoted": true
+        }
+      ]
+    }
+  ],
+  "jobs": [
+    {
+      "id": "gen-019fa76e",
+      "state": "running",
+      "created_at": "2026-07-28T08:47:00Z",
+      "progress": 0.54,
+      "stage": "Rendering first shot 2",
+      "count": 4,
+      "completed_count": 1,
+      "prompt": "A fragile late-night dub study",
+      "profile_id": "gemini-pro",
+      "piece_ids": ["piece-ldb-001"]
+    }
+  ],
+  "brain_jobs": [
+    {
+      "id": "brain-019fa77a",
+      "state": "done",
+      "created_at": "2026-07-28T08:10:00Z",
+      "piece_id": "piece-ldb-001",
+      "revision_id": "rev-ldb-002",
+      "config_revision_id": "agent-rev-4",
+      "messages": [
+        {
+          "id": "msg-1",
+          "role": "user",
+          "text": "Diagnose what I am hearing.",
+          "created_at": "2026-07-28T08:10:00Z"
+        },
+        {
+          "id": "msg-2",
+          "role": "assistant",
+          "text": "The piece earns its 7.8 in the gap between the blunt kick grid and the hesitant upper voice. The next reversible move is to thin the bass only at the transition, not rewrite the hook.",
+          "created_at": "2026-07-28T08:10:06Z",
+          "receipt": {
+            "id": "receipt-brain-read-1",
+            "kind": "analysis",
+            "status": "done",
+            "at": "2026-07-28T08:10:06Z",
+            "summary": "Read-only diagnosis; no files changed."
+          }
+        }
+      ],
+      "receipt": {
+        "id": "receipt-brain-job-1",
+        "kind": "brain.job",
+        "status": "done",
+        "at": "2026-07-28T08:10:06Z",
+        "summary": "Completed against pinned revision rev-ldb-002."
+      }
+    }
+  ],
+  "activity": [
+    {
+      "seq": 182,
+      "id": "event-182",
+      "at": "2026-07-28T08:48:00Z",
+      "kind": "job.render",
+      "title": "First shot committed",
+      "detail": "Audio was probed, hashed and promoted atomically.",
+      "status": "ok",
+      "job_id": "gen-019fa76e",
+      "piece_id": "piece-ldb-001"
+    },
+    {
+      "seq": 181,
+      "id": "event-181",
+      "at": "2026-07-28T08:47:00Z",
+      "kind": "job.started",
+      "title": "Best-of-4 generation started",
+      "status": "info",
+      "job_id": "gen-019fa76e"
+    }
+  ],
+  "settings": {
+    "agent": {
+      "revision_id": "agent-rev-4",
+      "active": {
+        "base_url": "http://127.0.0.1:8318/v1",
+        "key_present": true,
+        "credential_ref": "keychain:cactusstrudel/cliproxy",
+        "model_id": "claude-opus-5",
+        "reasoning_effort": null,
+        "orchestration": "standard"
+      },
+      "draft": {
+        "base_url": "http://127.0.0.1:8318/v1",
+        "key_present": true,
+        "credential_ref": "keychain:cactusstrudel/cliproxy",
+        "model_id": "claude-opus-5",
+        "reasoning_effort": null,
+        "orchestration": "standard"
+      },
+      "draft_fingerprint": "fp-active-4",
+      "draft_is_active": true,
+      "test": {
+        "id": "test-fixture-4",
+        "ok": true,
+        "tested_at": "2026-07-28T08:45:00Z",
+        "fingerprint": "fp-active-4",
+        "model_id": "claude-opus-5",
+        "latency_ms": 413
+      },
+      "catalog": [
+        {
+          "id": "claude-opus-5",
+          "owned_by": "anthropic",
+          "label": "Claude Opus 5",
+          "reasoning_efforts": [],
+          "supports_ultra": false,
+          "capability_source": "live+manifest"
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "owned_by": "openai",
+          "label": "GPT-5.6 Sol",
+          "reasoning_efforts": ["low", "medium", "high", "xhigh", "max"],
+          "supports_ultra": true,
+          "capability_source": "live+manifest"
+        },
+        {
+          "id": "gemini-pro-agent",
+          "owned_by": "antigravity",
+          "label": "Gemini Pro Agent",
+          "reasoning_efforts": [],
+          "supports_ultra": false,
+          "capability_source": "live+manifest"
+        }
+      ],
+      "status": {
+        "ready": true,
+        "detail": "Direct CLIProxy route read back from active revision."
+      }
+    },
+    "generation": {
+      "profiles": [
+        {
+          "id": "gemini-pro",
+          "label": "Gemini Pro Agent",
+          "model_id": "gemini-pro-agent",
+          "reasoning_effort": null,
+          "orchestration": "standard",
+          "description": "Open musical ceiling through the prompt kernel technical envelope."
+        },
+        {
+          "id": "terra-medium",
+          "label": "Terra / medium",
+          "model_id": "gpt-5.6-terra",
+          "reasoning_effort": "medium",
+          "orchestration": "standard",
+          "description": "Fast independent first shots with explicit effort provenance."
+        },
+        {
+          "id": "grok",
+          "label": "Grok 4.5",
+          "model_id": "grok-4.5",
+          "reasoning_effort": null,
+          "orchestration": "standard",
+          "description": "Alternative composer profile; no inferred reasoning effort."
+        }
+      ],
+      "default_profile_id": "gemini-pro",
+      "validator_mode": "deterministic",
+      "kernel_hash": "da992068ca18b65f",
+      "kernel_fragments": [
+        "00-identity.md",
+        "10-api-existence.md",
+        "20-syntax-rules.md",
+        "30-output-contract.md",
+        "40-creative-freedom.md",
+        "50-spine-derived.md"
+      ]
+    },
+    "system": {
+      "api_version": "v2",
+      "server_started_at": "2026-07-28T07:30:00Z",
+      "database_path": "runtime/v3/cactusstrudel.sqlite3",
+      "asset_root": "producer-brain/assets",
+      "legacy_routes_enabled": false,
+      "legacy_api_enabled": false,
+      "legacy_snapshot_available": true,
+      "recovery_candidate_count": 4,
+      "recovery_candidates": [
+        {
+          "task_id": "legacy-task-013",
+          "source_line": 13,
+          "js": "producer-brain/pieces/gemini_auto_1779962774724.js",
+          "mp3": "producer-brain/audio/gemini_auto_1779962774724.mp3",
+          "code_sha": "8c9b66b603c4632a",
+          "audio_sha": "69fc37f1025592e1",
+          "human_decision_required": true
+        },
+        {
+          "task_id": "legacy-task-021",
+          "source_line": 21,
+          "js": "producer-brain/pieces/gemini_auto_1779972631013.js",
+          "mp3": "producer-brain/audio/gemini_auto_1779972631013.mp3",
+          "code_sha": "bf58c3761ab706e4",
+          "audio_sha": "7eaa5ae43ac6398a",
+          "human_decision_required": true
+        },
+        {
+          "task_id": "legacy-task-028",
+          "source_line": 28,
+          "js": "producer-brain/pieces/gemini_auto_1779984712696.js",
+          "mp3": "producer-brain/audio/gemini_auto_1779984712696.mp3",
+          "code_sha": "82f2f505604008df",
+          "audio_sha": "7068566d223301a8",
+          "human_decision_required": true
+        },
+        {
+          "task_id": "legacy-task-036",
+          "source_line": 36,
+          "js": "producer-brain/pieces/gemini_auto_1779996333721.js",
+          "mp3": "producer-brain/audio/gemini_auto_1779996333721.mp3",
+          "code_sha": "ada11f22fb8a721c",
+          "audio_sha": "5cbd2e83ce57c924",
+          "human_decision_required": true
+        }
+      ],
+      "migrations": [
+        {
+          "id": "v3-schema",
+          "status": "done",
+          "detail": "Operational truth tables initialized."
+        },
+        {
+          "id": "legacy-corpus",
+          "status": "done",
+          "detail": "Original JSONL preserved; ambiguous rows labelled."
+        }
+      ]
+    }
+  },
+  "cursor": 182,
+  "server_time": "2026-07-28T08:52:00Z"
+}

@@ -1,52 +1,43 @@
 #!/usr/bin/env bash
-# health — one-line status check of the entire CactusStrudel runtime
+# health — compact readback from the active v3 runtime
 set -euo pipefail
-BASE="${CACTUS_BASE:-http://localhost:8765}"
-ROOT="${CACTUS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
-server=$(curl -s --max-time 2 -o /dev/null -w '%{http_code}' "$BASE/api/version" || echo '---')
-[ "$server" = "200" ] && srv="✓" || srv="✗"
+if [[ "${1:-}" == "--help" ]]; then
+  echo "usage: bin/health"
+  echo "Reads GET /api/v2/health. It does not change runtime state."
+  exit 0
+fi
 
-chrome=$(curl -s --max-time 2 "$BASE/api/chrome-status" 2>/dev/null || echo '{}')
-chrome_up=$(echo "$chrome" | python3 -c 'import json,sys
+BASE="${CACTUS_BASE:-http://127.0.0.1:8765}"
+payload="$(curl -fsS --max-time 4 "$BASE/api/v2/health" 2>/dev/null || true)"
+
+if [[ -z "$payload" ]]; then
+  echo "server ✗  $BASE/api/v2/health unavailable"
+  exit 1
+fi
+
+printf '%s' "$payload" | python3 -c '
+import json, sys
 try:
-    d=json.loads(sys.stdin.read() or "{}")
-except Exception:
-    d={}
-print("✓" if d.get("up") else "✗")')
+    data = json.load(sys.stdin)
+except Exception as exc:
+    print(f"server ✗  invalid health response: {exc}")
+    raise SystemExit(1)
 
-gf=$(curl -s --max-time 2 "$BASE/api/gf-status" 2>/dev/null | python3 -c 'import json,sys
-try:
-    d=json.loads(sys.stdin.read() or "{}")
-except Exception:
-    d={}
-print(d.get("count",0))')
+if not data.get("ok"):
+    print("server ✗  runtime reported not ready")
+    raise SystemExit(1)
 
-corpus_total=$(curl -s --max-time 2 "$BASE/api/recent?n=1" 2>/dev/null | python3 -c 'import json,sys
-try:
-    d=json.loads(sys.stdin.read() or "{}")
-except Exception:
-    d={}
-print(d.get("total","?"))')
-
-bridge_dir="$ROOT/runtime/cc-bridge"
-inbox_pending=$(python3 -c "
-import json
-try:
-  lines=[l for l in open('$bridge_dir/inbox.jsonl') if l.strip()]
-  print(sum(1 for l in lines if json.loads(l).get('status')=='pending'))
-except: print(0)
-")
-proposals_pending=$(python3 -c "
-import json
-try:
-  lines=[l for l in open('$bridge_dir/proposals.jsonl') if l.strip()]
-  print(sum(1 for l in lines if json.loads(l).get('status')=='pending'))
-except: print(0)
-")
-kick=$([ -f "$bridge_dir/.kick" ] && echo "🔔" || echo "·")
-
-revisions=$(wc -l < "$ROOT/producer-brain/revisions.jsonl" 2>/dev/null || echo 0)
-revisions=$(echo "$revisions" | tr -d ' ')
-
-echo "server $srv  chrome $chrome_up  gf-running $gf  corpus $corpus_total  revisions $revisions  inbox-pending $inbox_pending  proposals-pending $proposals_pending  kick $kick"
+agent = "ready" if data.get("agent_ready") else "inactive"
+print(
+    "server ✓  api {}  pieces {}  generation-jobs {}  "
+    "brain-jobs {}  agent {}  cursor {}".format(
+        data.get("api_version", "?"),
+        data.get("pieces", "?"),
+        data.get("generation_jobs", "?"),
+        data.get("brain_jobs", "?"),
+        agent,
+        data.get("cursor", "?"),
+    )
+)
+'

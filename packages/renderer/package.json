@@ -11,8 +11,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cactus/ir": "workspace:*",
-    "@cactus/strudel-compiler": "workspace:*",
     "playwright": "^1.59.1",
     "wavefile": "^11.0.0"
   }

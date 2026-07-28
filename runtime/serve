@@ -1,5 +1,4 @@
 #!/bin/zsh
-# CactusStrudel Runtime — serves the dashboard with HTTP Range support
-# (audio scrubbing/seek requires Range; stock `python -m http.server` doesn't).
+# CactusStrudel v3 — Producer UI + durable /api/v2 + HTTP Range audio seeking.
 SCRIPT_DIR="${0:A:h}"
 exec /usr/bin/env python3 "$SCRIPT_DIR/serve.py"

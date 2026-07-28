@@ -1,28 +1,151 @@
 #!/usr/bin/env bash
-# gen [model] [extra] — fire a generation, block until done event
+# gen [1|2|4] [--profile exact-id] [brief...] — durable v3 batch
 set -euo pipefail
-MODEL="${1:-}"
-EXTRA="${2:-}"
-BASE="${CACTUS_BASE:-http://localhost:8765}"
-BODY=$(python3 -c "import json; print(json.dumps({'model': '$MODEL', 'extra': '$EXTRA'}))")
-echo "POST /api/run-gf  model='$MODEL' extra='$EXTRA'"
-curl -sN --max-time 600 -X POST -H 'Content-Type: application/json' -d "$BODY" "$BASE/api/run-gf" |
-  while IFS= read -r line; do
-    case "$line" in
-      "event: done")   echo "(done)";;
-      "event: error")  echo "(error)";;
-      "data: "*)
-        ev_data="${line#data: }"
-        echo "$ev_data" | python3 -c "
-import json,sys
-try:
-    d=json.loads(sys.stdin.read())
-    if 'line' in d: print('  '+d['line'])
-    elif 'entry' in d and d['entry']:
-        print('=> '+d['entry']['name']+' ('+d['entry']['dur']+'s, '+d['entry']['mp3']+')')
-    elif 'model' in d: print('start model='+str(d.get('model'))+' extra='+str(d.get('extra')))
-    elif 'error' in d: print('ERROR: '+d['error'])
-except: pass
-" ;;
-    esac
-  done
+
+if [[ "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+usage:
+  bin/gen
+  bin/gen "musical brief"
+  bin/gen 2 "musical brief"
+  bin/gen 4 --profile gemini-pro "musical brief"
+
+Creates a durable best-of-1/2/4 generation job and waits for its terminal
+receipt. Omit --profile to use the configured default. An explicit unknown
+profile is rejected; it never falls back.
+EOF
+  exit 0
+fi
+
+BASE="${CACTUS_BASE:-http://127.0.0.1:8765}"
+COUNT=1
+PROFILE=""
+
+if [[ "${1:-}" =~ ^(1|2|4)$ ]]; then
+  COUNT="$1"
+  shift
+fi
+
+if [[ "${1:-}" == "--profile" ]]; then
+  if [[ -z "${2:-}" ]]; then
+    echo "bin/gen: --profile requires an exact profile ID" >&2
+    exit 2
+  fi
+  PROFILE="$2"
+  shift 2
+elif [[ "${1:-}" == --profile=* ]]; then
+  PROFILE="${1#--profile=}"
+  shift
+elif [[ "${1:-}" == --* ]]; then
+  echo "bin/gen: unknown option $1" >&2
+  exit 2
+fi
+
+if [[ -n "$PROFILE" ]]; then
+  bootstrap="$(curl -fsS --max-time 15 "$BASE/api/v2/bootstrap")"
+  if ! BOOTSTRAP="$bootstrap" CANDIDATE="$PROFILE" python3 -c '
+import json, os
+data = json.loads(os.environ["BOOTSTRAP"])
+ids = {
+    row.get("id")
+    for row in data.get("settings", {}).get("generation", {}).get("profiles", [])
+}
+raise SystemExit(0 if os.environ["CANDIDATE"] in ids else 1)
+'; then
+    echo "bin/gen: unknown profile '$PROFILE'; available exact IDs:" >&2
+    BOOTSTRAP="$bootstrap" python3 -c '
+import json, os, sys
+data = json.loads(os.environ["BOOTSTRAP"])
+for row in data.get("settings", {}).get("generation", {}).get("profiles", []):
+    print("  " + str(row.get("id")), file=sys.stderr)
+'
+    exit 2
+  fi
+fi
+
+PROMPT="$*"
+body="$(
+  COUNT="$COUNT" PROFILE="$PROFILE" PROMPT="$PROMPT" python3 -c '
+import json, os
+body = {
+    "count": int(os.environ["COUNT"]),
+    "prompt": os.environ["PROMPT"],
+}
+if os.environ["PROFILE"]:
+    body["profile_id"] = os.environ["PROFILE"]
+print(json.dumps(body, ensure_ascii=False))
+'
+)"
+request_id="bin-gen-$(uuidgen | tr '[:upper:]' '[:lower:]')"
+
+response="$(
+  curl -fsS --max-time 20 \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "Idempotency-Key: $request_id" \
+    --data-binary "$body" \
+    "$BASE/api/v2/generation-jobs"
+)"
+job_id="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["job"]["id"])')"
+profile_used="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["job"].get("profile_id") or "?")')"
+
+echo "queued $job_id  count $COUNT  profile $profile_used"
+
+last_state=""
+deadline=$((SECONDS + 600))
+while (( SECONDS < deadline )); do
+  snapshot="$(curl -fsS --max-time 15 "$BASE/api/v2/bootstrap")"
+  job="$(
+    SNAPSHOT="$snapshot" JOB_ID="$job_id" python3 -c '
+import json, os
+data = json.loads(os.environ["SNAPSHOT"])
+for row in data.get("jobs", []):
+    if row.get("id") == os.environ["JOB_ID"]:
+        print(json.dumps(row, ensure_ascii=False))
+        break
+else:
+    raise SystemExit(3)
+'
+  )"
+  state="$(JOB="$job" python3 -c 'import json,os; print(json.loads(os.environ["JOB"])["state"])')"
+  if [[ "$state" != "$last_state" ]]; then
+    JOB="$job" python3 -c '
+import json, os
+job = json.loads(os.environ["JOB"])
+state = job["state"]
+completed = job.get("completed_count", 0)
+count = job.get("count", "?")
+stage = job.get("stage") or ""
+print(
+    f"{state}: {completed}/{count}  {stage}"
+)
+'
+    last_state="$state"
+  fi
+  case "$state" in
+    done|cancelled_after_commit)
+      JOB="$job" python3 -c '
+import json, os
+job = json.loads(os.environ["JOB"])
+print("pieces:", " ".join(job.get("piece_ids") or []) or "none")
+receipt = job.get("receipt")
+if receipt:
+    print("receipt:", receipt.get("summary"))
+'
+      exit 0
+      ;;
+    failed|cancelled|interrupted)
+      JOB="$job" python3 -c '
+import json, os, sys
+job = json.loads(os.environ["JOB"])
+print("generation stopped:", job.get("error") or job.get("stage") or job["state"], file=sys.stderr)
+'
+      exit 1
+      ;;
+  esac
+  sleep 1
+done
+
+echo "generation is still server-owned after 600s: $job_id" >&2
+echo "inspect with /activity or GET /api/v2/bootstrap" >&2
+exit 124

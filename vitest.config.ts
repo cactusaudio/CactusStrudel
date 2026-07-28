@@ -7,7 +7,6 @@ export default defineConfig({
       'packages/*/src/**/*.test.ts',
       'packages/*/test/**/*.test.ts',
       'apps/*/src/**/*.test.ts',
-      'tests/**/*.test.ts',
     ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     testTimeout: 30000,

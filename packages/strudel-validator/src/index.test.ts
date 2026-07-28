@@ -3,7 +3,6 @@ import {
   validateMiniNotation,
   validateStrudelCode,
   STRUDEL_FUNCTIONS,
-  SINGLE_USE_EFFECTS,
   isStrudelFunction,
 } from './index.js';
 
@@ -13,12 +12,6 @@ describe('registry', () => {
       expect(isStrudelFunction(fn), `${fn} should be in registry`).toBe(true);
     }
     expect(STRUDEL_FUNCTIONS.size).toBeGreaterThan(400);
-  });
-
-  it('marks lpf/hpf/bpf as single-use effects', () => {
-    expect(SINGLE_USE_EFFECTS.has('lpf')).toBe(true);
-    expect(SINGLE_USE_EFFECTS.has('hpf')).toBe(true);
-    expect(SINGLE_USE_EFFECTS.has('every')).toBe(false);
   });
 });
 
@@ -79,16 +72,20 @@ describe('validateStrudelCode', () => {
     expect(validateStrudelCode(code).ok).toBe(true);
   });
 
+  it('accepts the installed core Pattern.mask method', () => {
+    const code = `stack(s("bd*4"), note("c3 eb3 g3").mask("<1 0 1 1>"))`;
+    expect(validateStrudelCode(code).ok).toBe(true);
+  });
+
   it('flags hallucinated function reverb()', () => {
     const r = validateStrudelCode(`s("bd*4").reverb(0.5)`);
     expect(r.ok).toBe(false);
     expect(r.issues.some((i) => i.code === 'UNKNOWN_METHOD' && i.message.includes('reverb'))).toBe(true);
   });
 
-  it('flags duplicate lpf in same chain', () => {
+  it('accepts repeated effects as a creative chain', () => {
     const r = validateStrudelCode(`s("bd*4").lpf(800).distort(0.4).lpf(800)`);
-    expect(r.ok).toBe(false);
-    expect(r.issues.some((i) => i.code === 'DUPLICATE_SINGLE_USE_EFFECT' && i.message.includes('lpf'))).toBe(true);
+    expect(r.ok, JSON.stringify(r.issues)).toBe(true);
   });
 
   it('catches setcps with non-positive value', () => {
@@ -102,10 +99,9 @@ describe('validateStrudelCode', () => {
     expect(r.ok, JSON.stringify(r.issues)).toBe(true);
   });
 
-  it('catches setBpm wildly out of range', () => {
+  it('accepts an unconventional positive BPM', () => {
     const r = validateStrudelCode('setBpm(9999)');
-    expect(r.ok).toBe(false);
-    expect(r.issues.some((i) => i.code === 'BAD_BPM')).toBe(true);
+    expect(r.ok, JSON.stringify(r.issues)).toBe(true);
   });
 
   it('catches JS parse error', () => {

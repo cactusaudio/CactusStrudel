@@ -1,0 +1,15 @@
+{
+  "name": "@cactus/render-worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "dependencies": {
+    "@cactus/analyzer": "workspace:*",
+    "@cactus/renderer": "workspace:*",
+    "@cactus/strudel-validator": "workspace:*"
+  }
+}

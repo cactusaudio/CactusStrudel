@@ -9,10 +9,9 @@ Design constraints (from Bowei, 2026-05-28):
 - Bridge between human user and AI producer; not a constraint layer.
 - API existence / silent-failure syntax / output format ONLY.
 - Zero creative or aesthetic restrictions in the kernel itself.
-- Three generation modes (gf web-Gemini / AGY CLI / Opus brain) keep their
-  existing chains — only the content they consume goes through this kernel.
-- Phase 1: only AGY CLI uses the kernel. gf and Opus stay on their old
-  source files until later phases (or never, per Bowei's call).
+- The v3 Responses generation path compiles this kernel for every job.
+- Human vision is appended as a brief; the kernel never converts taste into a
+  recipe.
 """
 import hashlib, json, os, re, time
 
@@ -39,18 +38,15 @@ def _read(path):
         return f.read()
 
 
-def compile(mode='agy', preset=None, extras=None):
+def compile(mode='responses', preset=None, extras=None):
     """Compile a prompt blob for the requested generator mode.
 
     Args:
-        mode: 'agy' (default; the only consumer in Phase 1), or 'fast' / 'opus'
-              for future use. The mode does not currently change content —
-              all modes get the same core. It's reserved for future per-mode
-              fragment selection without changing the call site.
+        mode: consumer label. v3 uses 'responses'. The mode does not currently
+              change content; it is retained in the prompt receipt.
         preset: optional style fragment to include. If given, kernel/style/<preset>.md
-                is appended after the core fragments. Phase 1: not used.
-        extras: optional dict of free-form extras keyed by section name; reserved
-                for Phase 3 (Advanced panel parameterization).
+                is appended after the core fragments.
+        extras: optional free-form sections appended after the kernel.
 
     Returns:
         dict with keys:

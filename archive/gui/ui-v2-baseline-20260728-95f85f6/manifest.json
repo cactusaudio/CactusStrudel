@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "name": "CactusStrudel GUI v2 baseline",
+  "captured_at_utc": "2026-07-28T08:34:25Z",
+  "git": {
+    "commit": "95f85f60596cc226c477543a873e3c4ec95e32fb",
+    "annotated_tag": "ui-v2-baseline-20260728-95f85f6",
+    "dirty_paths_excluded": [
+      "probe-renderer.mjs"
+    ]
+  },
+  "scope": {
+    "source": [
+      "runtime/main.html",
+      "runtime/data.html",
+      "runtime/settings.html",
+      "runtime/spine.html",
+      "runtime/uploads/"
+    ],
+    "masked_api_snapshots": [
+      "/api/version",
+      "/api/backends",
+      "/api/settings"
+    ],
+    "viewports": [
+      "1440x1000",
+      "1728x1117"
+    ]
+  },
+  "sha256": {
+    "source/runtime/main.html": "1720065d9b27d3c226b78dc1850042a5dc838118d46d30bf2babb0fd24a00af9",
+    "source/runtime/data.html": "c97fc80bbd23a4cf3afc326231e66f5a4cfe5cdae2ba76e93e9e09327b40e817",
+    "source/runtime/settings.html": "3bcef907fcd74e8d2a52f19c6182c74c11970e12eab1b674626d711540a5992e",
+    "source/runtime/spine.html": "deb18677489084d9bc0a8221488fa613f83d09f20332cc17fa2b939b8e68d140",
+    "source/runtime/uploads/3537b2c43f973804da20e93eb4fbc058.PNG": "689ff2b276e7e35d249e8689503df0e956ac621dac76980640b6a53cb834ec4c",
+    "source/runtime/uploads/Screenshot 2026-05-24 at 4.55.12 PM.png": "93841c3ccdcd0ad179f486673f5604d9ff70998c99cad3dbeeee6efb78c58dd8",
+    "source/runtime/uploads/cactus logo.png": "4517f2dbb06b71ac0b7aef21e3a92a548ab57a8b3406fcdcc9fb49920256f4e1",
+    "source/runtime/uploads/logo green.png": "689ff2b276e7e35d249e8689503df0e956ac621dac76980640b6a53cb834ec4c",
+    "api-snapshots/version.json": "2044f038c4c451ad296f2daaa9baf65ab44d2855090202e19eb45bffd5fecc9d",
+    "api-snapshots/backends.json": "93cb315679d52fdc786bf08517cf4deb8de990c61fdbae8080d67ae1d6d4fb02",
+    "api-snapshots/settings.masked.json": "3bc8df9af069f7514105cd07503f46d9ff919115f7332d70ac160f3a580cdeee",
+    "screenshots/main-1440x1000.png": "ca6efdc927d2d253a4cf47847ab5d6c9c9f18dfb64fdc7b7d33f9ad1a98b852f",
+    "screenshots/main-1728x1117.png": "6481b5e66975332a3b657ebb859d8f7aa0e92e47d7f4f2b64845f8995df79309",
+    "screenshots/data-1440x1000.png": "29ccd1b6ebf0f37143164ac141de174c3a737d49443462ee488da6d135a2547d",
+    "screenshots/data-1728x1117.png": "6d36fa6a22ac14c4133e1a261b1f07b287192f9d9b52975693c82288b41b7d39",
+    "screenshots/settings-1440x1000.png": "999e9796e128e78b02945f951f2a9bea74215f42ffa7a0547fc253b3f6c47c02",
+    "screenshots/settings-1728x1117.png": "e700efcb0a9bde1ea8b579b4163e14efbce7e36ffd712510ee3bac612b67a4e0",
+    "screenshots/spine-1440x1000.png": "544c7019fec4245f621dd12cda4615a854a0bcbb0a1308d009b65e75a286679f",
+    "screenshots/spine-1728x1117.png": "eb37a4c349b6be353b7d27e69acb89ff03aa21651f05ff5062fd27fe69f714dc"
+  },
+  "secret_policy": "No credentials are stored. settings.masked.json came from the runtime's masked settings response."
+}

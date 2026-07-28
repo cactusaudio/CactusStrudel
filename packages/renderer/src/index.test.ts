@@ -1,12 +1,127 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { promises as fs } from 'node:fs';
+import { EventEmitter } from 'node:events';
+import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
-import { render, renderPeak, releaseRenderer } from './index.js';
+import {
+  _startRendererPageServerForTests,
+  render,
+  renderPeak,
+  releaseRenderer,
+} from './index.js';
 
 const SHOULD_RUN = process.env.CACTUS_RENDER_E2E === '1';
 
 const TMP = path.join(os.tmpdir(), 'cactus-render-tests');
+
+class FakeChildProcess extends EventEmitter {
+  exitCode: number | null = null;
+  signalCode: NodeJS.Signals | null = null;
+  killed = false;
+  readonly pid: number;
+
+  constructor(
+    private readonly label: string,
+    private readonly events: string[],
+    pid: number,
+  ) {
+    super();
+    this.pid = pid;
+  }
+
+  kill(signal: NodeJS.Signals | number = 'SIGTERM'): boolean {
+    const normalized = typeof signal === 'string' ? signal : 'SIGTERM';
+    this.killed = true;
+    this.events.push(`signal:${this.label}:${normalized}`);
+    setTimeout(() => {
+      this.signalCode = normalized;
+      this.events.push(`exit:${this.label}`);
+      this.emit('exit', null, normalized);
+    }, 5);
+    return true;
+  }
+}
+
+function fakeChild(label: string, events: string[], pid: number): ChildProcess {
+  return new FakeChildProcess(label, events, pid) as unknown as ChildProcess;
+}
+
+describe('renderer page source/build selection', () => {
+  it('starts current source directly when the dist receipt is stale', async () => {
+    const spawns: Array<{ mode: 'preview' | 'source'; port: number }> = [];
+    const process = fakeChild('source', [], 7001);
+    const started = await _startRendererPageServerForTests({
+      startPort: 6123,
+      fixedPort: true,
+      repoRoot: '/repo',
+      rendererPageDir: '/repo/apps/renderer-page',
+      checkBuild: async () => ({
+        valid: false,
+        surface: 'renderer-page',
+        reasons: ['task inputs or lock bytes changed after build'],
+      }),
+      spawnServer: (mode, port) => {
+        spawns.push({ mode, port });
+        return process;
+      },
+      waitUntilReady: async () => undefined,
+      warn: () => undefined,
+    });
+
+    expect(started.mode).toBe('source');
+    expect(started.port).toBe(6123);
+    expect(spawns).toEqual([{ mode: 'source', port: 6123 }]);
+  });
+
+  it('waits for stale preview exit before reusing a fixed port for current source', async () => {
+    const events: string[] = [];
+    const spawns: Array<{ mode: 'preview' | 'source'; port: number }> = [];
+    let nextPid = 7100;
+    const started = await _startRendererPageServerForTests({
+      startPort: 6200,
+      fixedPort: true,
+      repoRoot: '/repo',
+      rendererPageDir: '/repo/apps/renderer-page',
+      checkBuild: async () => ({
+        valid: true,
+        surface: 'renderer-page',
+        reasons: [],
+      }),
+      verifyServed: async () => ({
+        valid: false,
+        surface: 'renderer-page',
+        reasons: ['served output mismatch: assets/main.js'],
+        build: { valid: true, surface: 'renderer-page', reasons: [] },
+      }),
+      spawnServer: (mode, port) => {
+        events.push(`spawn:${mode}:${port}`);
+        if (mode === 'source') {
+          expect(events).toContain('exit:preview');
+          expect(events.indexOf('exit:preview')).toBeLessThan(events.length - 1);
+        }
+        spawns.push({ mode, port });
+        return fakeChild(mode, events, nextPid++);
+      },
+      waitUntilReady: async () => undefined,
+      warn: () => undefined,
+    });
+
+    expect(started.mode).toBe('source');
+    expect(started.port).toBe(6200);
+    expect(spawns).toEqual([
+      { mode: 'preview', port: 6200 },
+      { mode: 'source', port: 6200 },
+    ]);
+    expect(events).toEqual([
+      'spawn:preview:6200',
+      'signal:preview:SIGTERM',
+      'exit:preview',
+      'spawn:source:6200',
+    ]);
+  });
+});
+
 
 afterAll(async () => {
   // Best-effort: drain shared renderer handle.

@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "areas": [
+    {
+      "id": "ui",
+      "purpose": "Producer UI, global transport, A/B, score targeting and settings screens",
+      "read_first": [
+        "apps/producer-ui/README.md",
+        "apps/producer-ui/src/contracts.ts",
+        "apps/producer-ui/src/store.ts"
+      ],
+      "entrypoints": [
+        "apps/producer-ui/src/main.tsx",
+        "apps/producer-ui/src/screens"
+      ],
+      "tests": [
+        "apps/producer-ui/src/state/invariants.test.ts",
+        "apps/producer-ui/src/state/bootstrap-coordinator.test.ts",
+        "apps/producer-ui/src/api-client.test.ts",
+        "apps/producer-ui/src/audio-engine.test.ts"
+      ],
+      "full_scan_required": false
+    },
+    {
+      "id": "http",
+      "purpose": "HTTP routes, static serving, SSE and application adapters",
+      "read_first": [
+        "docs/API.md",
+        "runtime/README.md"
+      ],
+      "entrypoints": [
+        "runtime/serve.py",
+        "runtime/v3_api.py"
+      ],
+      "tests": [
+        "tests/v3_api/test_server_contract.py",
+        "tests/v3_api/test_piece_normalization.py"
+      ],
+      "full_scan_required": false
+    },
+    {
+      "id": "truth",
+      "purpose": "Durable pieces, revisions, ratings, child jobs and asset receipts",
+      "read_first": [
+        "docs/architecture.md",
+        "runtime/v3/README.md"
+      ],
+      "entrypoints": [
+        "runtime/v3/service.py",
+        "runtime/v3/store.py",
+        "runtime/v3/assets.py"
+      ],
+      "tests": [
+        "tests/v3"
+      ],
+      "full_scan_required": false
+    },
+    {
+      "id": "agent",
+      "purpose": "CLIProxy, Agent Settings, Brain jobs, tools and Ultra orchestration",
+      "read_first": [
+        "docs/SETTINGS.md",
+        "runtime/agent/README.md"
+      ],
+      "entrypoints": [
+        "runtime/agent/settings.py",
+        "runtime/agent/responses_runner.py",
+        "runtime/agent/tools.py"
+      ],
+      "tests": [
+        "tests/agent_v3",
+        "tests/v3_api/test_settings_adapter.py",
+        "tests/v3_api/test_brain_messages.py"
+      ],
+      "full_scan_required": false
+    },
+    {
+      "id": "generation",
+      "purpose": "Best-of-N batches, prompt compilation, model response, validation and commit",
+      "read_first": [
+        "producer-brain/README.md",
+        "docs/API.md"
+      ],
+      "entrypoints": [
+        "runtime/v3_api.py",
+        "runtime/prompt_kernel.py",
+        "producer-brain/kernel",
+        "apps/render-worker/src/validate-strudel.ts"
+      ],
+      "tests": [
+        "tests/v3_api/test_generation_jobs.py",
+        "packages/strudel-validator/src/index.test.ts"
+      ],
+      "full_scan_required": false
+    },
+    {
+      "id": "renderer",
+      "purpose": "Realtime Strudel capture, MP3 post-processing and audio features",
+      "read_first": [
+        "docs/renderer.md",
+        "apps/render-worker/README.md"
+      ],
+      "entrypoints": [
+        "apps/render-worker/src/auto-render.ts",
+        "packages/renderer/src/index.ts",
+        "apps/renderer-page/src/main.ts",
+        "packages/analyzer/src/index.ts"
+      ],
+      "tests": [
+        "packages/renderer/src/index.test.ts",
+        "packages/renderer/src/lifecycle.test.ts",
+        "packages/analyzer/src/index.test.ts",
+        "tests/v3_api/test_render_process_lifecycle.py"
+      ],
+      "full_scan_required": false
+    },
+    {
+      "id": "research",
+      "purpose": "Legacy evidence, dry-run reconciliation and named historical questions",
+      "read_first": [
+        "docs/LIVE_VS_RESEARCH.md",
+        "producer-brain/README.md",
+        "archive/README.md"
+      ],
+      "entrypoints": [
+        "runtime/v3/legacy.py",
+        "runtime/v3/legacy_importer.py",
+        "producer-brain/corpus.jsonl",
+        "producer-brain/failure-spine.jsonl"
+      ],
+      "tests": [
+        "tests/v3/test_legacy_reconcile.py"
+      ],
+      "full_scan_required": false
+    },
+    {
+      "id": "repo",
+      "purpose": "Repository topology, documentation routing, build gates and bounded context tooling",
+      "read_first": [
+        "docs/development.md",
+        "package.json",
+        "pnpm-workspace.yaml"
+      ],
+      "entrypoints": [
+        "scripts/repo_context.py",
+        "scripts/check_docs.py",
+        "scripts/verify-repo.sh"
+      ],
+      "tests": [
+        "scripts/check_docs.py",
+        "scripts/verify-repo.sh"
+      ],
+      "full_scan_required": false
+    }
+  ]
+}

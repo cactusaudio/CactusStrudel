@@ -1,18 +1,40 @@
 #!/usr/bin/env bash
-# recent — list last N pieces with scores
+# recent [N] — list newest active v3 pieces and their active revision scores
 set -euo pipefail
+
+if [[ "${1:-}" == "--help" ]]; then
+  echo "usage: bin/recent [N]"
+  echo "Lists the newest active pieces from GET /api/v2/pieces."
+  exit 0
+fi
+
 N="${1:-15}"
-BASE="${CACTUS_BASE:-http://localhost:8765}"
-curl -s "$BASE/api/recent?n=$N" | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-items=d.get('items',[])
-print(f'total {d.get(\"total\",\"?\")}, showing {len(items)}:')
-for it in items:
-    score=it.get('score_bowei')
-    s=f'{score:>4}' if score is not None else '   ·'
-    name=it.get('name','?')
-    ts=it.get('ts','')
-    extra=(it.get('extra') or '')[:50]
-    print(f'  {name:<20} {s}  {ts}  {extra}')
-"
+[[ "$N" =~ ^[0-9]+$ ]] && (( N > 0 )) || {
+  echo "N must be a positive integer" >&2
+  exit 2
+}
+
+BASE="${CACTUS_BASE:-http://127.0.0.1:8765}"
+N="$N" curl -fsS --max-time 10 "$BASE/api/v2/pieces?archived=active" |
+  N="$N" python3 -c '
+import json, os, sys
+data = json.load(sys.stdin)
+pieces = sorted(
+    data.get("pieces", []),
+    key=lambda row: row.get("created_at") or "",
+    reverse=True,
+)
+shown = pieces[: int(os.environ["N"])]
+print(f"active {len(pieces)}, showing {len(shown)}:")
+for piece in shown:
+    rev = piece.get("active_revision") or {}
+    score = rev.get("score")
+    score_text = f"{score:>4.1f}" if isinstance(score, (int, float)) else "   ·"
+    created = (piece.get("created_at") or "")[:19].replace("T", " ")
+    revision = str(piece.get("active_revision_id") or "")[-8:]
+    name = piece.get("name", "?")
+    print(
+        f"  {name:<30.30} "
+        f"{score_text}  {created:<19}  rev …{revision}"
+    )
+'

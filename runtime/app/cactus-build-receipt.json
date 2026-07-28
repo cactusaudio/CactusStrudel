@@ -1,0 +1,301 @@
+{
+  "schema_version": 2,
+  "protocol": {
+    "name": "cactus-controlled-vite-build-v1",
+    "intent_sha256": "5979138f011c44da2069d28c2ec348efc770ce79c86ecb62d9e7c555d8922f78"
+  },
+  "surface": "producer-ui",
+  "task": {
+    "command": "pnpm --filter @cactus/producer-ui build",
+    "package_script": "node ../../scripts/build-receipt.mjs run producer-ui",
+    "executed": [
+      "pnpm",
+      "exec",
+      "vite",
+      "build"
+    ]
+  },
+  "source": {
+    "schema_version": 2,
+    "observed_head": "95f85f60596cc226c477543a873e3c4ec95e32fb",
+    "branch": "codex/cactusstrudel-v3",
+    "working_tree_sha256": "58a17032b758a0b69263f19e41f34307f565374c1ee12c520a8962396bac0cf8",
+    "landing_state_sha256": "5c1181f3b5ab6787ed267b82c4cd84734958ef25940a7e2e00ec898a9f95aeb4",
+    "effective_tree_sha256": "22bd916d6e2825ad47c480379692598cb8a86c0f478c4b84dff8cfaf3dec958b",
+    "tracked_worktree_sha256": "157127d87a9ec28532658b258cba70e3280595127d53657c79568eabe4e5898d",
+    "index_tree_sha256": "6450b04fc78f0a9ea642f2b0484aa79cd7e59acc0a775b227c444e56c2c712af",
+    "index_flags_sha256": "f16b25ef14fc64ceef2190a39539c63b286ef83cb11fe3d13995ff29d2c7e5a7",
+    "untracked_tree_sha256": "efa533f1f571fcb7931dd4d6846ee45ecf63972afe0ec8e12d9dcefce04a636e",
+    "staged_state_sha256": "5c976c4987e1194752bf6bb3b6f9badf00e8d99b8a2e456ad3d154767c7c16c0",
+    "unstaged_state_sha256": "bc9874c0adb430cc4c8d2435609f963932081ca80274d95fd732f06c12321442",
+    "staged_changes": 0,
+    "unstaged_changes": 498,
+    "untracked_files": 589,
+    "dirty_entries": 1087
+  },
+  "builder": {
+    "node": "v26.3.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "package_manager_declared": "pnpm@11.0.9",
+    "package_manager_executed": "11.0.9",
+    "package_manager_user_agent": "pnpm/11.0.9 npm/? node/v26.3.0 darwin arm64",
+    "lifecycle_script": "node ../../scripts/build-receipt.mjs run producer-ui",
+    "vite": "6.4.2",
+    "esbuild": null,
+    "environment": {
+      "keys": [],
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sha256": "f8b98530090d4654bff367a147e6c8a5c09262db77e6281708b52439c7e13a29"
+  },
+  "lock": {
+    "path": "pnpm-lock.yaml",
+    "sha256": "cc0a30662c87bc636f75b10502112c49e84b0198c7feda7146c9252c69868eab"
+  },
+  "inputs": {
+    "sha256": "81f3cc6fc0a8935870ad65388041aa7cff6d9d3cbd53acd82b795e408e955618",
+    "files": [
+      {
+        "path": "apps/producer-ui/index.html",
+        "type": "file",
+        "bytes": 725,
+        "sha256": "e43bf50036954e6002c79921991c3ca26a5cbac7870ee921a5e303350966f482"
+      },
+      {
+        "path": "apps/producer-ui/package.json",
+        "type": "file",
+        "bytes": 513,
+        "sha256": "2f4190624d0076629291e4a2ced7b7212f1dcb0bdd291cabd8322f3bff917b58"
+      },
+      {
+        "path": "apps/producer-ui/src/api-client.test.ts",
+        "type": "file",
+        "bytes": 4867,
+        "sha256": "072ad9d3376f783fa563e4e658a3f00aa8a302bbee0e476f0f81842f827d89b6"
+      },
+      {
+        "path": "apps/producer-ui/src/api-client.ts",
+        "type": "file",
+        "bytes": 9210,
+        "sha256": "f5576650a84a6be03855447eb14ee6c9b9dd064d86dacf36191a62954caeede7"
+      },
+      {
+        "path": "apps/producer-ui/src/audio-engine.test.ts",
+        "type": "file",
+        "bytes": 3223,
+        "sha256": "0e178fed44bbe5d91f48fc37a3e51dd6e4d6e99bd8d6eed377ce0302264e80d2"
+      },
+      {
+        "path": "apps/producer-ui/src/audio-engine.ts",
+        "type": "file",
+        "bytes": 6027,
+        "sha256": "064ecb8bf4e4eb8debe6a2bc74dfa06be241b0288a8512a2e58d0cf1182fc8b3"
+      },
+      {
+        "path": "apps/producer-ui/src/bootstrap.ts",
+        "type": "file",
+        "bytes": 456,
+        "sha256": "a7ac68b3396311ed639a9516f3337d2ba784318810713e04efeeddb799675767"
+      },
+      {
+        "path": "apps/producer-ui/src/components/app-shell.tsx",
+        "type": "file",
+        "bytes": 5619,
+        "sha256": "e57c02f3ff0fa500d2b7dbcb3be1d1fdb5f9f48d258ee0f760dca9313abf06ab"
+      },
+      {
+        "path": "apps/producer-ui/src/components/prompt-receipt.tsx",
+        "type": "file",
+        "bytes": 2121,
+        "sha256": "8b69edd6447a9ec4408a96f7bd5b6f2eff3ef07ae77f0c8314c72d384c3681a6"
+      },
+      {
+        "path": "apps/producer-ui/src/components/transport.tsx",
+        "type": "file",
+        "bytes": 3613,
+        "sha256": "cc8f3e40a0e15ecd2057ec8c394ce6757a514d6225afbe93e66a3b0a814ea3ae"
+      },
+      {
+        "path": "apps/producer-ui/src/components/ui.tsx",
+        "type": "file",
+        "bytes": 8547,
+        "sha256": "42f2647a224c061c1742fc19d0476f15ae92f41f51a88314062a17efaa193dda"
+      },
+      {
+        "path": "apps/producer-ui/src/contracts.ts",
+        "type": "file",
+        "bytes": 6070,
+        "sha256": "66b394581f1805f3efcc9d19f5383ff386e4498acc2ca348581ed9e784b02094"
+      },
+      {
+        "path": "apps/producer-ui/src/main.tsx",
+        "type": "file",
+        "bytes": 4038,
+        "sha256": "8b69200f3ea81db3e51ed4ae864c6ae609c213331411721a923961dd6b01882d"
+      },
+      {
+        "path": "apps/producer-ui/src/screens/activity.tsx",
+        "type": "file",
+        "bytes": 8358,
+        "sha256": "8050dd127d9c1286cfcdbda491346f6aef1d9fe553943effe3e4d0c57a4c6c08"
+      },
+      {
+        "path": "apps/producer-ui/src/screens/library.tsx",
+        "type": "file",
+        "bytes": 16666,
+        "sha256": "7b86068ae24ced3de1f4433dc46c99ac6ed7baf18b6e282aca53e413123d65ec"
+      },
+      {
+        "path": "apps/producer-ui/src/screens/research.tsx",
+        "type": "file",
+        "bytes": 6147,
+        "sha256": "eafc1452b1479e972d7343878ff757e01fba8b8d79632894f7edc02c51a1906c"
+      },
+      {
+        "path": "apps/producer-ui/src/screens/settings.tsx",
+        "type": "file",
+        "bytes": 28146,
+        "sha256": "480ac7099a376f5567a803e66b30cb1044cb7a9b818339cb8a0699af605756e8"
+      },
+      {
+        "path": "apps/producer-ui/src/screens/studio.tsx",
+        "type": "file",
+        "bytes": 33116,
+        "sha256": "3eef7575a97da75b789e6688b40f1e0baa113a5df984846a3481534cc3a5c14c"
+      },
+      {
+        "path": "apps/producer-ui/src/state/bootstrap-coordinator.test.ts",
+        "type": "file",
+        "bytes": 3436,
+        "sha256": "3cc35dcaa1576be0019ae316017289626dd1f37dff2df43d4969954a2e128d6d"
+      },
+      {
+        "path": "apps/producer-ui/src/state/bootstrap-coordinator.ts",
+        "type": "file",
+        "bytes": 1966,
+        "sha256": "c731fc3f44f3da0ad9dd0b62269ca5048a6acbb96ba6e1a7bc1d1d43595dd88b"
+      },
+      {
+        "path": "apps/producer-ui/src/state/editor-drafts.test.ts",
+        "type": "file",
+        "bytes": 1203,
+        "sha256": "fce8f3eb960a3b842e1cbb6a2baa7d47097931dd1c43b824e8f48050352f4d3b"
+      },
+      {
+        "path": "apps/producer-ui/src/state/editor-drafts.ts",
+        "type": "file",
+        "bytes": 1680,
+        "sha256": "2f6c4f19da3a7f3ae95109a001268613e9bd9640da6006e1d4110c8665968aa0"
+      },
+      {
+        "path": "apps/producer-ui/src/state/invariants.test.ts",
+        "type": "file",
+        "bytes": 11011,
+        "sha256": "6761e45783491fbce857ac47504ffb290c3dde47561cd815943c25d3338bcee6"
+      },
+      {
+        "path": "apps/producer-ui/src/state/invariants.ts",
+        "type": "file",
+        "bytes": 5733,
+        "sha256": "5f069851768fdb8b75e5e96b502bbd2ad5ed33c6797fd6cd117a4e196201c143"
+      },
+      {
+        "path": "apps/producer-ui/src/state/store-ownership.test.ts",
+        "type": "file",
+        "bytes": 5137,
+        "sha256": "c9c837cd6c333889b32867becafa388396ea867c18d169c8b937767fe9fcd318"
+      },
+      {
+        "path": "apps/producer-ui/src/store.ts",
+        "type": "file",
+        "bytes": 21972,
+        "sha256": "491bb326d329242ec3a6d616412e5d4f7360be8331703b36599211b75c2ea2c2"
+      },
+      {
+        "path": "apps/producer-ui/src/style.css",
+        "type": "file",
+        "bytes": 61529,
+        "sha256": "99d0cdd4b81ec6c5bd12213f09243cdbd35c0a2d50119f07260a6fb302e6ae59"
+      },
+      {
+        "path": "apps/producer-ui/tsconfig.json",
+        "type": "file",
+        "bytes": 412,
+        "sha256": "9209f40908e9dc78d7992a63a54c62d13776af8167bede30a4168693513e52cf"
+      },
+      {
+        "path": "apps/producer-ui/vite.config.ts",
+        "type": "file",
+        "bytes": 541,
+        "sha256": "57f6ef4b257d40127abf1c7c80fd59920bd018f074ef39b9ba258529750f0860"
+      },
+      {
+        "path": "package.json",
+        "type": "file",
+        "bytes": 830,
+        "sha256": "17bfa3c780cd28e822440096563dc34c0be4e1f6b8f9c43e9afb557893b8fcad"
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "type": "file",
+        "bytes": 89672,
+        "sha256": "cc0a30662c87bc636f75b10502112c49e84b0198c7feda7146c9252c69868eab"
+      },
+      {
+        "path": "pnpm-workspace.yaml",
+        "type": "file",
+        "bytes": 141,
+        "sha256": "f8d2ec705cef3c7195083f4c6ecc02cb3d074799e15eaf48f5b0b6432bad7650"
+      },
+      {
+        "path": "scripts/build-receipt.d.mts",
+        "type": "file",
+        "bytes": 2448,
+        "sha256": "fa35715318c0c9f59736caea96738251b45a4a024941562fe15b6c44365a84f8"
+      },
+      {
+        "path": "scripts/build-receipt.mjs",
+        "type": "file",
+        "bytes": 33100,
+        "sha256": "bd2693a95977e90ca7310ce325001d403e10c81cdce9fd27e0907a918f988336"
+      },
+      {
+        "path": "scripts/repo_fingerprint.py",
+        "type": "file",
+        "bytes": 16535,
+        "sha256": "f5c59b2e45e04ca2375ff0ee2d7855efe7cc03850919d9e2b158485c2bb9d74a"
+      },
+      {
+        "path": "tsconfig.base.json",
+        "type": "file",
+        "bytes": 592,
+        "sha256": "a5076e9dabe3271cc8f4592d47296c7cb8f0a90c186b5ae80dc420a78824d9e9"
+      }
+    ]
+  },
+  "outputs": {
+    "root": "runtime/app",
+    "sha256": "8a665b192545e3895c254d0d228dc0f2f5b5d3ebe4757b702f8d63e7fc5f0960",
+    "files": [
+      {
+        "path": "assets/index-3O_h0hWj.js",
+        "type": "file",
+        "bytes": 101591,
+        "sha256": "bc2537cb0b5d5f73dab4d21cc000ac1b6a80b5dc4984cad9cb91da1c32622cd6"
+      },
+      {
+        "path": "assets/index-DCEkANAw.css",
+        "type": "file",
+        "bytes": 49700,
+        "sha256": "5e6ff4a310e34e0ea374957d026d9f44be88e456880dd2eafbaf027b1eb435c3"
+      },
+      {
+        "path": "index.html",
+        "type": "file",
+        "bytes": 847,
+        "sha256": "10cdd0d5328eec94b621e0252768a09ca20f0ff87384c3c65a19d63cadc79a6a"
+      }
+    ]
+  }
+}

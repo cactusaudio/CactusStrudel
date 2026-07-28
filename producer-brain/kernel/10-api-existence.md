@@ -1,7 +1,8 @@
 # API surface
 
-Anything not in this list either does not exist, or breaks the render with no
-audible result. Stay inside this surface; freely compose anything within it.
+This is the renderer-backed surface most useful for composition. Stay inside
+it unless you know another API is present in the installed Strudel build; the
+deterministic validator and the renderer, not an LLM guess, are the authority.
 
 ## Pitch
 - `note("<note pattern>")` — written pitches (e.g. `note("c3 e3 g3")`)
@@ -32,7 +33,7 @@ audible result. Stay inside this surface; freely compose anything within it.
 - `signal.range(a,b).slow(n)` → pipe into `.lpf()`, `.gain()`, `.pan()`, etc.
 
 ## Sound source — `.s("<valid name>")`
-- local synths: `sine` `saw` `sawtooth` `square` `triangle` `supersaw` `piano` `white` `pink` `brown`
+- local synths: `sine` `saw` `sawtooth` `square` `triangle` `pulse` `supersaw` `piano` `white` `pink` `brown`
 - GM soundfonts (prefix is `gm_`, never `gmm_`): `gm_epiano1` `gm_pad_warm` `gm_acoustic_bass` `gm_synth_bass_1` `gm_flute` `gm_synth_drum` (any installed `gm_*` works)
 - FM: any oscillator carrier + `.fm(N)` — e.g. `.s("sine").fm(4)`, `.s("square").fm(4)`
 
@@ -44,7 +45,11 @@ audible result. Stay inside this surface; freely compose anything within it.
 
 ## Shaping (chainable, any combination)
 `.gain` `.lpf` `.lpq` `.hpf` `.room` `.roomsize` `.delay` `.delaytime` `.delayfeedback`
-`.attack` `.decay` `.sustain` `.release` `.pan` `.crush` `.shape` `.vib` `.clip` `.detune` `.speed` `.coarse`
+`.attack` `.decay` `.sustain` `.release` `.pan` `.crush` `.krush` `.shape` `.vib` `.clip` `.detune` `.speed` `.coarse`
+
+## Pattern operators / echoes
+- `.mod(N)` — numeric pattern modulo
+- `.stut(times, feedback, time)` — echo/stutter transform
 
 ## Sidechain
 - kick side: `.duckorbit(N)`, `.duckattack(t)`, `.duckdepth(d)`
@@ -55,7 +60,7 @@ audible result. Stay inside this surface; freely compose anything within it.
 - `setcpm(<bpm>/4)` at the top level only.
 
 ## Methods that do NOT exist (silent or throw)
-`.stutter()`  `.subdivide()`  `.mod()`  `.krush()`  `.stut()`  `.quantise()`  `.quantize()`  `.q()` (use `.lpq()`)
+`.stutter()`  `.subdivide()`  `.quantise()`  `.quantize()`  `.q()` (use `.lpq()`)
 
 ## Sound names that do NOT exist
-`"superfm"`  `"pulse"`  (use a valid oscillator name; for FM use `.s("<carrier>").fm(N)`)
+`"superfm"`  (for FM use `.s("<carrier>").fm(N)`)

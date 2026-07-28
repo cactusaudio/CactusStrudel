@@ -1,4 +1,6 @@
-import type { AnalyzerFeatures } from '@cactus/ir';
+/// <reference path="./types/essentia-js.d.ts" />
+
+import type { AnalyzerFeatures } from './types.js';
 import { readWav, mixToMono, type DecodedAudio } from './wav-io.js';
 import { computeSpectralFeatures } from './spectral.js';
 import { computeRhythmFeatures } from './rhythm.js';
@@ -39,36 +41,7 @@ export async function analyzeDecoded(decoded: DecodedAudio): Promise<AnalyzerFea
   };
 }
 
+export type { AnalyzerFeatures } from './types.js';
 export { computeSpectralFeatures, computeRhythmFeatures, computeStereoFeatures, computeLoudness };
 export { generateSpectrogram } from './spectrogram.js';
 export { readWav, mixToMono, resample, type DecodedAudio } from './wav-io.js';
-export {
-  nonSilentRatio, classifyNonSilent,
-  SILENCE_FLOOR_LOW_DB, SILENCE_FLOOR_HIGH_DB,
-  BROKEN_RENDERER_NSR, SPARSE_OK_NSR,
-  type NonSilentTier,
-} from './silence.js';
-export {
-  computeSectionFeatures,
-  computeSectionFeaturesFromAudio,
-  type SectionAnalysis,
-  type SectionFeatures,
-} from './section-features.js';
-export {
-  runQualityGates,
-  type QualityGateResult,
-  type QualityGatesReport,
-  type QualityGatesInput,
-} from './quality-gates.js';
-export {
-  computeSectionDiagnostics,
-  computeSectionDiagnosticsFromAudio,
-  type SectionDiagnostic,
-  type SectionDiagnosticsReport,
-} from './section-diagnostics.js';
-export {
-  computeStemDiagnostics,
-  type StemDiagnostic,
-  type StemDiagnosticsReport,
-  type StemRef,
-} from './stem-diagnostics.js';

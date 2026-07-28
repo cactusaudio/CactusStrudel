@@ -4,19 +4,20 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-or-later",
-  "description": "Autonomous Strudel-centered music producer.",
+  "description": "Local Strudel producer workspace with durable revisions and an explicit Agent Brain.",
   "engines": {
     "node": ">=20.10.0",
     "pnpm": ">=11.0.0"
   },
   "scripts": {
-    "build": "pnpm -r --filter './packages/*' --filter './apps/*' build",
+    "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "verify": "./scripts/verify-repo.sh",
+    "docs:check": "python3 scripts/check_docs.py",
     "dev:renderer": "pnpm --filter @cactus/renderer-page dev",
-    "cactus": "pnpm --filter @cactus/cli cactus"
+    "dev:ui": "pnpm --filter @cactus/producer-ui dev"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

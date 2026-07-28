@@ -1,7 +1,6 @@
 packages:
   - 'packages/*'
   - 'apps/*'
-  - 'tests'
 
 # pnpm 11 build-script allowlist. Enable trusted native-binary builds.
 allowBuilds:

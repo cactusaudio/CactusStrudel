@@ -481,6 +481,20 @@ registerProcessor('cactus-capture', CactusCapture);
   cap.connect(sink);
   sink.connect(dest);
 
+  // Current superdough keeps one long-lived master gain connected to the
+  // destination. Hooking AudioNode.connect() after init cannot observe that
+  // already-established edge, so tap the real master explicitly. The generic
+  // connect hook below remains useful for engines that connect voices directly.
+  let capturedMaster: AudioNode | null = null;
+  try {
+    const wa: any = await import('@strudel/webaudio');
+    capturedMaster = wa.getSuperdoughAudioController?.()?.output?.destinationGain ?? null;
+    capturedMaster?.connect(cap);
+    warnings.push(capturedMaster ? 'cap-master:connected' : 'cap-master:missing');
+  } catch (e) {
+    warnings.push('cap-master: ' + (e instanceof Error ? e.message.slice(0, 80) : 'err'));
+  }
+
   // Hijack connect(): mirror anything wired to ctx.destination into cap.
   const origConnect = AudioNode.prototype.connect as any;
   (AudioNode.prototype as any).connect = function (target: any, ...rest: any[]) {
@@ -560,6 +574,7 @@ registerProcessor('cactus-capture', CactusCapture);
   } finally {
     try { hush(); } catch { /* */ }
     (AudioNode.prototype as any).connect = origConnect;
+    try { capturedMaster?.disconnect(cap); } catch { /* */ }
     try { cap.disconnect(); } catch { /* */ }
     try { sink.disconnect(); } catch { /* */ }
     cap.onaudioprocess = null;
@@ -574,6 +589,7 @@ registerProcessor('cactus-capture', CactusCapture);
     const rr = chunksR[i]!;
     for (let j = 0; j < l.length; j++) { pcm[o++] = l[j] ?? 0; pcm[o++] = rr[j] ?? 0; }
   }
+  warnings.push(`cap-frames:${total}; peak:${peakAbs(pcm).toExponential(2)}`);
   return { pcmBase64: float32ToBase64(pcm), sampleRate: sr, channels: 2, durationSec: total / sr, warnings };
 };
 

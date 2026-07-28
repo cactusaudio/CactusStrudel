@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "classification_definitions": {
+    "exact": "The archived blob is byte-identical to the original blob.",
+    "annotated": "The archived blob changes only explanatory archive or topology context.",
+    "transformed": "The archived blob intentionally rewrites content or behavior and is not a byte-identical copy."
+  },
+  "entries": [
+    {
+      "original_path": "apps/cli/src/midi-export.ts",
+      "new_path": "archive/research-v1/apps/cli/src/midi-export.ts",
+      "original_blob_oid": "c3f370356a1a8395ecb8580334796a5d75bc7d5b",
+      "new_blob_oid": "207c21bf1eae4a8c002e20a6e1a8ccfb81df9b5e",
+      "classification": "annotated",
+      "reason": "The wiring comment now states that this is a standalone research helper and that the v3 HTTP API does not expose MIDI."
+    },
+    {
+      "original_path": "archive-gf/README.md",
+      "new_path": "archive/runtime-v2/gf/README.md",
+      "original_blob_oid": "40a6936e5069a63e645866fbd55fe5e6ce68440f",
+      "new_blob_oid": "09ad13e12d1494fcb266efd27787b1d18b599f50",
+      "classification": "transformed",
+      "reason": "The README was rewritten around the v3-native generation topology and the current historical-restore boundary."
+    },
+    {
+      "original_path": "docs/ir.md",
+      "new_path": "archive/research-v1/docs/ir.md",
+      "original_blob_oid": "b6f5596b49ce39175193389cb0ffeed214954707",
+      "new_blob_oid": "64f6230f63dd0aad7dff9db71542a46d96e5f332",
+      "classification": "annotated",
+      "reason": "The preface now points to runtime/v3_api.py and runtime/v3 as the live truth owners; the archived IR description is otherwise unchanged."
+    },
+    {
+      "original_path": "runtime/test_serve_helpers.py",
+      "new_path": "archive/runtime-v2/tests/test_serve_helpers.py",
+      "original_blob_oid": "fdb57fc2bdf2a1ad60136b373de51cc4eb8a287e",
+      "new_blob_oid": "c63458df163d229d828b73493e2591a7ac568b54",
+      "classification": "annotated",
+      "reason": "A module docstring marks the tests as belonging to the frozen v2 single-file runtime."
+    },
+    {
+      "original_path": "runtime/user_config.py",
+      "new_path": "archive/runtime-v2/user_config.py",
+      "original_blob_oid": "91c49a22d70d95684baa0b10a67bbe7b77c428f1",
+      "new_blob_oid": "0e7ad8792f55721e3c18a8d348db6e5f83971c89",
+      "classification": "transformed",
+      "reason": "The archive copy marks its v2 status and replaces the old light/heavy LLM validator defaults with deterministic compatibility normalization."
+    }
+  ]
+}

@@ -1,9 +1,15 @@
 export { validateMiniNotation, tokenizeMini } from './mini-notation.js';
 export { validateStrudelCode } from './code-validator.js';
 export {
+  extractRenderTiming,
+  RenderTimingError,
+} from './render-timing.js';
+export type {
+  RenderTiming,
+  RenderTimingOptions,
+} from './render-timing.js';
+export {
   STRUDEL_FUNCTIONS,
-  SINGLE_USE_EFFECTS,
-  REPEATABLE_METHODS,
   STRUDEL_REGISTRY_GENERATED_AT,
   isStrudelFunction,
 } from './registry.js';

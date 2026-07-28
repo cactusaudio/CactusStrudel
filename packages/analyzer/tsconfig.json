@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "tsBuildInfoFile": "../../node_modules/.cache/cactus/analyzer.tsbuildinfo"
   },
-  "include": ["src/**/*", "src/types/**/*.d.ts"],
-  "references": [{ "path": "../ir" }]
+  "include": ["src/**/*", "src/types/**/*.d.ts"]
 }

@@ -12,7 +12,6 @@
     "extract-registry": "tsx scripts/extract-registry.ts"
   },
   "dependencies": {
-    "@cactus/ir": "workspace:*",
     "acorn": "^8.14.0",
     "acorn-walk": "^8.3.4"
   }

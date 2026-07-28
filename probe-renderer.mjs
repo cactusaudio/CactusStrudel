@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 
-const RENDERER_DIR = '/Users/bowei/CactusStrudel/apps/renderer-page';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+const RENDERER_DIR = join(dirname(fileURLToPath(import.meta.url)), 'apps/renderer-page');
 const port = 5180;
 const baseUrl = `http://localhost:${port}`;
 

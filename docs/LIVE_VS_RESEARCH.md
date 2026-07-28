@@ -1,92 +1,79 @@
-# Live vs Research Boundary
+# Live truth versus research evidence
 
-Current source of truth as of 2026-05-31: CactusStrudel has two valid but
-different execution surfaces. Do not collapse them.
+## Live product truth
 
-## Live product path
+- canonical SQLite records for pieces, revisions, ratings and jobs;
+- immutable version assets and receipts;
+- Agent settings draft/Test/Applied readback;
+- currently served Producer UI build;
+- prompt-kernel fragments used by generation;
+- Bowei’s score on an exact revision/audio SHA.
 
-The live user-facing studio is the Python runtime plus HTML workbench:
+Live mutations occur only through current v3 product/domain interfaces.
 
-- `runtime/serve.py` owns HTTP routing, backend dispatch, settings, AGY/CLIProxy/direct
-  generation, render orchestration, scoring, corpus writes, source-offer, and brain chat.
-- `runtime/main.html`, `runtime/data.html`, and `runtime/settings.html` are the active UI.
-- `producer-brain/corpus.jsonl`, `producer-brain/pieces/*.js`, rendered audio,
-  feature sidecars, prompt metadata, revision logs, and kernel fragments are the live
-  product records.
-- `apps/cli/src/auto-render.ts`, `apps/cli/src/validate-strudel.ts`, and
-  `apps/cli/src/midi-export.ts` are live bridge utilities called by the Python runtime.
+## Preserved research and legacy evidence
 
-If the task changes user-facing generation, the Advanced panel, the DAW editor,
-brain chat, catalog, backend settings, source offer, scoring, or save/render flows,
-start in `runtime/serve.py` and `runtime/*.html`, then verify runtime endpoints or UI
-behavior plus `scripts/verify-repo.sh`.
+- `producer-brain/corpus.jsonl`;
+- legacy JS/audio/prompt files;
+- `producer-brain/failure-spine.jsonl`;
+- `producer-brain/revisions.jsonl`;
+- archived task and migration evidence;
+- historical implementations under `archive/`.
 
-## Research substrate path
+Preserving evidence does not restore its old authority. Importing legacy bytes
+into immutable revisions does not upgrade unknown model provenance to exact.
 
-The TypeScript closed-loop producer is still useful research/eval substrate:
+## Allowed transition
 
-- `packages/*`, `apps/cli/src/index.ts`, `genres/`, and `cookbook/` implement the
-  SessionGraph/SongGraph-style producer, deterministic compiler, validator, renderer,
-  analyzer, critic, preferences, audit harness, and repair loop.
-- `references/*.yaml` is a legacy research calibration stack. It is not shipped in the
-  deployment bundle and is not a live studio dependency. Its remaining valid role is
-  regression evidence: `packages/genres/src/index.test.ts` cross-checks production
-  `genres/*.yaml` against the reference descriptors for LUFS, true-peak, and BPM drift.
-- `pnpm cactus -- produce`, `sketch`, `revise`, `stems`, `explain`, `taste`, `audit`,
-  `audit:repair`, and cookbook commands exercise this research engine.
-- `SessionGraph` remains canonical only inside the TypeScript research engine.
-  Strudel code can be compiler output there, but that is not the live studio's global
-  data contract.
-- `RenderGraph` feature/spectrogram rules describe research-engine invariants. The live
-  studio records rendered MP3s/features/prompts/corpus entries through `runtime/serve.py`.
+Research may support:
 
-If the task changes deterministic producer behavior, package-level validation, MIR
-analysis, critic scoring, genre constraints, cookbook snippets, audit repair, or
-research CLI output, start in `packages/`, `apps/cli/src/index.ts`, `genres/`, or
-`cookbook/`, then verify package tests, targeted audits, and `scripts/verify-repo.sh`.
+- a prompt-kernel candidate;
+- a profile comparison;
+- a Brain suggestion;
+- a preview edit;
+- a listening experiment.
 
-## Boundary rules
+It may not automatically:
 
-- Do not claim live product improvement from research-only green tests unless the live
-  runtime route actually consumes the changed code.
-- Do not claim research-engine improvement from UI-only behavior.
-- Keep bridge utilities explicit. `auto-render.ts`, `validate-strudel.ts`, and
-  `midi-export.ts` may serve both worlds, so changes there need both targeted utility
-  checks and runtime awareness.
-- Keep packaging/source-offer paths sanitized for live users. Include source and docs;
-  exclude local state such as runtime uploads, cc-bridge, checkpoints, audio archives,
-  research sessions, audits, refs, `references/`, secrets, and dependency caches.
-- Older docs such as `docs/architecture.md`, `docs/ir.md`, ADR 0003, and parts of
-  `CLAUDE.md` describe the research substrate unless they explicitly reference the
-  current runtime.
+- rewrite the active prompt kernel;
+- promote a revision;
+- score music;
+- Apply Agent Settings;
+- archive live evidence;
+- present correlation as validated taste.
 
-When in doubt, ask: "Which executable path proves this?" For live UX, the proof is
-`runtime/serve.py` plus the browser/runtime endpoint. For research substrate, the proof
-is the TypeScript package/CLI harness and audit artifacts.
+The transition into live truth is an explicit product action with a receipt.
+Musical acceptance remains human.
 
-## Stack Ownership Matrix
+## Mechanical limits
 
-| Surface | Live product? | Owner files | Proof required |
-|---|---:|---|---|
-| Workbench / Advanced panel / DAW editor | yes | `runtime/main.html`, `runtime/serve.py` | browser/runtime endpoint behavior |
-| Catalog / Data page | yes | `runtime/data.html`, `producer-brain/corpus.jsonl` | corpus entry + UI/API behavior |
-| Brain chat tool-use | yes | `runtime/serve.py`, `runtime/cc-bridge/*` | `/api/brain-chat` trace and resulting corpus/revision state |
-| Save + Render / overwrite piece | yes | `runtime/serve.py`, `producer-brain/pieces`, `producer-brain/revisions.jsonl` | backup + render + manifest/revision update |
-| Render / MIDI bridge utilities | shared | `apps/cli/src/auto-render.ts`, `apps/cli/src/validate-strudel.ts`, `apps/cli/src/midi-export.ts`, `packages/renderer` | utility tests plus live endpoint awareness |
-| TypeScript SessionGraph producer | no, research | `packages/*`, `apps/cli/src/index.ts`, `genres/`, `cookbook/` | package tests, CLI audit, real-WAV conformance |
-| Studio UI session inspector | no, research/read-only | `apps/studio-ui/*` | loader/screenshot tests only; not live UX proof |
-| Legacy reference descriptors | no, research calibration | `references/*.yaml` | genre/reference alignment tests; excluded from bundle |
-| Older architecture docs | no, research/historical | `docs/architecture.md`, `docs/ir.md`, ADR 0003 | must carry research-only banner |
+The validator and renderer may prove:
 
-## Retired Zombie Claims
+- source parses and uses known Strudel API;
+- render completed;
+- audio is non-empty with positive duration;
+- code/audio/prompt/features hashes agree;
+- identity and receipts reconcile.
 
-These statements are no longer allowed as unqualified current-product claims:
+Descriptive audio features can help inspect a render. They are not an
+aesthetic score or automatic acceptance gate.
 
-- "SessionGraph is the canonical artifact" — true only inside the TypeScript
-  research engine.
-- "Agents never write Strudel" — true only for the research compiler path. The
-  live studio stores and edits Strudel piece JS directly.
-- "Renderer artifacts in RenderGraph prove live product quality" — false unless
-  the live runtime route consumed that render and updated corpus state.
-- "Studio UI is the product studio" — false. It is a read-only research session
-  inspector; the live product UI is `runtime/main.html` / `runtime/data.html`.
+## Historical access
+
+`archive/README.md` maps preserved generations. Normal feature work does not
+read archive content. Open it only for a named migration, regression, provenance
+or restoration question.
+
+The frozen v2 GUI at `/legacy/*` is a script-free screenshot viewer. Its exact
+source remains archived for explicit restoration only. Old APIs and automatic
+Claude/SessionGraph/gf control paths remain closed.
+
+## Reporting verbs
+
+- **built** — source compiled;
+- **served** — the live server returned that build;
+- **committed** — a durable receipt exists;
+- **tested** — the exact candidate completed the stated probe;
+- **Applied** — active settings changed and readback matched;
+- **scored** — Bowei rated an exact audio SHA;
+- **accepted** — Bowei explicitly accepted the music or product behavior.

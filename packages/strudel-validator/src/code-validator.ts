@@ -1,7 +1,7 @@
 import * as acorn from 'acorn';
 import { simple as walkSimple } from 'acorn-walk';
 import type { ValidationIssue, ValidationResult } from './types.js';
-import { STRUDEL_FUNCTIONS, SINGLE_USE_EFFECTS } from './registry.js';
+import { STRUDEL_FUNCTIONS } from './registry.js';
 import { validateMiniNotation } from './mini-notation.js';
 
 export interface CodeValidatorOptions {
@@ -66,13 +66,12 @@ export function validateStrudelCode(code: string, options: CodeValidatorOptions 
     },
   });
 
-  // 2. Detect duplicate single-use effects in the same chain.
-  detectChainDuplicates(ast, issues);
-
-  // 3. Validate string mini-notation at the call sites that actually carry it.
+  // 2. Validate string mini-notation at the call sites that actually carry it.
   validateMiniNotationLiterals(ast, issues);
 
-  // 4. Tempo / cycle sanity.
+  // 3. Reject only a literal non-positive cycle rate. Unconventional positive
+  // tempos and repeated effects are valid creative choices, not validator
+  // failures.
   walkSimple(ast, {
     CallExpression(node: any) {
       const callee = node.callee;
@@ -90,17 +89,6 @@ export function validateStrudelCode(code: string, options: CodeValidatorOptions 
             code: 'BAD_CPS',
             message: `${calleeName}(${arg.value}) is invalid — cps must be > 0`,
             span: { start: arg.start, end: arg.end },
-          });
-        }
-      }
-      if (calleeName === 'setBpm' || calleeName === 'setbpm') {
-        const arg = node.arguments[0];
-        if (arg && arg.type === 'Literal' && typeof arg.value === 'number' && (arg.value < 30 || arg.value > 300)) {
-          issues.push({
-            code: 'BAD_BPM',
-            message: `${calleeName}(${arg.value}) outside reasonable range 30..300`,
-            span: { start: arg.start, end: arg.end },
-            hint: 'check whether you meant cps (setcps) instead of bpm',
           });
         }
       }
@@ -181,55 +169,6 @@ function validateMiniNotationLiterals(root: acorn.Node, issues: ValidationIssue[
       }
     },
   });
-}
-
-function detectChainDuplicates(root: acorn.Node, issues: ValidationIssue[]): void {
-  // Walk every "leaf" CallExpression and walk back along callee MemberExpression chains
-  // to collect names. If a SINGLE_USE_EFFECTS name appears twice in a chain → flag.
-  const seenChains = new WeakSet<object>();
-
-  walkSimple(root, {
-    CallExpression(node: any) {
-      // start only from the outermost call in a chain
-      if (seenChains.has(node)) return;
-      const chain = collectChain(node, seenChains);
-      const counts = new Map<string, number>();
-      for (const name of chain.methodNames) {
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-      }
-      for (const [name, count] of counts) {
-        if (count >= 2 && SINGLE_USE_EFFECTS.has(name)) {
-          issues.push({
-            code: 'DUPLICATE_SINGLE_USE_EFFECT',
-            message: `effect ".${name}(...)" used ${count} times in the same chain — likely a mental-model error`,
-            span: { start: chain.span.start, end: chain.span.end },
-            hint: `if you need a different "${name}" value over time, use modulation (slow/sine) on a single ${name} call`,
-          });
-        }
-      }
-    },
-  });
-}
-
-interface ChainInfo {
-  methodNames: string[];
-  span: { start: number; end: number };
-}
-
-function collectChain(node: any, visited: WeakSet<object>): ChainInfo {
-  visited.add(node);
-  const names: string[] = [];
-  let span = { start: node.start, end: node.end };
-  let cur: any = node;
-  while (cur && cur.type === 'CallExpression' && cur.callee.type === 'MemberExpression') {
-    if (cur.callee.property.type === 'Identifier') {
-      names.push(cur.callee.property.name as string);
-    }
-    visited.add(cur);
-    cur = cur.callee.object;
-    if (cur) span = { start: Math.min(span.start, cur.start), end: span.end };
-  }
-  return { methodNames: names, span };
 }
 
 function didYouMean(name: string, allowed: ReadonlySet<string>): string | undefined {
