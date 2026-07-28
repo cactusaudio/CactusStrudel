@@ -29,6 +29,12 @@ Changing endpoint, credential, model, effort, or orchestration changes the
 fingerprint. Apply accepts only a current successful Test for the exact same
 fingerprint. Test is evidence, not activation.
 
+Draft staging is compare-and-swap: the panel sends the `base_fingerprint` it
+last read, and a stale base is refused as 409 instead of silently
+overwriting a newer draft from another tab. The settings document exposes a
+compact `draft_diff` against the active profile plus first-class
+`applied_receipt` and `catalog_receipt` identities.
+
 Only Bowei performs Apply. Brain has no tool that can Test or Apply settings.
 
 ## Test receipt

@@ -19,6 +19,7 @@ API alias.
 | GET | `/api/v2/pieces/<piece-id>` | piece and immutable revisions |
 | GET | `/api/v2/brain/jobs/<job-id>` | Brain job, messages and receipt |
 | GET | `/api/v2/settings/agent` | masked Agent draft/active/test/catalog/status |
+| GET | `/api/v2/operations/<idempotency-key>` | exact prior outcome of one durable operation |
 
 ## Mutations
 
@@ -50,6 +51,11 @@ API alias.
 - Brain context pins piece/revision/audio identities.
 - Unknown generation profiles fail; they do not fall back.
 - Reusing an idempotency key with different canonical request bytes fails.
+- The UI persists every idempotent mutation intent across browser restarts
+  and reconciles it through the operations readback before creating a new
+  durable operation.
+- Draft staging carries `base_fingerprint`; a stale base is refused as 409
+  so two tabs cannot silently overwrite each other's Agent draft.
 - Every revision carries `usable`/`usability_reason`. Scoring or promoting an
   unusable revision fails as 409; static playback of drifted revision bytes
   also returns 409, while `receipt.json` stays readable as drift evidence.

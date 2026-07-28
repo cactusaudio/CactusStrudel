@@ -8,11 +8,16 @@ import type {
   GenerationJob,
   GenerationJobInput,
   ModelCatalogItem,
+  OperationReadback,
   Piece,
   PieceRevision,
   PreviewInput,
   ScoreInput,
 } from './contracts';
+import {
+  clearOperationIntent,
+  persistOperationIntent,
+} from './state/operation-intents';
 
 type ApiBody = Record<string, unknown> | undefined;
 
@@ -110,19 +115,35 @@ async function idempotentMutationRequest<T>(
   path: string,
   init: RequestInit & { json?: ApiBody },
   intent: MutationIntent,
+  described?: { kind: string; summary: string },
 ): Promise<T> {
   bindIntentToRequest(intent, path, init);
+  // IDEM-001: the durable intent outlives this page. Persist before the
+  // fetch; clear only on a definite server verdict.
+  persistOperationIntent({
+    key: intent.idempotencyKey,
+    kind: described?.kind || 'mutation',
+    summary: described?.summary || path,
+    request_identity: intentRequests.get(intent) || '',
+    created_at: new Date().toISOString(),
+  });
   try {
-    return await request<T>(path, {
+    const result = await request<T>(path, {
       ...init,
       headers: {
         ...Object.fromEntries(new Headers(init.headers).entries()),
         'Idempotency-Key': intent.idempotencyKey,
       },
     });
+    clearOperationIntent(intent.idempotencyKey);
+    return result;
   } catch (error) {
     if (outcomeIsUnknown(error)) {
       throw new MutationOutcomeUnknownError(intent, error);
+    }
+    if (error instanceof ApiError && error.status !== 409) {
+      // A definite non-conflict rejection means nothing durable committed.
+      clearOperationIntent(intent.idempotencyKey);
     }
     throw error;
   }
@@ -154,7 +175,10 @@ export const api = {
     return idempotentMutationRequest('/api/v2/generation-jobs', {
       method: 'POST',
       json: { count: input.count, prompt: input.prompt, profile_id: input.profile_id },
-    }, intent);
+    }, intent, {
+      kind: 'generation',
+      summary: `Generate ${input.count} first shot(s)`,
+    });
   },
 
   cancelJob(id: string): Promise<{ job: GenerationJob }> {
@@ -181,7 +205,7 @@ export const api = {
     return idempotentMutationRequest(`/api/v2/pieces/${encodeURIComponent(pieceId)}/previews`, {
       method: 'POST',
       json: { ...input },
-    }, intent);
+    }, intent, { kind: 'preview', summary: `Preview for ${pieceId}` });
   },
 
   promoteRevision(pieceId: string, revisionId: string): Promise<{ piece: Piece; receipt?: unknown }> {
@@ -201,6 +225,7 @@ export const api = {
       `/api/v2/pieces/${encodeURIComponent(pieceId)}/revisions/${encodeURIComponent(revisionId)}/score`,
       { method: 'PUT', json: { ...input } },
       intent,
+      { kind: 'score', summary: `Score ${input.score} on ${revisionId}` },
     );
   },
 
@@ -211,7 +236,11 @@ export const api = {
     return idempotentMutationRequest('/api/v2/brain/jobs', {
       method: 'POST',
       json: { ...input },
-    }, intent);
+    }, intent, { kind: 'brain', summary: 'Brain message' });
+  },
+
+  operationReadback(idempotencyKey: string): Promise<OperationReadback> {
+    return request(`/api/v2/operations/${encodeURIComponent(idempotencyKey)}`);
   },
 
   getBrainJob(id: string): Promise<{ job: BrainJob }> {

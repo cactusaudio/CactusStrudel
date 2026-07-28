@@ -25,7 +25,12 @@ from .cliproxy import (
     response_output_text,
     response_tool_calls,
 )
-from .errors import ApplyError, ConfigurationError, CredentialError
+from .errors import (
+    ApplyError,
+    ConfigurationError,
+    CredentialError,
+    DraftConflict,
+)
 from .keychain import CredentialStore, MacOSKeychainStore
 from .models import (
     AgentProfile,
@@ -419,6 +424,40 @@ class AgentSettingsService:
         ready = bool(
             active_record and active_credential_available and active_test_valid
         )
+        draft_diff = [
+            {
+                "field": field,
+                "active": active_ui.get(field),
+                "draft": draft_ui.get(field),
+            }
+            for field in (
+                "base_url",
+                "model_id",
+                "reasoning_effort",
+                "orchestration",
+            )
+            if active_ui.get(field) != draft_ui.get(field)
+        ]
+        applied_receipt = None
+        if active_record:
+            applied_receipt = {
+                "revision_id": active_record.get("revision_id"),
+                "applied_at": active_record.get("applied_at"),
+                "test_id": active_record.get("test_id"),
+                "fingerprint": active_record.get("fingerprint"),
+                "test_valid": active_test_valid,
+            }
+        catalog_receipt = None
+        state = self.store.read_state()
+        if state.get("last_catalog_id"):
+            snapshot = self.store.read_catalog(str(state["last_catalog_id"]))
+            catalog_receipt = {
+                "catalog_id": snapshot.get("catalog_id"),
+                "fetched_at": snapshot.get("fetched_at"),
+                "base_url": snapshot.get("base_url"),
+                "stale": bool(snapshot.get("stale")),
+                "model_count": len(snapshot.get("models") or []),
+            }
         return {
             "revision_id": active_record.get("revision_id")
             if active_record
@@ -427,6 +466,9 @@ class AgentSettingsService:
             "draft": draft_ui,
             "draft_fingerprint": core["draft_fingerprint"],
             "draft_is_active": core["draft_is_active"],
+            "draft_diff": draft_diff,
+            "applied_receipt": applied_receipt,
+            "catalog_receipt": catalog_receipt,
             "test": ui_test,
             "catalog": catalog,
             "managed_overrides": [],
@@ -461,6 +503,7 @@ class AgentSettingsService:
             "key_present",
             "credential_ref",
             "wire_reasoning_effort",
+            "base_fingerprint",
         }
         unknown = sorted(set(payload) - allowed)
         if unknown:
@@ -483,13 +526,21 @@ class AgentSettingsService:
             if transient_key is not None and str(transient_key).strip()
             else None
         )
-        return self.update_draft(patch, api_key=api_key)
+        base_fingerprint = payload.get("base_fingerprint")
+        return self.update_draft(
+            patch,
+            api_key=api_key,
+            expected_fingerprint=(
+                str(base_fingerprint) if base_fingerprint else None
+            ),
+        )
 
     def update_draft(
         self,
         patch: Mapping[str, Any],
         *,
         api_key: str | None = None,
+        expected_fingerprint: str | None = None,
     ) -> dict[str, Any]:
         if "api_key" in patch:
             raise ConfigurationError(
@@ -501,6 +552,16 @@ class AgentSettingsService:
             )
         state = self.store.read_state()
         profile = AgentProfile.from_dict(state.get("draft"))
+        if (
+            expected_fingerprint is not None
+            and expected_fingerprint != profile.fingerprint
+        ):
+            # Draft compare-and-swap: a second tab editing a stale draft is
+            # rejected instead of silently overwriting the newer one.
+            raise DraftConflict(
+                "draft changed since this edit was based; reload the draft "
+                "and reapply the change"
+            )
         clean_patch = dict(patch)
         if "base_url" in clean_patch:
             clean_patch["base_url"] = normalize_base_url(

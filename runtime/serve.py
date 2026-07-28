@@ -21,7 +21,7 @@ import urllib.parse
 from uuid import uuid4
 import webbrowser
 
-from agent.errors import AgentV3Error
+from agent.errors import AgentV3Error, DraftConflict
 from v3.owner import OwnerLease, OwnershipLost, StateRootBusy
 from v3.store import (
     IdempotencyConflict,
@@ -205,6 +205,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 query = urllib.parse.parse_qs(parsed.query)
                 after = int((query.get("after") or ["0"])[0])
                 return self._events(after)
+            match = re.fullmatch(r"/api/v2/operations/([^/]+)", path)
+            if match:
+                return self._json(
+                    200,
+                    self.app.operation_readback(
+                        urllib.parse.unquote(match.group(1))
+                    ),
+                )
             match = re.fullmatch(r"/api/v2/brain/jobs/([^/]+)", path)
             if match:
                 return self._json(
@@ -601,7 +609,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             )
         if isinstance(
             exc,
-            (Conflict, IdempotencyConflict, InvalidTransition, ReceiptConflict),
+            (
+                Conflict,
+                DraftConflict,
+                IdempotencyConflict,
+                InvalidTransition,
+                ReceiptConflict,
+            ),
         ):
             return self._json(409, {"error": str(exc)})
         if isinstance(exc, (V3Error, TruthError, AgentV3Error, ValueError)):

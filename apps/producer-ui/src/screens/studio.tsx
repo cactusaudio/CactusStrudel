@@ -688,8 +688,21 @@ function BrainThread({ job, ready }: { job?: BrainJob; ready: boolean }): JSX.El
     <div class="brain-thread">
       {job.messages.map((message) => (
         <div key={message.id} class={`brain-message brain-message--${message.role}`}>
-          <div class="brain-message__role">{message.role === 'assistant' ? 'Brain' : message.role}</div>
+          <div class="brain-message__role">
+            {message.role === 'assistant' ? 'Brain' : message.role}
+            {message.tool_name ? ` · ${message.tool_name}` : ''}
+          </div>
           <div class="brain-message__text">{message.text}</div>
+          {message.effect_state === 'reconciliation_required' && (
+            <Badge tone="amber">effect: reconciliation required</Badge>
+          )}
+          {message.effect_state === 'effect_observed' && (
+            <Badge tone="gold">effect: observed & reconciled</Badge>
+          )}
+          {message.mutating && message.committed
+            && message.effect_state === 'finalized' && (
+            <Badge tone="gold">effect committed</Badge>
+          )}
           {message.receipt && <Receipt receipt={message.receipt} />}
           <time>{formatDateTime(message.created_at)}</time>
         </div>

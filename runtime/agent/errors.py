@@ -21,6 +21,10 @@ class CLIProxyError(AgentV3Error):
         self.status = status
 
 
+class DraftConflict(AgentV3Error):
+    """The draft changed since the caller read it (compare-and-swap)."""
+
+
 class ApplyError(AgentV3Error):
     """A draft cannot be promoted to active configuration."""
 

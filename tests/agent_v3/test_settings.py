@@ -6,7 +6,7 @@ import tempfile
 import threading
 import unittest
 
-from runtime.agent.errors import ApplyError, CLIProxyError
+from runtime.agent.errors import ApplyError, CLIProxyError, DraftConflict
 from runtime.agent.job_store import DEFAULT_JOBS_DB
 from runtime.agent.keychain import MemoryCredentialStore
 from runtime.agent.settings import (
@@ -374,3 +374,50 @@ class SettingsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DraftCompareAndSwapTests(unittest.TestCase):
+    def make_service(self, root):
+        credentials = MemoryCredentialStore()
+        service = AgentSettingsService(
+            store=AgentSettingsStore(root),
+            credentials=credentials,
+            client_factory=lambda base, key: FakeClient(base, key, []),
+            ultra_client_models={"gpt-5.6-sol"},
+        )
+        return service
+
+    def test_stale_base_fingerprint_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            service = self.make_service(td)
+            state = service.update_draft({"model_id": "tab-a-model"})
+            base = state["draft_fingerprint"]
+            # Tab A edits again: the server draft moves past `base`.
+            moved = service.update_draft(
+                {"model_id": "tab-a-newer"}, expected_fingerprint=base
+            )
+            self.assertNotEqual(moved["draft_fingerprint"], base)
+            # Tab B still holds `base` and must not silently overwrite.
+            with self.assertRaises(DraftConflict):
+                service.update_draft(
+                    {"model_id": "tab-b-model"}, expected_fingerprint=base
+                )
+            # Tab B reloads the current fingerprint and succeeds.
+            refreshed = service.update_draft(
+                {"model_id": "tab-b-model"},
+                expected_fingerprint=moved["draft_fingerprint"],
+            )
+            self.assertEqual(
+                refreshed["draft"]["model_id"], "tab-b-model"
+            )
+
+    def test_ui_document_exposes_diff_and_receipts(self):
+        with tempfile.TemporaryDirectory() as td:
+            service = self.make_service(td)
+            service.update_draft({"model_id": "diff-model"})
+            document = service.ui_document()
+            self.assertIn("draft_diff", document)
+            diff_fields = {entry["field"] for entry in document["draft_diff"]}
+            self.assertIn("model_id", diff_fields)
+            self.assertIn("applied_receipt", document)
+            self.assertIn("catalog_receipt", document)

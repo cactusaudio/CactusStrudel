@@ -118,6 +118,16 @@ class BrainJobStore:
             raise JobError(f"Brain job not found: {job_id}")
         return _job_row(row)
 
+    def get_job_by_idempotency_key(
+        self, idempotency_key: str
+    ) -> dict[str, Any] | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute(
+                "SELECT * FROM brain_jobs WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+        return _job_row(row) if row is not None else None
+
     def list_jobs(self, *, limit: int = 100) -> list[dict[str, Any]]:
         bounded = max(1, min(int(limit), 500))
         with closing(self._connect()) as conn:

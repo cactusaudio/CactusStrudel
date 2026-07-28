@@ -1137,6 +1137,67 @@ class V3Application:
     def events_after(self, cursor: int, *, limit: int = 500) -> list[dict[str, Any]]:
         return self.events.after(cursor, limit=limit)
 
+    def operation_readback(self, idempotency_key: str) -> dict[str, Any]:
+        """IDEM-001: exact prior outcome for one idempotency key.
+
+        A restored UI asks here before creating a new durable operation, so a
+        browser restart cannot duplicate a generation, preview, Brain job, or
+        score whose intent already committed.
+        """
+
+        key = str(idempotency_key or "").strip()
+        if not key or len(key) > 180:
+            raise V3Error("idempotency key is required")
+        batch = self.generation_repo.get_by_idempotency_key(key)
+        if batch is not None:
+            return {
+                "found": True,
+                "kind": "generation",
+                "operation": self._generation_public(batch),
+            }
+        brain_job = self.brain_store.get_job_by_idempotency_key(key)
+        if brain_job is not None:
+            return {
+                "found": True,
+                "kind": "brain",
+                "operation": self._brain_public(brain_job),
+            }
+        truth_job = self.truth.store.get_job_by_idempotency_key(key)
+        if truth_job is not None:
+            outcome: dict[str, Any] = {
+                "job_id": truth_job["id"],
+                "kind": truth_job["kind"],
+                "status": truth_job["status"],
+                "result_version_id": truth_job.get("result_version_id"),
+                "error": truth_job.get("error_json"),
+            }
+            version_id = truth_job.get("result_version_id")
+            if version_id:
+                try:
+                    version = self.truth.store.get_version(str(version_id))
+                    outcome["piece_id"] = version["piece_id"]
+                except NotFound:
+                    pass
+            return {"found": True, "kind": "preview", "operation": outcome}
+        with self.truth.database.transaction(immediate=False) as conn:
+            rating = conn.execute(
+                "SELECT * FROM ratings WHERE source_key = ?", (key,)
+            ).fetchone()
+            if rating is not None:
+                return {
+                    "found": True,
+                    "kind": "score",
+                    "operation": {
+                        "rating_id": rating["id"],
+                        "revision_id": rating["piece_version_id"],
+                        "audio_sha": rating["audio_sha256"],
+                        "score": float(rating["score"]),
+                        "note": rating["note"],
+                        "created_at": rating["created_at"],
+                    },
+                }
+        return {"found": False, "kind": None, "operation": None}
+
     def activity(self, *, limit: int = 200) -> list[dict[str, Any]]:
         cursor = max(0, self.events.cursor() - max(1, limit) * 3)
         rows = self.events.after(cursor, limit=limit * 3)
@@ -2799,7 +2860,8 @@ class V3Application:
             conn.row_factory = sqlite3.Row
             tool_rows = conn.execute(
                 """
-                SELECT call_id, tool_name, status, result_json, ended_at
+                SELECT call_id, tool_name, status, result_json, ended_at,
+                       mutating, committed, effect_state
                   FROM brain_tool_calls
                  WHERE job_id=?
                  ORDER BY started_at, call_id
@@ -2821,6 +2883,9 @@ class V3Application:
                     "tool_name": tool["tool_name"],
                     "text": summary,
                     "created_at": tool["ended_at"] or job["updated_at"],
+                    "mutating": bool(tool["mutating"]),
+                    "committed": bool(tool["committed"]),
+                    "effect_state": tool["effect_state"],
                 }
             )
         result = job.get("result") or {}
@@ -2840,6 +2905,20 @@ class V3Application:
         receipt = None
         if state in {"done", "failed", "cancelled", "cancelled_after_commit"}:
             receipts = self.brain_store.receipts(str(job["job_id"]))
+            effect_summary = {
+                "mutating_calls": sum(1 for t in tool_rows if t["mutating"]),
+                "committed": sum(1 for t in tool_rows if t["committed"]),
+                "effect_observed": sum(
+                    1
+                    for t in tool_rows
+                    if t["effect_state"] == "effect_observed"
+                ),
+                "reconciliation_required": sum(
+                    1
+                    for t in tool_rows
+                    if t["effect_state"] == "reconciliation_required"
+                ),
+            }
             receipt = {
                 "id": receipts[-1]["receipt_id"] if receipts else f"receipt-{job['job_id']}",
                 "kind": "brain.responses",
@@ -2855,6 +2934,7 @@ class V3Application:
                     "reasoning_effort": result.get("reasoning_effort"),
                     "wire_reasoning_effort": result.get("wire_reasoning_effort"),
                     "orchestration": result.get("orchestration"),
+                    "effects": effect_summary,
                 },
             }
         return {

@@ -1,6 +1,7 @@
 import { render } from 'preact';
 import { useCallback, useEffect } from 'preact/hooks';
-import { connectEvents } from './api-client';
+import { api, connectEvents } from './api-client';
+import { reconcilePendingOperations } from './state/operation-intents';
 import { bootstrapCoordinator } from './bootstrap';
 import { AppShell, routeFromPath, routePaths } from './components/app-shell';
 import { Transport } from './components/transport';
@@ -66,6 +67,33 @@ function App() {
       window.removeEventListener('popstate', pop);
     };
   }, [load]);
+
+  useEffect(() => {
+    if (state.loadState !== 'ready') return;
+    // IDEM-001: before the user can duplicate anything, resolve every
+    // intent that survived a browser restart against the server's exact
+    // prior outcome.
+    void reconcilePendingOperations((key) => api.operationReadback(key)).then(
+      (resolved) => {
+        for (const { intent, readback } of resolved) {
+          if (readback.found) {
+            appStore.toast(
+              `Restored: “${intent.summary}” already committed as ${readback.kind}. Showing the durable outcome.`,
+              'ok',
+            );
+          } else {
+            appStore.toast(
+              `Restored: “${intent.summary}” never committed. Safe to redo.`,
+              'warn',
+            );
+          }
+        }
+        if (resolved.some(({ readback }) => readback.found)) {
+          void bootstrapCoordinator.refresh();
+        }
+      },
+    );
+  }, [state.loadState]);
 
   useEffect(() => {
     if (state.loadState !== 'ready' || !state.bootstrap) return;

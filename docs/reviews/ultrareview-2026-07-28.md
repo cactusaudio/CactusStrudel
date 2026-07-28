@@ -359,7 +359,7 @@ without fixing them.
 | BJ-QUEUE-001 | Brain queued recovery | `[R]` | fixed in source/tests |
 | BJ-EFFECT-001 | Brain effect receipt | `[R]` | fixed in source/tests |
 | UI-P1-001…008 | GUI identity/state/layout | `[R]/[S]` | fixed locally |
-| IDEM-001 | restart-level operation receipt | `[S]` | partially fixed; open P1 |
+| IDEM-001 | restart-level operation receipt | `[S]` | fixed in source/tests |
 | RS-001 | HEAD reproduces reviewed source | `[R]` | open landing boundary |
 | RS-002 | effective source identity | `[R]` | fixed locally |
 | BUILD-UI-001 | UI build/served identity | `[R]` | fixed locally |
@@ -577,6 +577,16 @@ This closes accidental duplicate clicks and same-page uncertainty. It does not
 survive a browser process restart. The server still needs a compact operation
 receipt/readback route so a restored UI can ask for the exact prior outcome
 before creating a new durable operation.
+
+Landed after this review: `GET /api/v2/operations/<key>` answers with the
+exact durable outcome (generation batch, Brain job, preview job, or score)
+for one idempotency key, and the UI now persists every idempotent mutation
+intent in localStorage, reconciling all pending intents through that route at
+boot before any new durable operation can be created. Draft staging gained a
+`base_fingerprint` compare-and-swap (409 on a stale base), the Agent document
+carries `draft_diff`/`applied_receipt`/`catalog_receipt` first-class, and
+Brain tool messages/receipts expose per-call `effect_state` for the Activity
+drilldown.
 
 ## Landed GUI correction
 
@@ -1259,8 +1269,8 @@ Current classification:
   closed locally with fault tests;
 - external-effect protocol (`GEN-TERM-001`, `BJ-QUEUE-001`, `BJ-EFFECT-001`):
   closed locally with fault tests;
-- restart-level operation readback (`IDEM-001` server half): blueprint, not
-  closed;
+- restart-level operation readback and intent persistence (`IDEM-001`):
+  closed locally with tests;
 - effective source/build/served attribution: landed locally and independently
   counterexample-tested;
 - HEAD/fresh-checkout reproduction: awaits an intentional commit;

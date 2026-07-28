@@ -59,7 +59,41 @@ function ActiveProfileCard({ settings }: { settings: AgentSettings }): JSX.Eleme
         <div><dt>Reasoning</dt><dd>{hasActive ? (active.reasoning_effort || 'default') : '—'}</dd></div>
         <div><dt>Orchestration</dt><dd>{hasActive ? active.orchestration : '—'}</dd></div>
         <div><dt>Revision</dt><dd><code>{settings.revision_id || '—'}</code></dd></div>
+        {settings.applied_receipt && (
+          <div>
+            <dt>Applied</dt>
+            <dd>
+              {formatDateTime(settings.applied_receipt.applied_at || '')}
+              {' · test '}
+              <code>{(settings.applied_receipt.test_id || '—').slice(0, 12)}</code>
+              {settings.applied_receipt.test_valid === false && ' (receipt invalid)'}
+            </dd>
+          </div>
+        )}
+        {settings.catalog_receipt && (
+          <div>
+            <dt>Catalog</dt>
+            <dd>
+              {settings.catalog_receipt.model_count} models ·{' '}
+              {formatDateTime(settings.catalog_receipt.fetched_at || '')}
+              {settings.catalog_receipt.stale ? ' (stale)' : ''}
+            </dd>
+          </div>
+        )}
       </dl>
+      {settings.draft_diff && settings.draft_diff.length > 0 && (
+        <div class="settings-draft-diff">
+          <strong>Draft differs from active:</strong>
+          <ul>
+            {settings.draft_diff.map((entry) => (
+              <li key={entry.field}>
+                <code>{entry.field}</code>{' '}
+                {String(entry.active ?? '—')} → {String(entry.draft ?? '—')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p class="muted">{settings.status?.detail || 'This revision remains active until a tested draft is atomically applied.'}</p>
     </Panel>
   );
@@ -89,6 +123,9 @@ export function AgentSettingsScreen(): JSX.Element {
   const requestDraft = (): AgentConnectionDraft => ({
     ...draft,
     api_key: pendingApiKey || undefined,
+    // Draft CAS: staging is rejected with 409 if another tab moved the
+    // server draft after this panel last read it.
+    base_fingerprint: settings.draft_fingerprint || undefined,
   });
   const begin = (
     next: AgentSettingsOperationKind,

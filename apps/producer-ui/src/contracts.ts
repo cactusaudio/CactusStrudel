@@ -105,6 +105,13 @@ export interface BrainMessage {
   created_at: string;
   tool_name?: string;
   receipt?: OperationReceipt;
+  mutating?: boolean;
+  committed?: boolean;
+  effect_state?:
+    | 'executing'
+    | 'effect_observed'
+    | 'finalized'
+    | 'reconciliation_required';
 }
 
 export interface BrainJob {
@@ -151,6 +158,8 @@ export interface AgentConnectionDraft {
   model_id: string;
   reasoning_effort: ReasoningEffort | null;
   orchestration: OrchestrationMode;
+  /** Draft CAS: the server draft fingerprint this edit was based on. */
+  base_fingerprint?: string;
 }
 
 export interface ModelCatalogItem {
@@ -183,6 +192,21 @@ export interface AgentSettings {
   test?: ConnectionTest;
   catalog: ModelCatalogItem[];
   managed_overrides?: string[];
+  draft_diff?: { field: string; active?: unknown; draft?: unknown }[];
+  applied_receipt?: {
+    revision_id?: string;
+    applied_at?: string;
+    test_id?: string;
+    fingerprint?: string;
+    test_valid?: boolean;
+  } | null;
+  catalog_receipt?: {
+    catalog_id?: string;
+    fetched_at?: string;
+    base_url?: string;
+    stale?: boolean;
+    model_count?: number;
+  } | null;
   status?: {
     ready: boolean;
     detail?: string;
@@ -228,6 +252,12 @@ export interface RecoveryCandidate {
   code_sha: string;
   audio_sha: string;
   human_decision_required: boolean;
+}
+
+export interface OperationReadback {
+  found: boolean;
+  kind: 'generation' | 'brain' | 'preview' | 'score' | null;
+  operation: Record<string, unknown> | null;
 }
 
 export interface BootstrapPayload {
