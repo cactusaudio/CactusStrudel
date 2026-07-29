@@ -184,6 +184,19 @@ def restore_backup(
         if manifest.get("schema_version") != SCHEMA_VERSION:
             raise BackupError("unsupported backup schema version")
         files = manifest.get("files") or {}
+        if not files:
+            raise BackupError("manifest lists no files")
+        extracted = {
+            path.relative_to(staging).as_posix()
+            for path in staging.rglob("*")
+            if path.is_file()
+        } - {MANIFEST_NAME}
+        unmanifested = extracted - set(files)
+        if unmanifested:
+            raise BackupError(
+                "archive contains unmanifested file(s): "
+                + ", ".join(sorted(unmanifested)[:5])
+            )
         verified = 0
         for relative, expected in files.items():
             candidate = staging / relative
@@ -194,15 +207,18 @@ def restore_backup(
             verified += 1
         extracted_state = staging / "state"
         state.mkdir(parents=True, exist_ok=True, mode=0o700)
+        # force never deletes: replaced state moves aside to a timestamped
+        # sibling so a bad restore is one rename away from rollback.
+        aside_stamp = utc_now().replace(":", "").replace("-", "").split(".")[0]
+        aside_root = state / f".pre-restore-{aside_stamp}"
         for name in STATE_ENTRIES:
             source_path = extracted_state / name
             target_path = state / name
             if not source_path.exists():
                 continue
-            if target_path.is_dir():
-                shutil.rmtree(target_path)
-            elif target_path.exists():
-                target_path.unlink()
+            if target_path.exists():
+                aside_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+                shutil.move(str(target_path), str(aside_root / name))
             if source_path.is_dir():
                 shutil.copytree(source_path, target_path)
             else:
@@ -211,7 +227,10 @@ def restore_backup(
         extracted_assets = staging / "assets"
         if extracted_assets.is_dir():
             if assets.exists() and force:
-                shutil.rmtree(assets)
+                aside_assets = assets.parent / (
+                    assets.name + f".pre-restore-{aside_stamp}"
+                )
+                shutil.move(str(assets), str(aside_assets))
             if not assets.exists():
                 shutil.copytree(extracted_assets, assets)
                 restored_assets = True

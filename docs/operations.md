@@ -125,6 +125,25 @@ age. Every failing check names its exact fix command. Renders preflight the
 same environment and retry once on transient failure with the first error
 recorded on the job.
 
+## Machine bootstrap and fleet deploy
+
+```bash
+scripts/bootstrap.sh                    # fresh checkout → serving runtime
+scripts/deploy-lan.sh <host> [path]     # rsync + bootstrap on a sibling Mac
+```
+
+Bootstrap is idempotent and sudo-free: it verifies external dependencies
+(naming the exact fix), installs with the frozen lockfile, produces both
+controlled builds, writes the LaunchAgent from its template (per-machine
+python3/repo paths), and gates on health + doctor. Env knobs: `CACTUS_PORT`,
+`CACTUS_V3_STATE_ROOT`, `CACTUS_SKIP_LAUNCHD=1` (build/verify only).
+
+LAN deploy rsyncs the working tree (git history included; `node_modules`,
+`archive/local`, `handoffs` excluded) and bootstraps remotely. Per-machine
+state stays per-machine: a sibling starts with its own empty state root and
+owner epoch; immutable assets ride along as repo-adjacent truth. It never
+touches the sibling's existing `~/.cactus-strudel`.
+
 ## Builds
 
 ```bash

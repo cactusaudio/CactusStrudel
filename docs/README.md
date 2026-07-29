@@ -37,6 +37,8 @@ Machine-readable routing is in [`areas.json`](areas.json).
 | [`HANDOFF.md`](HANDOFF.md) | handoff format and commands |
 | [`reviews/ultrareview-2026-07-28.md`](reviews/ultrareview-2026-07-28.md) | dated non-security v3 Ultrareview and debt ledger |
 | [`blueprint-platform-2026-07-29.md`](blueprint-platform-2026-07-29.md) | active platformization blueprint (Brain/robustness/MCP+CLI/fleet) |
+| [`CLI.md`](CLI.md) | unified `cactus` command line |
+| [`MCP.md`](MCP.md) | MCP stdio server and tool contract |
 
 Component-level documents stay beside their owners:
 

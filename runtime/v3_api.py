@@ -1544,6 +1544,21 @@ class V3Application:
         return piece
 
     def promote_revision(self, *, piece_id: str, revision_id: str) -> dict[str, Any]:
+        current = self.truth.store.get_piece(piece_id)
+        if str(current.get("current_version_id") or "") == revision_id:
+            # Idempotent retry: the pointer already names this revision, so a
+            # repeated promote must not emit another receipt/publish/activity.
+            return {
+                "piece": self.get_piece(piece_id),
+                "receipt": {
+                    "id": f"promote-noop-{revision_id}",
+                    "kind": "revision.promote",
+                    "status": "already-current",
+                    "at": utc_now(),
+                    "summary": f"{revision_id} is already the active revision",
+                    "details": {"piece_id": piece_id, "revision_id": revision_id},
+                },
+            }
         self.truth.promote_version(piece_id=piece_id, version_id=revision_id)
         piece = self.get_piece(piece_id)
         receipt = {
