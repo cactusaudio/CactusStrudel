@@ -1,0 +1,4 @@
+#!/bin/bash
+# strudel — unified CLI over the CactusStrudel /api/v2 chokepoint.
+cd "$(dirname "$0")/.." || exit 1
+exec python3 runtime/strudel_cli.py "$@"

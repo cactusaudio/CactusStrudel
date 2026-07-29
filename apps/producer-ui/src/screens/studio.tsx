@@ -797,11 +797,33 @@ function BrainDock(): JSX.Element {
     })),
     [state.bootstrap?.brain_jobs, piece?.id, revision?.id, revision?.audio_sha, revision?.score],
   );
-  const conversations = state.bootstrap?.brain_jobs || [];
-  const opened = state.selectedBrainJobId
-    ? conversations.find((candidate) => candidate.id === state.selectedBrainJobId)
-    : undefined;
-  const job = opened ?? relevant[0];
+  const allJobs = state.bootstrap?.brain_jobs || [];
+  const threadKey = (candidate: BrainJob) => candidate.thread_id || `job:${candidate.id}`;
+  const threads = useMemo(() => {
+    const grouped = new Map<string, BrainJob[]>();
+    for (const candidate of allJobs) {
+      const key = threadKey(candidate);
+      grouped.set(key, [...(grouped.get(key) || []), candidate]);
+    }
+    return [...grouped.entries()]
+      .map(([id, jobs]) => ({
+        id,
+        jobs: [...jobs].sort((left, right) => left.created_at.localeCompare(right.created_at)),
+      }))
+      .sort((left, right) => (
+        right.jobs[right.jobs.length - 1]!.created_at
+          .localeCompare(left.jobs[left.jobs.length - 1]!.created_at)
+      ));
+  }, [allJobs]);
+  const selectedThreadId = state.selectedBrainThreadId;
+  const openThread = selectedThreadId
+    ? threads.find((thread) => thread.id === selectedThreadId)
+    : threads.find((thread) => thread.jobs.some((candidate) => (
+      relevant.some((match) => match.id === candidate.id)
+    )));
+  // A brand-new thread has no durable jobs yet; the composer still targets it.
+  const threadJobs = openThread?.jobs || [];
+  const job = threadJobs[threadJobs.length - 1] ?? (selectedThreadId ? undefined : relevant[0]);
   const message = state.brainComposer;
   const setMessage = (value: string) => appStore.setBrainComposer(value);
   const [sending, setSending] = useState(false);
@@ -861,11 +883,15 @@ function BrainDock(): JSX.Element {
       audioSha: revision?.audio_sha,
       score: revision?.score,
     };
-    appStore.selectBrainJob(undefined);
+    const threadId = selectedThreadId
+      || openThread?.jobs[0]?.thread_id
+      || appStore.startBrainThread();
+    appStore.selectBrainThread(threadId);
     void submitBrain({
       intent: createMutationIntent(),
       input: {
         message: submittedText,
+        thread_id: threadId,
         piece_id: context.pieceId,
         revision_id: context.revisionId,
         audio_sha: context.audioSha,
@@ -932,72 +958,53 @@ function BrainDock(): JSX.Element {
         </div>
       )}
 
+      <div class="brain-threadbar">
+        <select
+          aria-label="Brain thread"
+          value={openThread?.id || ''}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            appStore.selectBrainThread(value || undefined);
+          }}
+        >
+          <option value="">Follow current context</option>
+          {threads.map((thread) => {
+            const first = thread.jobs[0]!;
+            const title = first.messages.find((entry) => entry.role === 'user')?.text
+              || 'no message';
+            return (
+              <option key={thread.id} value={thread.id}>
+                {`${title.slice(0, 38)}${title.length > 38 ? '…' : ''} · ${thread.jobs.length}`}
+              </option>
+            );
+          })}
+        </select>
+        <Button
+          size="sm"
+          onClick={() => appStore.startBrainThread()}
+          disabled={!brainReady}
+        >
+          + New
+        </Button>
+      </div>
+
       <div class="context-pin">
-        <div>
-          <span>Context pinned</span>
-          <strong>{piece?.name || 'No piece'}</strong>
-        </div>
+        <span>Pinned</span>
+        <strong>{piece?.name || 'No piece'}</strong>
         {revision && (
-          <code>{revision.id.slice(0, 8)} · {revision.audio_sha.slice(0, 8)} · score {revision.score ?? '—'}</code>
+          <code>{revision.id.slice(0, 8)} · score {revision.score ?? '—'}</code>
         )}
       </div>
 
-      <div class="brain-quick">
-        {[
-          'Diagnose what I am hearing',
-          'Propose one reversible edit',
-          'Explain this revision receipt',
-        ].map((prompt) => (
-          <button key={prompt} disabled={!brainReady || sending || Boolean(running) || Boolean(unknownBrain)} onClick={() => send(prompt, false)}>{prompt}</button>
-        ))}
-      </div>
-
-      {conversations.length > 0 && (
-        <details class="brain-history">
-          <summary>
-            {opened
-              ? `Viewing ${opened.id.slice(0, 12)} · back to context`
-              : `${conversations.length} conversation(s)`}
-          </summary>
-          <ul>
-            {opened && (
-              <li>
-                <button onClick={() => appStore.selectBrainJob(undefined)}>
-                  ← Follow current context
-                </button>
-              </li>
-            )}
-            {conversations.slice(0, 20).map((conversation) => {
-              const firstUser = conversation.messages.find(
-                (item) => item.role === 'user',
-              );
-              const pinnedPiece = conversation.piece_id
-                ? state.bootstrap?.pieces.find(
-                    (item) => item.id === conversation.piece_id,
-                  )
-                : undefined;
-              return (
-                <li key={conversation.id}>
-                  <button
-                    class={conversation.id === job?.id ? 'is-open' : ''}
-                    onClick={() => appStore.selectBrainJob(conversation.id)}
-                  >
-                    <StateBadge state={conversation.state} />
-                    <span>{(firstUser?.text || 'no message').slice(0, 44)}</span>
-                    <small>
-                      {pinnedPiece?.name || 'unpinned'}
-                      {' · '}
-                      {formatDateTime(conversation.created_at)}
-                    </small>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </details>
-      )}
-
-      <BrainThread job={job} ready={brainReady} />
+      {threadJobs.length > 0
+        ? (
+          <div class="brain-threadview">
+            {threadJobs.map((turn) => (
+              <BrainThread key={turn.id} job={turn} ready={brainReady} />
+            ))}
+          </div>
+        )
+        : <BrainThread job={undefined} ready={brainReady} />}
 
       {unknownBrain && (
         <OutcomeUnknownNotice
@@ -1010,6 +1017,22 @@ function BrainDock(): JSX.Element {
           onStartNew={() => setUnknownBrain(undefined)}
         />
       )}
+
+      <div class="brain-quick" role="group" aria-label="Prompt starters">
+        {[
+          'Diagnose what I am hearing',
+          'Propose one reversible edit',
+          'Explain this revision receipt',
+        ].map((prompt) => (
+          <button
+            key={prompt}
+            disabled={!brainReady || sending || Boolean(running) || Boolean(unknownBrain)}
+            onClick={() => send(prompt, false)}
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
 
       <div class="brain-compose">
         <textarea

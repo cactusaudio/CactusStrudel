@@ -124,11 +124,22 @@ export interface BrainMessage {
   };
 }
 
+export interface BrainThread {
+  thread_id: string;
+  title: string;
+  piece_id?: string;
+  job_count: number;
+  created_at: string;
+  updated_at: string;
+  last_state: string;
+}
+
 export interface BrainJob {
   id: string;
   state: BrainJobState;
   created_at: string;
   updated_at?: string;
+  thread_id?: string;
   piece_id?: string;
   revision_id?: string;
   audio_sha?: string;
@@ -330,6 +341,7 @@ export interface ScoreInput {
 
 export interface BrainJobInput {
   message: string;
+  thread_id?: string;
   piece_id?: string;
   revision_id?: string;
   audio_sha?: string;

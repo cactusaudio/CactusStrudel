@@ -5,7 +5,7 @@ transport (newline-delimited JSON-RPC 2.0): initialize, tools/list,
 tools/call, ping. Every tool is a thin wrapper over the same HTTP API the
 GUI and CLI use — identical invariants, idempotency and receipts.
 
-Ear-truth posture: `cactus_score` writes Bowei's 0-10 ground-truth channel,
+Ear-truth posture: `strudel_score` writes Bowei's 0-10 ground-truth channel,
 so it requires `acting_for_bowei: true`, which a calling agent may only set
 when relaying an explicit human scoring instruction. Agent Settings Apply is
 NOT exposed here at all.
@@ -19,11 +19,11 @@ import urllib.parse
 from typing import Any
 from uuid import uuid4
 
-from cactus_cli import ApiClient, CliError
+from strudel_cli import ApiClient, CliError
 
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = {"2024-11-05", "2025-03-26", "2025-06-18"}
-SERVER_INFO = {"name": "cactus-strudel", "version": "1.0.0"}
+SERVER_INFO = {"name": "strudel", "version": "1.0.0"}
 
 
 def _schema(
@@ -39,17 +39,17 @@ def _schema(
 
 TOOLS: list[dict[str, Any]] = [
     {
-        "name": "cactus_status",
+        "name": "strudel_status",
         "description": "Compact runtime readback: pieces, jobs, agent readiness.",
         "inputSchema": _schema({}),
     },
     {
-        "name": "cactus_doctor",
+        "name": "strudel_doctor",
         "description": "Full diagnostic pass; every failing check names its fix.",
         "inputSchema": _schema({}),
     },
     {
-        "name": "cactus_list_pieces",
+        "name": "strudel_list_pieces",
         "description": "List the library (immutable pieces with active revisions).",
         "inputSchema": _schema(
             {
@@ -59,12 +59,12 @@ TOOLS: list[dict[str, Any]] = [
         ),
     },
     {
-        "name": "cactus_get_piece",
+        "name": "strudel_get_piece",
         "description": "One piece with all immutable revisions and receipts.",
         "inputSchema": _schema({"piece_id": {"type": "string"}}, ["piece_id"]),
     },
     {
-        "name": "cactus_play_url",
+        "name": "strudel_play_url",
         "description": (
             "Absolute audio URL for the exact rendered bytes of a revision "
             "(defaults to the active revision)."
@@ -78,19 +78,19 @@ TOOLS: list[dict[str, Any]] = [
         ),
     },
     {
-        "name": "cactus_operation_readback",
+        "name": "strudel_operation_readback",
         "description": "Exact prior outcome of one idempotency key (IDEM-001).",
         "inputSchema": _schema(
             {"idempotency_key": {"type": "string"}}, ["idempotency_key"]
         ),
     },
     {
-        "name": "cactus_agent_settings",
+        "name": "strudel_agent_settings",
         "description": "Masked Agent settings readback (no credentials).",
         "inputSchema": _schema({}),
     },
     {
-        "name": "cactus_generate",
+        "name": "strudel_generate",
         "description": (
             "MUTATING: queue 1/2/4 independent first-shot generations "
             "(durable server-owned jobs; costs real model calls)."
@@ -106,7 +106,7 @@ TOOLS: list[dict[str, Any]] = [
         ),
     },
     {
-        "name": "cactus_preview",
+        "name": "strudel_preview",
         "description": (
             "MUTATING: validate and render complete Strudel code as an "
             "immutable B preview of a piece (does not change the active "
@@ -124,7 +124,7 @@ TOOLS: list[dict[str, Any]] = [
         ),
     },
     {
-        "name": "cactus_promote",
+        "name": "strudel_promote",
         "description": (
             "MUTATING: make an immutable revision the piece's current "
             "version (old bytes never overwritten; reversible)."
@@ -138,7 +138,7 @@ TOOLS: list[dict[str, Any]] = [
         ),
     },
     {
-        "name": "cactus_brain",
+        "name": "strudel_brain",
         "description": (
             "MUTATING: send one durable Brain message (optionally pinned to "
             "a piece). The Brain model can itself archive/restore pieces, "
@@ -157,7 +157,7 @@ TOOLS: list[dict[str, Any]] = [
         ),
     },
     {
-        "name": "cactus_score",
+        "name": "strudel_score",
         "description": (
             "GUARDED MUTATION: bind a 0-10 score to a revision's exact "
             "audio bytes. This is Bowei's ear-truth channel: set "
@@ -267,13 +267,13 @@ class McpServer:
             ]
         }
 
-    def _tool_cactus_status(self, _arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_status(self, _arguments: dict[str, Any]) -> Any:
         return self.client.request("GET", "/api/v2/health")
 
-    def _tool_cactus_doctor(self, _arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_doctor(self, _arguments: dict[str, Any]) -> Any:
         return self.client.request("GET", "/api/v2/doctor", timeout=60)
 
-    def _tool_cactus_list_pieces(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_list_pieces(self, arguments: dict[str, Any]) -> Any:
         payload = self.client.request(
             "GET",
             "/api/v2/pieces"
@@ -304,15 +304,15 @@ class McpServer:
             "total": len(payload.get("pieces", [])),
         }
 
-    def _tool_cactus_get_piece(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_get_piece(self, arguments: dict[str, Any]) -> Any:
         return self.client.request(
             "GET",
             "/api/v2/pieces/"
             + urllib.parse.quote(str(arguments["piece_id"]), safe=""),
         )["piece"]
 
-    def _tool_cactus_play_url(self, arguments: dict[str, Any]) -> Any:
-        piece = self._tool_cactus_get_piece(arguments)
+    def _tool_strudel_play_url(self, arguments: dict[str, Any]) -> Any:
+        piece = self._tool_strudel_get_piece(arguments)
         revision = piece.get("active_revision") or {}
         wanted = arguments.get("revision_id")
         if wanted:
@@ -334,17 +334,17 @@ class McpServer:
             "audio_url": f"{self.client.base_url}{revision.get('audio_url')}",
         }
 
-    def _tool_cactus_operation_readback(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_operation_readback(self, arguments: dict[str, Any]) -> Any:
         return self.client.request(
             "GET",
             "/api/v2/operations/"
             + urllib.parse.quote(str(arguments["idempotency_key"]), safe=""),
         )
 
-    def _tool_cactus_agent_settings(self, _arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_agent_settings(self, _arguments: dict[str, Any]) -> Any:
         return self.client.request("GET", "/api/v2/settings/agent")
 
-    def _tool_cactus_generate(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_generate(self, arguments: dict[str, Any]) -> Any:
         count = arguments.get("count")
         if isinstance(count, bool) or not isinstance(count, int) or count not in (1, 2, 4):
             raise CliError("count must be exactly the integer 1, 2, or 4")
@@ -361,7 +361,7 @@ class McpServer:
             ),
         )["job"]
 
-    def _tool_cactus_preview(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_preview(self, arguments: dict[str, Any]) -> Any:
         return self.client.request(
             "POST",
             "/api/v2/pieces/"
@@ -378,7 +378,7 @@ class McpServer:
             timeout=1200,
         )
 
-    def _tool_cactus_promote(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_promote(self, arguments: dict[str, Any]) -> Any:
         return self.client.request(
             "POST",
             "/api/v2/pieces/"
@@ -390,7 +390,7 @@ class McpServer:
             },
         )
 
-    def _tool_cactus_brain(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_brain(self, arguments: dict[str, Any]) -> Any:
         body: dict[str, Any] = {"message": str(arguments["message"])}
         if arguments.get("piece_id"):
             body["piece_id"] = str(arguments["piece_id"])
@@ -443,10 +443,10 @@ class McpServer:
             "receipt": job.get("receipt"),
         }
 
-    def _tool_cactus_score(self, arguments: dict[str, Any]) -> Any:
+    def _tool_strudel_score(self, arguments: dict[str, Any]) -> Any:
         if arguments.get("acting_for_bowei") is not True:
             raise CliError(
-                "cactus_score binds Bowei's ear-truth channel: refuse unless "
+                "strudel_score binds Bowei's ear-truth channel: refuse unless "
                 "you are relaying his explicit scoring instruction "
                 "(acting_for_bowei=true)"
             )
@@ -455,7 +455,7 @@ class McpServer:
             score_value, (int, float)
         ) or not 0 <= float(score_value) <= 10:
             raise CliError("score must be a number from 0 to 10")
-        piece = self._tool_cactus_get_piece(arguments)
+        piece = self._tool_strudel_get_piece(arguments)
         revision_id = str(
             arguments.get("revision_id") or piece.get("active_revision_id")
         )

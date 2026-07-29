@@ -1,4 +1,4 @@
-"""`cactus` — one CLI covering every product read and mutation (C1).
+"""`strudel` — one CLI covering every product read and mutation (C1).
 
 A strict `/api/v2` client plus the operational verbs (doctor/backup/
 restore). No product logic lives here: the same invariants, idempotency
@@ -392,7 +392,7 @@ def cmd_restore(_client: ApiClient, args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="cactus",
+        prog="strudel",
         description="CactusStrudel: AI-native music production runtime",
     )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
@@ -484,7 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return int(args.func(client, args))
     except CliError as exc:
-        print(f"cactus: {exc}", file=sys.stderr)
+        print(f"strudel: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:
         return 130

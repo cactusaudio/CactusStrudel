@@ -62,7 +62,7 @@ the thread state machine; no new server invariants (reuse existing tools).
   disk, ffmpeg/ffprobe, Playwright browser present, pnpm/node versions,
   CLIProxy reachability + credential presence, DB integrity_check, receipt
   reconciliation summary, staging leftovers. Surfaced in /settings/system
-  and as `cactus doctor`.
+  and as `strudel doctor`.
 - B2 **Render preflight + honest self-heal**: probe render env before a
   batch; transient render failures get one bounded auto-retry with the
   reason recorded in the job receipt; permanent failures name the missing
@@ -77,12 +77,12 @@ the thread state machine; no new server invariants (reuse existing tools).
   restart → adoption/interruption/reconcile all green (extends existing
   fault tests to a live-process drill).
 
-Exit: `cactus doctor` on a stripped environment names every gap; chaos
+Exit: `strudel doctor` on a stripped environment names every gap; chaos
 drill green; backup→wipe→restore proven on a temp state root.
 
 ## Phase C — MCP server + full CLI
 
-- C1 **`bin/cactus` unified CLI**: subcommands `status doctor gen pieces
+- C1 **`bin/strudel` unified CLI**: subcommands `status doctor gen pieces
   piece play score promote preview brain settings ops backup restore`,
   `--json` for agents and tables for humans; strictly an `/api/v2` client
   (plus doctor/backup which are operational); old `bin/` scripts stay as
@@ -105,7 +105,7 @@ posture, mutation safety, schema honesty) before commit.
 - D1 **Bootstrap installer** `scripts/bootstrap.sh`: idempotent — verify or
   name-and-instruct brew deps (ffmpeg), corepack/pnpm, `pnpm install
   --frozen-lockfile`, Playwright Chromium fetch, builds, LaunchAgent
-  install, `cactus doctor` gate, health verify. No sudo. Fresh-HOME
+  install, `strudel doctor` gate, health verify. No sudo. Fresh-HOME
   simulation test on this machine.
 - D2 **Machine profile**: port/state-root/browser flags already env-driven;
   add a small per-machine config file convention + doctor awareness;

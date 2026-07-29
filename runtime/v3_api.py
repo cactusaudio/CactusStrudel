@@ -2467,6 +2467,75 @@ class V3Application:
     # ------------------------------------------------------------------
     # Durable Responses Brain with a music-only toolset.
 
+    def brain_threads(self, *, limit: int = 40) -> list[dict[str, Any]]:
+        """Conversation threads grouped from durable Brain jobs.
+
+        A thread is the durable grouping key carried in job metadata; jobs
+        predating threads (or created outside the UI) each stand alone so no
+        history is hidden.
+        """
+
+        threads: dict[str, dict[str, Any]] = {}
+        for job in self.brain_store.list_jobs(limit=400):
+            metadata = dict(job.get("metadata") or {})
+            thread_id = str(metadata.get("thread_id") or "") or f"job:{job['job_id']}"
+            entry = threads.get(thread_id)
+            title = str(
+                metadata.get("user_message") or job["input"]["text"]
+            ).strip()
+            if entry is None:
+                threads[thread_id] = {
+                    "thread_id": thread_id,
+                    "title": title[:80],
+                    "piece_id": metadata.get("piece_id"),
+                    "job_count": 1,
+                    "created_at": job["created_at"],
+                    "updated_at": job["updated_at"],
+                    "last_state": job["status"],
+                }
+                continue
+            entry["job_count"] += 1
+            # list_jobs is newest-first: the oldest row owns the title.
+            entry["title"] = title[:80]
+            entry["piece_id"] = metadata.get("piece_id") or entry["piece_id"]
+            entry["created_at"] = min(entry["created_at"], job["created_at"])
+        ordered = sorted(
+            threads.values(), key=lambda row: row["updated_at"], reverse=True
+        )
+        return ordered[: max(1, int(limit))]
+
+    def _thread_transcript(self, thread_id: str) -> str:
+        """Bounded prior-turn transcript so a thread has real continuity.
+
+        Each Brain job is one durable turn; without this the model would
+        answer every message with no memory of the thread.
+        """
+
+        turns: list[dict[str, Any]] = []
+        for job in self.brain_store.list_jobs(limit=400):
+            metadata = dict(job.get("metadata") or {})
+            if str(metadata.get("thread_id") or "") != thread_id:
+                continue
+            turns.append(job)
+        if not turns:
+            return ""
+        turns.sort(key=lambda row: row["created_at"])
+        lines: list[str] = []
+        for job in turns[-8:]:
+            metadata = dict(job.get("metadata") or {})
+            question = str(
+                metadata.get("user_message") or job["input"]["text"]
+            ).strip()
+            answer = str(
+                (job.get("result") or {}).get("output_text")
+                or job.get("error")
+                or f"({job['status']})"
+            ).strip()
+            lines.append(f"Bowei: {question[:600]}")
+            lines.append(f"You: {answer[:900]}")
+        transcript = "\n".join(lines)
+        return transcript[-6000:]
+
     def create_brain_job(
         self,
         *,
@@ -2476,10 +2545,14 @@ class V3Application:
         audio_sha: str | None = None,
         score: float | None = None,
         idempotency_key: str | None = None,
+        thread_id: str | None = None,
     ) -> dict[str, Any]:
         user_message = str(message or "").strip()
         if not user_message:
             raise V3Error("Brain message cannot be empty")
+        thread = str(thread_id or "").strip()
+        if thread and (len(thread) > 120 or any(ord(c) < 32 for c in thread)):
+            raise V3Error("thread_id is invalid")
         context: dict[str, Any] = {}
         if piece_id:
             piece = self.truth.store.get_piece(str(piece_id))
@@ -2529,6 +2602,14 @@ class V3Application:
         if score is not None and not context:
             raise Conflict("Brain context score requires a pinned revision")
         model_input = user_message
+        transcript = self._thread_transcript(thread) if thread else ""
+        if transcript:
+            model_input = (
+                "PRIOR TURNS IN THIS THREAD (oldest first; durable record)\n"
+                + transcript
+                + "\n\nCURRENT MESSAGE\n"
+                + user_message
+            )
         if context:
             model_input += (
                 "\n\nPINNED PRODUCT CONTEXT\n"
@@ -2540,6 +2621,7 @@ class V3Application:
             toolset_id="music",
             metadata={
                 "user_message": user_message,
+                **({"thread_id": thread} if thread else {}),
                 **context,
             },
             idempotency_key=idempotency_key,
@@ -3205,6 +3287,7 @@ class V3Application:
             "state": state,
             "created_at": job["created_at"],
             "updated_at": job["updated_at"],
+            "thread_id": metadata.get("thread_id"),
             "piece_id": metadata.get("piece_id"),
             "revision_id": metadata.get("revision_id"),
             "audio_sha": metadata.get("audio_sha256"),

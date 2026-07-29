@@ -59,8 +59,8 @@ export interface AppState {
   agentDraft?: AgentConnectionDraft;
   agentDraftDirty: boolean;
   agentSettingsOperation?: AgentSettingsOperationOwnership;
-  /** A1: explicitly opened Brain conversation; undefined = follow context. */
-  selectedBrainJobId?: string;
+  /** A1: explicitly opened Brain thread; undefined = follow current context. */
+  selectedBrainThreadId?: string;
   /** A4: composer text survives route changes. */
   brainComposer: string;
   toasts: Array<{ id: string; message: string; tone: 'ok' | 'warn' | 'error' }>;
@@ -492,8 +492,15 @@ export class AppStore {
     this.patch({ bootstrap: { ...bootstrap, jobs: upsertById(bootstrap.jobs, job) } });
   }
 
-  selectBrainJob(jobId: string | undefined): void {
-    this.patch({ selectedBrainJobId: jobId });
+  selectBrainThread(threadId: string | undefined): void {
+    this.patch({ selectedBrainThreadId: threadId });
+  }
+
+  /** Clear the board: a fresh thread id plus an empty composer. */
+  startBrainThread(): string {
+    const threadId = `thread-${crypto.randomUUID()}`;
+    this.patch({ selectedBrainThreadId: threadId, brainComposer: '' });
+    return threadId;
   }
 
   setBrainComposer(text: string): void {

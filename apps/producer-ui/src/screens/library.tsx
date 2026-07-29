@@ -245,7 +245,7 @@ export function LibraryScreen(): JSX.Element {
                     tone="primary"
                     onClick={() => {
                       appStore.selectPiece(selected.id);
-                      appStore.selectBrainJob(undefined);
+                      appStore.selectBrainThread(undefined);
                       window.history.pushState({}, '', '/studio');
                       appStore.setRoute('studio');
                     }}

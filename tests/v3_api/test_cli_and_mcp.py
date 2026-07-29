@@ -19,7 +19,7 @@ RUNTIME_ROOT = Path(__file__).resolve().parents[2] / "runtime"
 if str(RUNTIME_ROOT) not in sys.path:
     sys.path.insert(0, str(RUNTIME_ROOT))
 
-import cactus_cli  # noqa: E402
+import strudel_cli  # noqa: E402
 from mcp_server import TOOLS, McpServer  # noqa: E402
 
 
@@ -41,7 +41,7 @@ class FakeClient:
         )
         key = f"{method} {path.split('?')[0]}"
         if key not in self.responses:
-            raise cactus_cli.CliError(f"unexpected request: {key}")
+            raise strudel_cli.CliError(f"unexpected request: {key}")
         return self.responses[key]
 
 
@@ -74,7 +74,7 @@ PIECE = {
 
 class CliTests(unittest.TestCase):
     def _run(self, argv: list[str], client: FakeClient) -> tuple[int, str]:
-        parser = cactus_cli.build_parser()
+        parser = strudel_cli.build_parser()
         args = parser.parse_args(argv)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
@@ -179,7 +179,7 @@ class McpTests(unittest.TestCase):
                 "jsonrpc": "2.0",
                 "id": 3,
                 "method": "tools/call",
-                "params": {"name": "cactus_status", "arguments": {}},
+                "params": {"name": "strudel_status", "arguments": {}},
             }
         )
         content = response["result"]["content"][0]
@@ -199,7 +199,7 @@ class McpTests(unittest.TestCase):
                     "jsonrpc": "2.0",
                     "id": 4,
                     "method": "tools/call",
-                    "params": {"name": "cactus_score", "arguments": arguments},
+                    "params": {"name": "strudel_score", "arguments": arguments},
                 }
             )
             self.assertTrue(response["result"].get("isError"), arguments)
@@ -224,7 +224,7 @@ class McpTests(unittest.TestCase):
                 "id": 5,
                 "method": "tools/call",
                 "params": {
-                    "name": "cactus_score",
+                    "name": "strudel_score",
                     "arguments": {
                         "piece_id": "piece_x",
                         "score": 8.0,
@@ -249,7 +249,7 @@ class McpTests(unittest.TestCase):
                 "jsonrpc": "2.0",
                 "id": 7,
                 "method": "tools/call",
-                "params": {"name": "cactus_nonexistent", "arguments": {}},
+                "params": {"name": "strudel_nonexistent", "arguments": {}},
             }
         )
         self.assertTrue(bad_tool["result"].get("isError"))
@@ -269,7 +269,7 @@ class ReviewHardeningTests(unittest.TestCase):
                     "id": 1,
                     "method": "tools/call",
                     "params": {
-                        "name": "cactus_generate",
+                        "name": "strudel_generate",
                         "arguments": {"count": bad},
                     },
                 }
@@ -283,7 +283,7 @@ class ReviewHardeningTests(unittest.TestCase):
                 "jsonrpc": "2.0",
                 "id": 2,
                 "method": "tools/call",
-                "params": {"name": "cactus_get_piece", "arguments": {}},
+                "params": {"name": "strudel_get_piece", "arguments": {}},
             }
         )
         self.assertNotIn("error", response)
@@ -310,7 +310,7 @@ class ReviewHardeningTests(unittest.TestCase):
                 "id": 4,
                 "method": "tools/call",
                 "params": {
-                    "name": "cactus_play_url",
+                    "name": "strudel_play_url",
                     "arguments": {
                         "piece_id": "piece_x",
                         "revision_id": "version_typo",
@@ -331,7 +331,7 @@ class ReviewHardeningTests(unittest.TestCase):
                 "id": 5,
                 "method": "tools/call",
                 "params": {
-                    "name": "cactus_get_piece",
+                    "name": "strudel_get_piece",
                     "arguments": {"piece_id": "evil/../path"},
                 },
             }

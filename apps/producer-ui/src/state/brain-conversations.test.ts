@@ -11,23 +11,31 @@ vi.mock('../audio-engine', () => ({
 
 import { AppStore } from '../store';
 
-describe('Brain conversation selection (A1)', () => {
-  it('selection round-trips through the store and survives clearing', () => {
+describe('Brain threads (A1: multi-session)', () => {
+  it('selection round-trips and clears back to context-following', () => {
     const store = new AppStore();
-    expect(store.getSnapshot().selectedBrainJobId).toBeUndefined();
-    store.selectBrainJob('brain-123');
-    expect(store.getSnapshot().selectedBrainJobId).toBe('brain-123');
-    store.selectBrainJob(undefined);
-    expect(store.getSnapshot().selectedBrainJobId).toBeUndefined();
+    expect(store.getSnapshot().selectedBrainThreadId).toBeUndefined();
+    store.selectBrainThread('thread-123');
+    expect(store.getSnapshot().selectedBrainThreadId).toBe('thread-123');
+    store.selectBrainThread(undefined);
+    expect(store.getSnapshot().selectedBrainThreadId).toBeUndefined();
   });
 
-  it('composer text persists in the store across screen lifecycles (A4)', () => {
+  it('starting a thread clears the board and returns a fresh id', () => {
     const store = new AppStore();
-    store.setBrainComposer('half-typed question about the bass');
-    expect(store.getSnapshot().brainComposer).toBe(
-      'half-typed question about the bass',
-    );
-    store.setBrainComposer('');
+    store.setBrainComposer('half-typed question');
+    const first = store.startBrainThread();
+    expect(first).toMatch(/^thread-/);
+    expect(store.getSnapshot().selectedBrainThreadId).toBe(first);
+    // Clearing the board means the composer is empty, not carried over.
     expect(store.getSnapshot().brainComposer).toBe('');
+    const second = store.startBrainThread();
+    expect(second).not.toBe(first);
+  });
+
+  it('composer text persists across screen lifecycles (A4)', () => {
+    const store = new AppStore();
+    store.setBrainComposer('bass question');
+    expect(store.getSnapshot().brainComposer).toBe('bass question');
   });
 });

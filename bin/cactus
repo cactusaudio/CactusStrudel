@@ -1,4 +1,3 @@
 #!/bin/bash
-# cactus — unified CLI over the CactusStrudel /api/v2 chokepoint.
-cd "$(dirname "$0")/.." || exit 1
-exec python3 runtime/cactus_cli.py "$@"
+# Deprecated alias for `strudel`; kept so existing habits and scripts work.
+exec "$(dirname "$0")/strudel" "$@"

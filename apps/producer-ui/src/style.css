@@ -1653,15 +1653,28 @@ p {
 }
 
 .context-pin {
-  min-height: 47px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  padding: 7px 11px;
-  background: #11110f;
-  border-bottom: 1px solid var(--line-soft);
+  align-items: baseline;
+  padding: 6px 14px;
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
 }
+
+.context-pin strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.context-pin code {
+  color: var(--ink-soft, #b9b5aa);
+  font-size: 11px;
+}
+
 
 .context-pin > div {
   min-width: 0;
@@ -1695,11 +1708,21 @@ p {
 
 .brain-quick {
   display: flex;
-  gap: 4px;
-  padding: 7px 8px;
+  gap: 6px;
+  padding: 8px 14px 0;
   overflow-x: auto;
-  border-bottom: 1px solid var(--line-soft);
+  scrollbar-width: none;
 }
+
+.brain-quick::-webkit-scrollbar {
+  display: none;
+}
+
+.brain-quick button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 
 .brain-quick button {
   flex: 0 0 auto;
@@ -2327,55 +2350,38 @@ p {
   color: var(--amber, #d9a53f);
 }
 
-.brain-history {
-  margin: 0 0 10px;
-  font-size: 12.5px;
-}
-
-.brain-history summary {
-  cursor: pointer;
-  color: var(--ink-soft, #b9b5aa);
-  padding: 4px 0;
-}
-
-.brain-history ul {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  max-height: 220px;
-  overflow-y: auto;
-  display: grid;
-  gap: 4px;
-}
-
-.brain-history li button {
-  width: 100%;
+.brain-threadbar {
   display: flex;
   gap: 8px;
   align-items: center;
-  text-align: left;
-  padding: 6px 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.brain-threadbar select {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
   border: 1px solid var(--line-soft);
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   color: inherit;
-  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
 }
 
-.brain-history li button.is-open {
-  border-color: var(--gold, #e2bd3f);
-}
-
-.brain-history li button span {
+.brain-threadview {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.brain-history li button small {
-  color: var(--ink-soft, #b9b5aa);
-  white-space: nowrap;
+.brain-threadview .brain-thread {
+  flex: initial;
+  overflow: visible;
 }
 
 .brain-action-card {

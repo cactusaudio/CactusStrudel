@@ -1,4 +1,3 @@
 #!/bin/bash
-# cactus-mcp — MCP stdio server over the CactusStrudel /api/v2 chokepoint.
-cd "$(dirname "$0")/../runtime" || exit 1
-exec python3 mcp_server.py
+# Deprecated alias for `strudel-mcp`.
+exec "$(dirname "$0")/strudel-mcp" "$@"

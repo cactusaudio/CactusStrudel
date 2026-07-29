@@ -35,5 +35,5 @@ echo "== bootstrap on $HOST"
 ssh "$HOST" "cd '$REMOTE_PATH' && bash scripts/bootstrap.sh"
 
 echo "== verify"
-ssh "$HOST" "cd '$REMOTE_PATH' && bin/cactus status"
+ssh "$HOST" "cd '$REMOTE_PATH' && bin/strudel status"
 echo "deploy-lan: $HOST done"

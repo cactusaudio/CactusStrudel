@@ -203,6 +203,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 )
             if path == "/api/v2/settings/agent":
                 return self._json(200, self.app.agent_settings_public())
+            if path == "/api/v2/brain/threads":
+                return self._json(
+                    200, {"threads": self.app.brain_threads()}
+                )
             if path == "/api/v2/events":
                 query = urllib.parse.parse_qs(parsed.query)
                 after = int((query.get("after") or ["0"])[0])
@@ -250,6 +254,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if path == "/api/v2/brain/jobs":
                 job = self.app.create_brain_job(
                     message=str(body.get("message") or ""),
+                    thread_id=(
+                        str(body["thread_id"]) if body.get("thread_id") else None
+                    ),
                     piece_id=str(body["piece_id"]) if body.get("piece_id") else None,
                     revision_id=(
                         str(body["revision_id"]) if body.get("revision_id") else None
