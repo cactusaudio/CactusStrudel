@@ -112,6 +112,16 @@ export interface BrainMessage {
     | 'effect_observed'
     | 'finalized'
     | 'reconciliation_required';
+  /** Exact identities from a committed product-tool outcome (A2). */
+  action?: {
+    kind: 'preview' | 'generation' | 'preview_job' | 'generation_batch' | 'reconciled' | string;
+    piece_id?: string;
+    revision_id?: string;
+    audio_sha?: string;
+    job_id?: string;
+    batch_id?: string;
+    state?: string;
+  };
 }
 
 export interface BrainJob {

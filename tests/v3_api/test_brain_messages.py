@@ -322,3 +322,55 @@ class BrainMessageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BrainToolActionTests(unittest.TestCase):
+    """A2: product-tool outcomes expose exact identities for the thread."""
+
+    def test_preview_result_yields_audition_identity(self) -> None:
+        action = V3Application._brain_tool_action(
+            "render_piece_preview",
+            {
+                "id": "version_new",
+                "piece_id": "piece_x",
+                "audio_sha": "a" * 64,
+                "code": "s('bd')",
+            },
+        )
+        self.assertEqual(
+            action,
+            {
+                "kind": "preview",
+                "piece_id": "piece_x",
+                "revision_id": "version_new",
+                "audio_sha": "a" * 64,
+            },
+        )
+
+    def test_generation_result_yields_batch_identity(self) -> None:
+        action = V3Application._brain_tool_action(
+            "generate_first_shots",
+            {"id": "gen_abc", "state": "running", "count": 2},
+        )
+        self.assertEqual(
+            action,
+            {"kind": "generation", "job_id": "gen_abc", "state": "running"},
+        )
+
+    def test_reconciled_effect_uses_recorded_identity(self) -> None:
+        action = V3Application._brain_tool_action(
+            "generate_first_shots",
+            {
+                "reconciled": True,
+                "identity": {"kind": "generation_batch", "batch_id": "gen_r"},
+            },
+        )
+        self.assertEqual(
+            action, {"kind": "generation_batch", "batch_id": "gen_r"}
+        )
+
+    def test_read_only_tools_and_scalars_have_no_action(self) -> None:
+        self.assertIsNone(
+            V3Application._brain_tool_action("list_recent_pieces", {"pieces": []})
+        )
+        self.assertIsNone(V3Application._brain_tool_action("read_piece", "text"))

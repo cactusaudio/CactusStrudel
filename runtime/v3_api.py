@@ -2854,6 +2854,34 @@ class V3Application:
             "receipt": receipt,
         }
 
+    @staticmethod
+    def _brain_tool_action(
+        tool_name: str, result: Any
+    ) -> dict[str, Any] | None:
+        """Exact identities from a product tool's committed outcome."""
+
+        if not isinstance(result, Mapping):
+            return None
+        if isinstance(result.get("identity"), Mapping):
+            # A reconciled effect already names its durable identity.
+            identity = dict(result["identity"])
+            identity["kind"] = str(identity.get("kind") or "reconciled")
+            return identity
+        if tool_name == "render_piece_preview" and result.get("id"):
+            return {
+                "kind": "preview",
+                "piece_id": result.get("piece_id"),
+                "revision_id": result.get("id"),
+                "audio_sha": result.get("audio_sha"),
+            }
+        if tool_name == "generate_first_shots" and result.get("id"):
+            return {
+                "kind": "generation",
+                "job_id": result.get("id"),
+                "state": result.get("state"),
+            }
+        return None
+
     def _brain_public(self, job: Mapping[str, Any]) -> dict[str, Any]:
         metadata = dict(job.get("metadata") or {})
         messages = [
@@ -2878,24 +2906,32 @@ class V3Application:
             ).fetchall()
         for tool in tool_rows:
             summary = tool["status"]
+            action = None
             if tool["result_json"]:
                 try:
                     result = json.loads(tool["result_json"])
                     summary = json.dumps(result, ensure_ascii=False)[:600]
+                    # A2: product-tool outcomes carry exact identities so the
+                    # thread can act on them (the 600-char summary is display
+                    # text, not a parseable contract).
+                    action = self._brain_tool_action(
+                        str(tool["tool_name"]), result
+                    )
                 except json.JSONDecodeError:
                     pass
-            messages.append(
-                {
-                    "id": f"{job['job_id']}:tool:{tool['call_id']}",
-                    "role": "tool",
-                    "tool_name": tool["tool_name"],
-                    "text": summary,
-                    "created_at": tool["ended_at"] or job["updated_at"],
-                    "mutating": bool(tool["mutating"]),
-                    "committed": bool(tool["committed"]),
-                    "effect_state": tool["effect_state"],
-                }
-            )
+            entry = {
+                "id": f"{job['job_id']}:tool:{tool['call_id']}",
+                "role": "tool",
+                "tool_name": tool["tool_name"],
+                "text": summary,
+                "created_at": tool["ended_at"] or job["updated_at"],
+                "mutating": bool(tool["mutating"]),
+                "committed": bool(tool["committed"]),
+                "effect_state": tool["effect_state"],
+            }
+            if action is not None:
+                entry["action"] = action
+            messages.append(entry)
         result = job.get("result") or {}
         if result.get("output_text"):
             messages.append(

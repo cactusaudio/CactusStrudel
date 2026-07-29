@@ -59,6 +59,10 @@ export interface AppState {
   agentDraft?: AgentConnectionDraft;
   agentDraftDirty: boolean;
   agentSettingsOperation?: AgentSettingsOperationOwnership;
+  /** A1: explicitly opened Brain conversation; undefined = follow context. */
+  selectedBrainJobId?: string;
+  /** A4: composer text survives route changes. */
+  brainComposer: string;
   toasts: Array<{ id: string; message: string; tone: 'ok' | 'warn' | 'error' }>;
 }
 
@@ -72,6 +76,7 @@ const initial: AppState = {
   editorDirty: false,
   workspaceEpoch: 0,
   eventState: 'offline',
+  brainComposer: '',
   generationPrompt: '',
   generationCount: 1,
   agentDraftDirty: false,
@@ -485,6 +490,14 @@ export class AppStore {
     const bootstrap = this.state.bootstrap;
     if (!bootstrap) return;
     this.patch({ bootstrap: { ...bootstrap, jobs: upsertById(bootstrap.jobs, job) } });
+  }
+
+  selectBrainJob(jobId: string | undefined): void {
+    this.patch({ selectedBrainJobId: jobId });
+  }
+
+  setBrainComposer(text: string): void {
+    this.patch({ brainComposer: text });
   }
 
   upsertBrainJob(job: BrainJob): void {

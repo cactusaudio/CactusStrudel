@@ -2296,6 +2296,74 @@ p {
   margin: 14px 0 0;
 }
 
+.brain-history {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+}
+
+.brain-history summary {
+  cursor: pointer;
+  color: var(--ink-soft, #b9b5aa);
+  padding: 4px 0;
+}
+
+.brain-history ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.brain-history li button {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  padding: 6px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.brain-history li button.is-open {
+  border-color: var(--gold, #e2bd3f);
+}
+
+.brain-history li button span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-history li button small {
+  color: var(--ink-soft, #b9b5aa);
+  white-space: nowrap;
+}
+
+.brain-action-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--gold, #e2bd3f);
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.brain-action-card code {
+  margin-left: 8px;
+  color: var(--ink-soft, #b9b5aa);
+}
+
 .settings-draft-diff {
   margin: 12px 0 0;
   padding: 10px 12px;

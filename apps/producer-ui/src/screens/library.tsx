@@ -240,6 +240,18 @@ export function LibraryScreen(): JSX.Element {
                   >
                     {selected.archived ? 'Restore' : 'Archive'}
                   </Button>
+                  <Button
+                    size="sm"
+                    tone="primary"
+                    onClick={() => {
+                      appStore.selectPiece(selected.id);
+                      appStore.selectBrainJob(undefined);
+                      window.history.pushState({}, '', '/studio');
+                      appStore.setRoute('studio');
+                    }}
+                  >
+                    Ask Brain
+                  </Button>
                 </>
               }
             />

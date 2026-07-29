@@ -10,6 +10,7 @@ import {
 import type {
   BrainJob,
   BrainJobInput,
+  BrainMessage,
   GenerationJob,
   GenerationJobInput,
   Piece,
@@ -670,6 +671,54 @@ function PieceWorkspace(): JSX.Element {
   );
 }
 
+function BrainActionCard({
+  action,
+}: {
+  action: NonNullable<BrainMessage['action']>;
+}): JSX.Element | null {
+  const state = useAppState();
+  if (action.kind === 'preview' && action.piece_id && action.revision_id) {
+    const piece = state.bootstrap?.pieces.find((item) => item.id === action.piece_id);
+    const revision = piece?.revisions.find((item) => item.id === action.revision_id);
+    return (
+      <div class="brain-action-card">
+        <div>
+          <strong>Preview B ready</strong>
+          <code>{action.revision_id.slice(0, 10)}</code>
+        </div>
+        {piece && revision
+          ? (
+            <Button size="sm" onClick={() => appStore.selectRevision(piece.id, revision, 'b', true)}>
+              Audition B
+            </Button>
+          )
+          : <small class="muted">appearing in library…</small>}
+      </div>
+    );
+  }
+  if (action.kind === 'generation' || action.kind === 'generation_batch') {
+    const jobId = action.job_id || action.batch_id;
+    const generation = state.bootstrap?.jobs.find((item) => item.id === jobId);
+    return (
+      <div class="brain-action-card">
+        <div>
+          <strong>Generation {generation?.state || action.state || 'queued'}</strong>
+          <code>{String(jobId || '').slice(0, 12)}</code>
+        </div>
+        {(() => {
+          const firstPieceId = generation?.piece_ids[0];
+          return firstPieceId ? (
+            <Button size="sm" onClick={() => appStore.selectPiece(firstPieceId)}>
+              Open piece
+            </Button>
+          ) : null;
+        })()}
+      </div>
+    );
+  }
+  return null;
+}
+
 function BrainThread({ job, ready }: { job?: BrainJob; ready: boolean }): JSX.Element {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => endRef.current?.scrollIntoView({ block: 'nearest' }), [job?.messages.length]);
@@ -693,6 +742,7 @@ function BrainThread({ job, ready }: { job?: BrainJob; ready: boolean }): JSX.El
             {message.tool_name ? ` · ${message.tool_name}` : ''}
           </div>
           <div class="brain-message__text">{message.text}</div>
+          {message.action && <BrainActionCard action={message.action} />}
           {message.effect_state === 'reconciliation_required' && (
             <Badge tone="amber">effect: reconciliation required</Badge>
           )}
@@ -747,8 +797,13 @@ function BrainDock(): JSX.Element {
     })),
     [state.bootstrap?.brain_jobs, piece?.id, revision?.id, revision?.audio_sha, revision?.score],
   );
-  const job = relevant[0];
-  const [message, setMessage] = useState('');
+  const conversations = state.bootstrap?.brain_jobs || [];
+  const opened = state.selectedBrainJobId
+    ? conversations.find((candidate) => candidate.id === state.selectedBrainJobId)
+    : undefined;
+  const job = opened ?? relevant[0];
+  const message = state.brainComposer;
+  const setMessage = (value: string) => appStore.setBrainComposer(value);
   const [sending, setSending] = useState(false);
   const [unknownBrain, setUnknownBrain] = useState<BrainSubmission>();
   const sendingRef = useRef(false);
@@ -772,8 +827,11 @@ function BrainDock(): JSX.Element {
         audio_sha: result.job.audio_sha ?? submission.context.audioSha,
         score: result.job.score !== undefined ? result.job.score : submission.context.score,
       });
-      if (submission.composerValue !== undefined) {
-        setMessage((current) => current === submission.composerValue ? '' : current);
+      if (
+        submission.composerValue !== undefined
+        && appStore.getSnapshot().brainComposer === submission.composerValue
+      ) {
+        setMessage('');
       }
     } catch (error) {
       if (error instanceof MutationOutcomeUnknownError) {
@@ -803,6 +861,7 @@ function BrainDock(): JSX.Element {
       audioSha: revision?.audio_sha,
       score: revision?.score,
     };
+    appStore.selectBrainJob(undefined);
     void submitBrain({
       intent: createMutationIntent(),
       input: {
@@ -892,6 +951,51 @@ function BrainDock(): JSX.Element {
           <button key={prompt} disabled={!brainReady || sending || Boolean(running) || Boolean(unknownBrain)} onClick={() => send(prompt, false)}>{prompt}</button>
         ))}
       </div>
+
+      {conversations.length > 0 && (
+        <details class="brain-history">
+          <summary>
+            {opened
+              ? `Viewing ${opened.id.slice(0, 12)} · back to context`
+              : `${conversations.length} conversation(s)`}
+          </summary>
+          <ul>
+            {opened && (
+              <li>
+                <button onClick={() => appStore.selectBrainJob(undefined)}>
+                  ← Follow current context
+                </button>
+              </li>
+            )}
+            {conversations.slice(0, 20).map((conversation) => {
+              const firstUser = conversation.messages.find(
+                (item) => item.role === 'user',
+              );
+              const pinnedPiece = conversation.piece_id
+                ? state.bootstrap?.pieces.find(
+                    (item) => item.id === conversation.piece_id,
+                  )
+                : undefined;
+              return (
+                <li key={conversation.id}>
+                  <button
+                    class={conversation.id === job?.id ? 'is-open' : ''}
+                    onClick={() => appStore.selectBrainJob(conversation.id)}
+                  >
+                    <StateBadge state={conversation.state} />
+                    <span>{(firstUser?.text || 'no message').slice(0, 44)}</span>
+                    <small>
+                      {pinnedPiece?.name || 'unpinned'}
+                      {' · '}
+                      {formatDateTime(conversation.created_at)}
+                    </small>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
 
       <BrainThread job={job} ready={brainReady} />
 
