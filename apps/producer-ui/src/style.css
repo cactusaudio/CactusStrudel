@@ -1675,6 +1675,27 @@ p {
   font-size: 11px;
 }
 
+.context-pin__toggle {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft, #b9b5aa);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.context-pin__toggle.is-on {
+  border-color: var(--gold, #e2bd3f);
+}
+
+.context-pin .muted {
+  font-weight: 400;
+  color: var(--ink-soft, #b9b5aa);
+}
+
 
 .context-pin > div {
   min-width: 0;
@@ -2371,7 +2392,7 @@ p {
 }
 
 .brain-threadview {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   display: flex;
@@ -2379,9 +2400,20 @@ p {
   gap: 4px;
 }
 
+/* Individual turns size to content; the scroll container is the parent. */
 .brain-threadview .brain-thread {
-  flex: initial;
+  flex: 0 0 auto;
   overflow: visible;
+}
+
+/* The empty state centres in the leftover space instead of collapsing. */
+.brain-threadview > .empty-state {
+  margin: auto 0;
+}
+
+.brain-quick,
+.brain-compose {
+  flex: 0 0 auto;
 }
 
 .brain-action-card {

@@ -63,6 +63,8 @@ export interface AppState {
   selectedBrainThreadId?: string;
   /** A4: composer text survives route changes. */
   brainComposer: string;
+  /** Pin the selected revision into Brain context; off = general question. */
+  brainPinEnabled: boolean;
   toasts: Array<{ id: string; message: string; tone: 'ok' | 'warn' | 'error' }>;
 }
 
@@ -77,6 +79,7 @@ const initial: AppState = {
   workspaceEpoch: 0,
   eventState: 'offline',
   brainComposer: '',
+  brainPinEnabled: true,
   generationPrompt: '',
   generationCount: 1,
   agentDraftDirty: false,
@@ -505,6 +508,10 @@ export class AppStore {
 
   setBrainComposer(text: string): void {
     this.patch({ brainComposer: text });
+  }
+
+  setBrainPin(enabled: boolean): void {
+    this.patch({ brainPinEnabled: enabled });
   }
 
   upsertBrainJob(job: BrainJob): void {

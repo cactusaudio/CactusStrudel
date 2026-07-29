@@ -824,6 +824,7 @@ function BrainDock(): JSX.Element {
   // A brand-new thread has no durable jobs yet; the composer still targets it.
   const threadJobs = openThread?.jobs || [];
   const job = threadJobs[threadJobs.length - 1] ?? (selectedThreadId ? undefined : relevant[0]);
+  const pinEnabled = state.brainPinEnabled;
   const message = state.brainComposer;
   const setMessage = (value: string) => appStore.setBrainComposer(value);
   const [sending, setSending] = useState(false);
@@ -877,12 +878,14 @@ function BrainDock(): JSX.Element {
   const send = (text: string, clearComposer: boolean) => {
     const submittedText = text.trim();
     if (!submittedText || !brainReady || unknownBrain) return;
-    const context = {
-      pieceId: piece?.id,
-      revisionId: revision?.id,
-      audioSha: revision?.audio_sha,
-      score: revision?.score,
-    };
+    const context = pinEnabled
+      ? {
+        pieceId: piece?.id,
+        revisionId: revision?.id,
+        audioSha: revision?.audio_sha,
+        score: revision?.score,
+      }
+      : {};
     const threadId = selectedThreadId
       || openThread?.jobs[0]?.thread_id
       || appStore.startBrainThread();
@@ -989,22 +992,34 @@ function BrainDock(): JSX.Element {
       </div>
 
       <div class="context-pin">
-        <span>Pinned</span>
-        <strong>{piece?.name || 'No piece'}</strong>
-        {revision && (
-          <code>{revision.id.slice(0, 8)} · score {revision.score ?? '—'}</code>
-        )}
+        <button
+          class={`context-pin__toggle${pinEnabled ? ' is-on' : ''}`}
+          title={pinEnabled
+            ? 'Pinned to this revision — click to ask without any piece context'
+            : 'Unpinned — click to pin the current revision'}
+          onClick={() => appStore.setBrainPin(!pinEnabled)}
+        >
+          {pinEnabled ? '📌' : '○'}
+        </button>
+        {pinEnabled && piece
+          ? (
+            <>
+              <strong>{piece.name}</strong>
+              {revision && (
+                <code>{revision.id.slice(0, 8)} · score {revision.score ?? '—'}</code>
+              )}
+            </>
+          )
+          : <strong class="muted">No piece pinned · general question</strong>}
       </div>
 
-      {threadJobs.length > 0
-        ? (
-          <div class="brain-threadview">
-            {threadJobs.map((turn) => (
-              <BrainThread key={turn.id} job={turn} ready={brainReady} />
-            ))}
-          </div>
-        )
-        : <BrainThread job={undefined} ready={brainReady} />}
+      <div class="brain-threadview">
+        {threadJobs.length > 0
+          ? threadJobs.map((turn) => (
+            <BrainThread key={turn.id} job={turn} ready={brainReady} />
+          ))
+          : <BrainThread job={undefined} ready={brainReady} />}
+      </div>
 
       {unknownBrain && (
         <OutcomeUnknownNotice
@@ -1039,9 +1054,9 @@ function BrainDock(): JSX.Element {
           rows={3}
           placeholder={!brainReady
             ? 'Apply an Agent profile in Settings first.'
-            : piece
+            : pinEnabled && piece
               ? `Ask about ${piece.name}…`
-              : 'Ask the producer brain…'}
+              : 'Ask the producer brain anything…'}
           value={message}
           disabled={!brainReady || sending || Boolean(running) || Boolean(unknownBrain)}
           onInput={(event) => setMessage(event.currentTarget.value)}
