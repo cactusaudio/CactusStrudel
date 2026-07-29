@@ -1101,17 +1101,38 @@ class V3Application:
                 path or "not on PATH",
                 fix,
             )
+        # The renderer prefers the system Chrome channel, then an explicit
+        # CACTUS_RENDER_BROWSER_PATH, then Playwright's bundled Chromium —
+        # the doctor mirrors that exact fallback order.
+        configured_browser = os.environ.get("CACTUS_RENDER_BROWSER_PATH", "").strip()
+        system_chrome = Path(
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        )
         playwright_cache = Path.home() / "Library" / "Caches" / "ms-playwright"
-        chromium_present = any(
+        bundled_chromium = any(
             entry.name.startswith("chromium")
             for entry in (
                 playwright_cache.iterdir() if playwright_cache.is_dir() else []
             )
         )
+        if configured_browser:
+            browser_ok = Path(configured_browser).is_file()
+            browser_detail = f"configured: {configured_browser}"
+        elif system_chrome.is_file():
+            browser_ok = True
+            browser_detail = "system Chrome (renderer's preferred channel)"
+        else:
+            browser_ok = bundled_chromium
+            browser_detail = (
+                "bundled Playwright Chromium"
+                if bundled_chromium
+                else "no Chrome, no bundled Chromium"
+            )
         check(
-            "playwright-chromium",
-            chromium_present,
-            str(playwright_cache) if chromium_present else "no chromium runtime",
+            "render-browser",
+            browser_ok,
+            browser_detail,
+            "install Google Chrome, or "
             "pnpm -C packages/renderer exec playwright install chromium",
         )
         render_worker_deps = (

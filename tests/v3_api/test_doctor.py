@@ -20,7 +20,7 @@ EXPECTED_CHECK_IDS = {
     "binary:ffprobe",
     "binary:node",
     "binary:pnpm",
-    "playwright-chromium",
+    "render-browser",
     "render-worker-deps",
     "cliproxy",
     "agent",
