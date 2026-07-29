@@ -271,7 +271,7 @@ class McpServer:
         return self.client.request("GET", "/api/v2/health")
 
     def _tool_strudel_doctor(self, _arguments: dict[str, Any]) -> Any:
-        return self.client.request("GET", "/api/v2/doctor", timeout=60)
+        return self.client.request("GET", "/api/v2/doctor", timeout=600)
 
     def _tool_strudel_list_pieces(self, arguments: dict[str, Any]) -> Any:
         payload = self.client.request(
@@ -375,7 +375,7 @@ class McpServer:
             idempotency_key=str(
                 arguments.get("idempotency_key") or f"mcp-{uuid4().hex}"
             ),
-            timeout=1200,
+            timeout=12000,
         )
 
     def _tool_strudel_promote(self, arguments: dict[str, Any]) -> Any:
@@ -406,7 +406,7 @@ class McpServer:
             return job
         import time as _time
 
-        deadline = _time.monotonic() + 300
+        deadline = _time.monotonic() + 3000
         while _time.monotonic() < deadline:
             job = self.client.request(
                 "GET",

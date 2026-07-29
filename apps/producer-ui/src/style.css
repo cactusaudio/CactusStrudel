@@ -2429,6 +2429,123 @@ p {
   flex: 0 0 auto;
 }
 
+/* Brain answers read as prose, not as a machine dump. */
+.rich-text > * {
+  margin: 0 0 8px;
+}
+
+.rich-text > *:last-child {
+  margin-bottom: 0;
+}
+
+.rich-text p {
+  line-height: 1.6;
+}
+
+.rich-text strong.rich-heading {
+  display: block;
+  margin-top: 10px;
+  color: var(--gold, #e2bd3f);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+
+.rich-text ul,
+.rich-text ol {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.rich-text li {
+  margin: 3px 0;
+  line-height: 1.55;
+}
+
+.rich-text code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #1b1b18;
+  color: var(--gold, #e2bd3f);
+  font-size: 11.5px;
+}
+
+.rich-text pre.rich-code {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #131311;
+  overflow-x: auto;
+}
+
+.rich-text pre.rich-code code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* Tool turns: one line by default, full payload one click away. */
+.brain-tool {
+  margin: 2px 0;
+  font-size: 11.5px;
+}
+
+.brain-tool > summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--ink-soft, #b9b5aa);
+  list-style: none;
+}
+
+.brain-tool > summary::-webkit-details-marker {
+  display: none;
+}
+
+.brain-tool > summary::before {
+  content: '▸';
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+.brain-tool[open] > summary::before {
+  content: '▾';
+}
+
+.brain-tool__name {
+  flex: 0 0 auto;
+  color: var(--gold, #e2bd3f);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.brain-tool__summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-tool__payload {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #131311;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .brain-action-card {
   display: flex;
   align-items: center;

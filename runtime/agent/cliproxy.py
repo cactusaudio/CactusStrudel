@@ -149,7 +149,7 @@ class CLIProxyClient:
     base_url: str
     api_key: str
     transport: JSONTransport = field(default_factory=HTTPJSONTransport)
-    timeout: float = 120.0
+    timeout: float = 1200.0
     _job_tokens: dict[str, set[str]] = field(default_factory=dict)
     _response_contexts: dict[str, list[dict[str, Any]]] = field(
         default_factory=dict

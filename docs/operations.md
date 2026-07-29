@@ -115,6 +115,23 @@ and requires the same repo-relative layout (receipts record repo-relative
 asset paths — a mislocated restore honestly fails usability afterwards).
 Stop the runtime before restoring.
 
+## Work timeouts
+
+Long-form model work and real renders get a wide envelope (2026-07-29:
+every work timeout raised 10x after a claude-opus-5 composition hit the
+old 120s transport ceiling):
+
+| Limit | Default | Override |
+|---|---|---|
+| model request (generation + Brain) | 1200s | `CACTUS_MODEL_TIMEOUT` |
+| render wall clock | 6000s | `CACTUS_RENDER_WALL_TIMEOUT_SECONDS` |
+| batch abandon drain | 300s | — |
+| bounded shutdown drain | 100s | `CACTUS_SHUTDOWN_TIMEOUT` |
+| CLI request / preview / brain wait | 300s / 12000s / 3000s | `--wait-timeout` |
+
+These are ceilings, not budgets: work that finishes early is unaffected,
+and cancellation still cuts in immediately at every checkpoint.
+
 ## Doctor
 
 `GET /api/v2/doctor` (also on /settings/system) runs one diagnostic pass:

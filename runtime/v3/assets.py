@@ -58,7 +58,7 @@ def ffprobe_duration(path: Path, *, ffprobe_bin: str = "ffprobe") -> float:
         ],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=300,
         check=False,
     )
     if completed.returncode != 0:

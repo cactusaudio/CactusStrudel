@@ -42,7 +42,7 @@ STATE_ROOT = Path(
     os.environ.get("CACTUS_V3_STATE_ROOT")
     or Path.home() / ".cactus-strudel" / "v3"
 ).expanduser().resolve()
-SHUTDOWN_TIMEOUT = float(os.environ.get("CACTUS_SHUTDOWN_TIMEOUT") or 10.0)
+SHUTDOWN_TIMEOUT = float(os.environ.get("CACTUS_SHUTDOWN_TIMEOUT") or 100.0)
 APP_INDEX = ROOT / "runtime" / "app" / "index.html"
 LEGACY_ARCHIVE_ROOT = (
     ROOT

@@ -34,7 +34,7 @@ class CliError(RuntimeError):
 class ApiClient:
     """Thin transport; injectable for tests."""
 
-    def __init__(self, base_url: str = DEFAULT_BASE_URL, timeout: float = 30.0):
+    def __init__(self, base_url: str = DEFAULT_BASE_URL, timeout: float = 300.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
@@ -119,7 +119,7 @@ def cmd_status(client: ApiClient, args: argparse.Namespace) -> int:
 
 
 def cmd_doctor(client: ApiClient, args: argparse.Namespace) -> int:
-    report = client.request("GET", "/api/v2/doctor", timeout=60)
+    report = client.request("GET", "/api/v2/doctor", timeout=600)
     if args.json:
         _emit(args, report)
     else:
@@ -282,7 +282,7 @@ def cmd_preview(client: ApiClient, args: argparse.Namespace) -> int:
             "intent": args.intent or "cactus cli preview",
         },
         idempotency_key=args.idempotency_key or f"cactus-cli-{uuid4().hex}",
-        timeout=1200,
+        timeout=12000,
     )
     revision = result["revision"]
     _emit(
@@ -453,7 +453,7 @@ def build_parser() -> argparse.ArgumentParser:
     brain.add_argument("message")
     brain.add_argument("--pin", help="piece id to pin as context")
     brain.add_argument("--wait", action="store_true")
-    brain.add_argument("--wait-timeout", type=float, default=300)
+    brain.add_argument("--wait-timeout", type=float, default=3000)
     brain.add_argument("--idempotency-key")
     brain.set_defaults(func=cmd_brain)
 

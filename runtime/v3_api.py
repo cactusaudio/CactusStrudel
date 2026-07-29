@@ -59,10 +59,13 @@ _FENCE_RE = re.compile(
 _TERMINAL_BATCH = frozenset(
     {"done", "failed", "cancelled", "cancelled_after_commit", "interrupted"}
 )
-_DEFAULT_RENDER_WALL_TIMEOUT_SECONDS = 600.0
+_DEFAULT_RENDER_WALL_TIMEOUT_SECONDS = 6000.0
 _RENDER_POLL_SECONDS = 0.1
 _RENDER_TERM_GRACE_SECONDS = 5.0
-_BATCH_ABANDON_DRAIN_SECONDS = 30.0
+_BATCH_ABANDON_DRAIN_SECONDS = 300.0
+# A full composition from a reasoning model runs far past the transport's
+# 120s default; the render wall timeout downstream is already 600s.
+_DEFAULT_MODEL_TIMEOUT_SECONDS = 1200.0
 
 
 class V3Error(RuntimeError):
@@ -283,7 +286,7 @@ class ApiEventLog:
         return int(row["n"])
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, timeout=15)
+        conn = sqlite3.connect(self.db_path, timeout=150)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout = 15000")
         return conn
@@ -938,7 +941,7 @@ class GenerationRepository:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path, timeout=15)
+        conn = sqlite3.connect(self.db_path, timeout=150)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout = 15000")
         return conn
@@ -1157,7 +1160,7 @@ class V3Application:
                         f"{base_url.rstrip('/')}/models",
                         headers={"Authorization": "Bearer doctor-probe"},
                     )
-                    with urllib.request.urlopen(request, timeout=3):
+                    with urllib.request.urlopen(request, timeout=30):
                         reachable = True
                         detail = f"{base_url} reachable"
                 except urllib.error.HTTPError as exc:
@@ -1227,7 +1230,7 @@ class V3Application:
             return
         self.owner.advance("quiescing")
 
-    def shutdown(self, *, drain_timeout: float = 10.0) -> dict[str, Any]:
+    def shutdown(self, *, drain_timeout: float = 100.0) -> dict[str, Any]:
         """Bounded owner shutdown: quiesce → cancel → drain → close → release.
 
         Work that cannot drain inside the deadline stays daemon-threaded; its
@@ -2046,7 +2049,11 @@ class V3Application:
         client: CLIProxyClient | None = None
         try:
             key = self.credentials.get(str(config["credential_ref"]))
-            client = CLIProxyClient(str(config["base_url"]), key)
+            client = CLIProxyClient(
+                str(config["base_url"]),
+                key,
+                timeout=self._model_timeout_seconds(),
+            )
             with self._lock:
                 self._generation_clients[child_job_id] = client
             if cancel_event.is_set():
@@ -3321,7 +3328,7 @@ class V3Application:
             input=code,
             text=True,
             capture_output=True,
-            timeout=45,
+            timeout=450,
             check=False,
         )
         try:
@@ -3489,6 +3496,15 @@ class V3Application:
                     log_path.unlink()
                 except FileNotFoundError:
                     pass
+
+    @staticmethod
+    def _model_timeout_seconds() -> float:
+        raw = os.environ.get("CACTUS_MODEL_TIMEOUT")
+        try:
+            value = float(raw) if raw else _DEFAULT_MODEL_TIMEOUT_SECONDS
+        except ValueError:
+            return _DEFAULT_MODEL_TIMEOUT_SECONDS
+        return value if value > 0 else _DEFAULT_MODEL_TIMEOUT_SECONDS
 
     @staticmethod
     def _render_wall_timeout_seconds() -> float:

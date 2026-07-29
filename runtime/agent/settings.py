@@ -41,6 +41,16 @@ from .models import (
 
 
 DEFAULT_SETTINGS_ROOT = Path.home() / ".cactus-strudel" / "v3" / "agent"
+DEFAULT_MODEL_TIMEOUT_SECONDS = 1200.0
+
+
+def _model_timeout_seconds() -> float:
+    raw = os.environ.get("CACTUS_MODEL_TIMEOUT")
+    try:
+        value = float(raw) if raw else DEFAULT_MODEL_TIMEOUT_SECONDS
+    except ValueError:
+        return DEFAULT_MODEL_TIMEOUT_SECONDS
+    return value if value > 0 else DEFAULT_MODEL_TIMEOUT_SECONDS
 ClientFactory = Callable[[str, str], CLIProxyClient]
 ProtectedCredentialRefs = Callable[[], Iterable[str | None]]
 
@@ -320,7 +330,9 @@ class AgentSettingsService:
         self.store = store or AgentSettingsStore()
         self.credentials = credentials or MacOSKeychainStore()
         self.client_factory = client_factory or (
-            lambda base_url, key: CLIProxyClient(base_url, key)
+            lambda base_url, key: CLIProxyClient(
+                base_url, key, timeout=_model_timeout_seconds()
+            )
         )
         self.ultra_client_models = frozenset(ultra_client_models)
         self.protected_credential_refs = protected_credential_refs

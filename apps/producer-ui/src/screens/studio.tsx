@@ -36,6 +36,7 @@ import {
   formatDuration,
 } from '../components/ui';
 import { PromptReceipt } from '../components/prompt-receipt';
+import { RichText } from '../components/rich-text';
 
 function humanError(error: unknown): string {
   if (error instanceof ApiError) return error.detail || error.message;
@@ -671,6 +672,45 @@ function PieceWorkspace(): JSX.Element {
   );
 }
 
+function toolSummary(message: BrainMessage, parsed: unknown): string {
+  if (message.effect_state === 'reconciliation_required') {
+    return 'needs manual reconciliation';
+  }
+  if (parsed && typeof parsed === 'object') {
+    const value = parsed as Record<string, unknown>;
+    if (Array.isArray(value.pieces)) return `${value.pieces.length} piece(s) read`;
+    if (typeof value.state === 'string' && typeof value.id === 'string') {
+      return `${value.id.slice(0, 14)} · ${value.state}`;
+    }
+    if (typeof value.name === 'string') return String(value.name);
+    if (typeof value.id === 'string') return String(value.id).slice(0, 20);
+    const keys = Object.keys(value);
+    return keys.length ? `${keys.length} field(s)` : 'no payload';
+  }
+  return message.text.length > 60 ? `${message.text.slice(0, 60)}…` : message.text;
+}
+
+function ToolTurn({ message }: { message: BrainMessage }): JSX.Element {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(message.text);
+  } catch {
+    parsed = undefined;
+  }
+  return (
+    <details class="brain-tool">
+      <summary>
+        <span class="brain-tool__name">{message.tool_name || 'tool'}</span>
+        <span class="brain-tool__summary">{toolSummary(message, parsed)}</span>
+        {message.mutating && message.committed && <Badge tone="gold">committed</Badge>}
+      </summary>
+      <pre class="brain-tool__payload">
+        {parsed !== undefined ? JSON.stringify(parsed, null, 2) : message.text}
+      </pre>
+    </details>
+  );
+}
+
 function BrainActionCard({
   action,
 }: {
@@ -737,11 +777,20 @@ function BrainThread({ job, ready }: { job?: BrainJob; ready: boolean }): JSX.El
     <div class="brain-thread">
       {job.messages.map((message) => (
         <div key={message.id} class={`brain-message brain-message--${message.role}`}>
-          <div class="brain-message__role">
-            {message.role === 'assistant' ? 'Brain' : message.role}
-            {message.tool_name ? ` · ${message.tool_name}` : ''}
-          </div>
-          <div class="brain-message__text">{message.text}</div>
+          {message.role !== 'tool' && (
+            <div class="brain-message__role">
+              {message.role === 'assistant' ? 'Brain' : message.role}
+            </div>
+          )}
+          {message.role === 'tool'
+            ? <ToolTurn message={message} />
+            : (
+              <div class="brain-message__text">
+                {message.role === 'assistant'
+                  ? <RichText text={message.text} />
+                  : message.text}
+              </div>
+            )}
           {message.action && <BrainActionCard action={message.action} />}
           {message.effect_state === 'reconciliation_required' && (
             <Badge tone="amber">effect: reconciliation required</Badge>
