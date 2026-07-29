@@ -104,6 +104,8 @@ export interface BrainMessage {
   text: string;
   created_at: string;
   tool_name?: string;
+  /** Server-computed one-line outcome (the payload text is truncated). */
+  summary?: string;
   receipt?: OperationReceipt;
   mutating?: boolean;
   committed?: boolean;

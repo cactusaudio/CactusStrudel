@@ -374,3 +374,43 @@ class BrainToolActionTests(unittest.TestCase):
             V3Application._brain_tool_action("list_recent_pieces", {"pieces": []})
         )
         self.assertIsNone(V3Application._brain_tool_action("read_piece", "text"))
+
+
+class BrainToolSummaryTests(unittest.TestCase):
+    """The one-line outcome is computed where the full object exists."""
+
+    def test_summaries_describe_the_outcome_not_the_json(self) -> None:
+        cases = [
+            ("list_recent_pieces", {"pieces": [1, 2, 3]}, "3 piece(s) read"),
+            (
+                "generate_first_shots",
+                {"id": "gen_abc", "state": "running"},
+                "gen_abc · running",
+            ),
+            (
+                "set_piece_archived",
+                {"reconciled": True, "identity": {}},
+                "effect reconciled",
+            ),
+            ("read_piece", {"name": "CS-001"}, "CS-001"),
+        ]
+        for tool, result, expected in cases:
+            self.assertEqual(
+                V3Application._brain_tool_summary(tool, result), expected, tool
+            )
+
+    def test_object_without_identity_lists_its_fields(self) -> None:
+        summary = V3Application._brain_tool_summary(
+            "read_runtime_status",
+            {"agent": {}, "generation": {}, "system": {}},
+        )
+        self.assertEqual(summary, "3 field(s): agent, generation, system")
+
+    def test_summary_survives_payloads_a_client_could_not_parse(self) -> None:
+        # The transported preview is truncated; the summary must never be
+        # derived from that truncated string.
+        big = {"pieces": [{"id": f"piece_{index}"} for index in range(50)]}
+        self.assertEqual(
+            V3Application._brain_tool_summary("list_recent_pieces", big),
+            "50 piece(s) read",
+        )

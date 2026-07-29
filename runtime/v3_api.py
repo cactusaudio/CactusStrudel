@@ -3163,6 +3163,37 @@ class V3Application:
         }
 
     @staticmethod
+    def _brain_tool_summary(tool_name: str, result: Any) -> str:
+        """One honest line about a tool outcome.
+
+        Computed here because the display text is truncated for transport;
+        a client can only re-derive this by parsing a string that may have
+        been cut mid-JSON.
+        """
+
+        if isinstance(result, Mapping):
+            pieces = result.get("pieces")
+            if isinstance(pieces, list):
+                return f"{len(pieces)} piece(s) read"
+            if result.get("reconciled") is True:
+                return "effect reconciled"
+            identity = result.get("id")
+            state = result.get("state") or result.get("status")
+            if identity and state:
+                return f"{str(identity)[:16]} · {state}"
+            name = result.get("name") or result.get("display_name")
+            if name:
+                return str(name)
+            if identity:
+                return str(identity)[:24]
+            keys = list(result.keys())
+            return f"{len(keys)} field(s): {', '.join(keys[:3])}"
+        if isinstance(result, list):
+            return f"{len(result)} item(s)"
+        text = str(result)
+        return text[:70] + ("…" if len(text) > 70 else "")
+
+    @staticmethod
     def _brain_tool_action(
         tool_name: str, result: Any
     ) -> dict[str, Any] | None:
@@ -3214,14 +3245,19 @@ class V3Application:
             ).fetchall()
         for tool in tool_rows:
             summary = tool["status"]
+            preview = tool["status"]
             action = None
             if tool["result_json"]:
                 try:
                     result = json.loads(tool["result_json"])
-                    summary = json.dumps(result, ensure_ascii=False)[:600]
+                    preview = json.dumps(
+                        result, ensure_ascii=False, indent=2
+                    )[:4000]
+                    summary = self._brain_tool_summary(
+                        str(tool["tool_name"]), result
+                    )
                     # A2: product-tool outcomes carry exact identities so the
-                    # thread can act on them (the 600-char summary is display
-                    # text, not a parseable contract).
+                    # thread can act on them.
                     action = self._brain_tool_action(
                         str(tool["tool_name"]), result
                     )
@@ -3231,7 +3267,8 @@ class V3Application:
                 "id": f"{job['job_id']}:tool:{tool['call_id']}",
                 "role": "tool",
                 "tool_name": tool["tool_name"],
-                "text": summary,
+                "summary": summary,
+                "text": preview,
                 "created_at": tool["ended_at"] or job["updated_at"],
                 "mutating": bool(tool["mutating"]),
                 "committed": bool(tool["committed"]),

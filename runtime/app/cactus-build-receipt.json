@@ -2,7 +2,7 @@
   "schema_version": 2,
   "protocol": {
     "name": "cactus-controlled-vite-build-v1",
-    "intent_sha256": "88a70261df3fe77cf496d9433553f398a7700f5a9e54dcbb3d67d873aca80e7a"
+    "intent_sha256": "63cabdd7f00eafdb07227bc9226d7cb13d7e1be64be498cdfb735ecdbdcab4a5"
   },
   "surface": "producer-ui",
   "task": {
@@ -17,21 +17,21 @@
   },
   "source": {
     "schema_version": 2,
-    "observed_head": "244d3a6e9067f7932d794f8775e6613b3ecd571c",
+    "observed_head": "75f32f52554052a4dd1fb4e5842d51eb4f9b1a39",
     "branch": "codex/cactusstrudel-v3",
-    "working_tree_sha256": "f29be70555112997fd78a1864fc8a48855c47fdc2b6f6a8b9aee2b708dc11ec4",
-    "landing_state_sha256": "5ef41138ef332ed9dbb500ac03001f64ef558af7071f8ada31921fa2dac5a251",
-    "effective_tree_sha256": "937026260af46cdd7334762b4fb749e6f15a63734fbb8f52fe24835f11af7d84",
-    "tracked_worktree_sha256": "018ebd434c0f351f84e3070567a9e8fb889de956257511d5478e34ec14329b9e",
-    "index_tree_sha256": "3178c0559b43b1ddd286dc2e759a99d4dbcea21f014ad2feb5eaafce3aabd4aa",
-    "index_flags_sha256": "817bd56aa70006d9101df6f107d54b0484b739c59e0d866a374fb0c3a1925338",
-    "untracked_tree_sha256": "a2bb7d03c065b2bdf2cd98ffe61ba3ae653fc49f94f0622b81eb349b3f66cfa1",
-    "staged_state_sha256": "2919fb06d6774300c53bfc7215f2dd9a808d5abeda11068459714e7283c7fe23",
-    "unstaged_state_sha256": "b671a34bd38f46a804d9285a550b86b5df554f16e8af5b1a41f73d33323308bf",
+    "working_tree_sha256": "95b48bdf1a83412cb03902eb1b18ca5a67d5db4313980cf8ed6a5f2952ac9980",
+    "landing_state_sha256": "7e42a802468392aec1f46d0e726705b4983896d0398ee71195ff13d18b888e14",
+    "effective_tree_sha256": "7203e2b60ae04148b8b1749c9a19ed1b3a72cee0d5131715fbb298ffc9b4e91a",
+    "tracked_worktree_sha256": "7203e2b60ae04148b8b1749c9a19ed1b3a72cee0d5131715fbb298ffc9b4e91a",
+    "index_tree_sha256": "c3f9e019961021f87f08767fc208a46c789a2b10a81f43f841270fc46332d842",
+    "index_flags_sha256": "dbf595a2cb952dbfc91a0330b7df68c1ea559ee9dd87f77adb1e479061bda4e6",
+    "untracked_tree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "staged_state_sha256": "ebc77bb6cdad0135b32543168772e730186a667bae2de79a5f03d2dccc078e07",
+    "unstaged_state_sha256": "e2da13c5afc3e0f5f9f088eade90bcf6533bb440b1278d68da4c7010da670fbf",
     "staged_changes": 0,
-    "unstaged_changes": 13,
-    "untracked_files": 2,
-    "dirty_entries": 15
+    "unstaged_changes": 5,
+    "untracked_files": 0,
+    "dirty_entries": 5
   },
   "builder": {
     "node": "v26.3.0",
@@ -54,7 +54,7 @@
     "sha256": "cc0a30662c87bc636f75b10502112c49e84b0198c7feda7146c9252c69868eab"
   },
   "inputs": {
-    "sha256": "de025574a67dab6d13c59907637ff462a31f4d93f3200b91014941191514a241",
+    "sha256": "66abcb296be7d4b0ffa1dbae82523a051742c2b9108f6bdabd646c9c3515b949",
     "files": [
       {
         "path": "apps/producer-ui/index.html",
@@ -137,8 +137,8 @@
       {
         "path": "apps/producer-ui/src/contracts.ts",
         "type": "file",
-        "bytes": 7750,
-        "sha256": "692b5fd5c7dc34f721888f8820cfdf630d149d344ac107ccebd1a791bdefd23c"
+        "bytes": 7845,
+        "sha256": "2fb30e1fa9c4c8e26a1e3fea36f975b57603c0d996a25e5dae71c09dac392a7f"
       },
       {
         "path": "apps/producer-ui/src/main.tsx",
@@ -173,8 +173,8 @@
       {
         "path": "apps/producer-ui/src/screens/studio.tsx",
         "type": "file",
-        "bytes": 40561,
-        "sha256": "df49b71f372cb025eca96c7255a32cb1c373b405d5525dcc13fca99ecaecb765"
+        "bytes": 39930,
+        "sha256": "b65050d62937d8089c427bdcb62a6331817c852b64aea4e2239b038d7bd0b478"
       },
       {
         "path": "apps/producer-ui/src/state/bootstrap-coordinator.test.ts",
@@ -245,8 +245,8 @@
       {
         "path": "apps/producer-ui/src/style.css",
         "type": "file",
-        "bytes": 66442,
-        "sha256": "9232b7613471f7ea973ada9c5cc02cb724e1ad7ed599bc15d9edb8f1219f7309"
+        "bytes": 68847,
+        "sha256": "fc76b54a092501742b0a1d5ce1f2f0d7dff838aa2de0d986583893166849666f"
       },
       {
         "path": "apps/producer-ui/tsconfig.json",
@@ -306,25 +306,25 @@
   },
   "outputs": {
     "root": "runtime/app",
-    "sha256": "9c07465761ef2f6f0e59ed7aa6aa8b369cbef781e3b46e6fc14167c4ddf93cc9",
+    "sha256": "4a690cf2ea5610149111401826a7fcfa51b82faa6f33b0a1e27bdacb0509748d",
     "files": [
       {
-        "path": "assets/index-Ck9ViDIh.js",
+        "path": "assets/index-D7zffb-E.js",
         "type": "file",
-        "bytes": 110670,
-        "sha256": "360d65d76bf2149dfc498017c5326d595dd2acad8ea3a1eb06fa8ba63e526c20"
+        "bytes": 110364,
+        "sha256": "e6b6898adbe6d2b8a5a8914503537045ff9cd40d3c394172ffaf4b92a3ca848e"
       },
       {
-        "path": "assets/index-DQOK3Kpa.css",
+        "path": "assets/index-DQLM7Aap.css",
         "type": "file",
-        "bytes": 53348,
-        "sha256": "d7df5315c0704a55bf629ae826ca6ed196e1735ebc73c788c2a6ec9860236330"
+        "bytes": 54760,
+        "sha256": "ce927157bea8342aeefb608d490f628f1b2655d0216b898cfdb03eaf242ded41"
       },
       {
         "path": "index.html",
         "type": "file",
         "bytes": 847,
-        "sha256": "79ebdc4be48bf59e04468165bf11faa3cda4d71c0a8721233669ffd604345e03"
+        "sha256": "f2df033e78cbcbf41a79ac095911d36c42418fff421e322064f93e1b61357b79"
       }
     ]
   }

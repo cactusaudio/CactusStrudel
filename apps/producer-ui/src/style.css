@@ -1782,54 +1782,109 @@ p {
   overflow-y: auto;
 }
 
-.brain-message {
-  max-width: 94%;
-  margin: 0 0 11px;
-  padding: 8px 9px;
-  background: #10100f;
+/* One turn = optional avatar + one bubble. Alignment and shape carry the
+   speaker, so no all-caps role label is needed above every line. */
+.brain-turn {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0 0 12px;
+  animation: turnIn 200ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.brain-turn--user {
+  justify-content: flex-end;
+  padding-left: 22px;
+}
+
+@keyframes turnIn {
+  from { opacity: 0; transform: translateY(5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-turn { animation: none; }
+}
+
+.brain-avatar--turn {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-color: rgba(216, 179, 74, 0.42);
+}
+
+.brain-avatar--turn span:nth-child(1) { left: 5px; top: 7px; width: 2px; height: 2px; }
+.brain-avatar--turn span:nth-child(2) { right: 5px; top: 5px; width: 2px; height: 2px; }
+.brain-avatar--turn span:nth-child(3) { left: 9px; bottom: 4px; width: 2px; height: 2px; }
+
+.brain-bubble {
+  position: relative;
+  min-width: 0;
+  max-width: 88%;
+  padding: 9px 11px 8px;
+  /* Asymmetric corner points back at the speaker — the conversational cue
+     the old uniform rectangles were missing. */
+  border-radius: 13px 13px 13px 4px;
   border: 1px solid var(--line-soft);
-  border-radius: 5px;
+  background: linear-gradient(180deg, #17171400 0%, #101010 100%), var(--surface-2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 6px 16px -12px #000;
 }
 
-.brain-message--user {
-  margin-left: auto;
-  background: var(--gold-wash);
-  border-color: rgba(216, 179, 74, 0.16);
-}
-
-.brain-message--tool {
-  background: rgba(120, 174, 233, 0.04);
-  border-color: rgba(120, 174, 233, 0.15);
-}
-
-.brain-message__role {
-  margin-bottom: 5px;
-  color: var(--gold);
-  font: 7px var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.brain-turn--user .brain-bubble {
+  border-radius: 13px 13px 4px 13px;
+  border-color: rgba(216, 179, 74, 0.24);
+  background:
+    linear-gradient(180deg, rgba(216, 179, 74, 0.14) 0%, rgba(216, 179, 74, 0.05) 100%),
+    var(--surface-2);
 }
 
 .brain-message__text {
   color: var(--text-soft);
-  font-size: 9px;
-  line-height: 1.55;
+  font-size: 11px;
+  line-height: 1.68;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.brain-turn--user .brain-message__text {
+  color: var(--text);
   white-space: pre-wrap;
 }
 
-.brain-message time {
+/* Timestamps are provenance, not conversation: present on hover, quiet
+   otherwise, so a long thread reads as speech. */
+.brain-bubble time {
   display: block;
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--dim);
-  font: 6px var(--mono);
+  font: 7px var(--mono);
   text-align: right;
+  opacity: 0;
+  transition: opacity 140ms ease-out;
+}
+
+.brain-turn:hover .brain-bubble time,
+.brain-turn:focus-within .brain-bubble time {
+  opacity: 1;
+}
+
+/* Tool turns are traces, not speech: indented under the Brain avatar and
+   marked with a hairline rule instead of a bubble. */
+.brain-threadview > .receipt {
+  margin-left: 27px;
+}
+
+.brain-turn--tool {
+  display: block;
+  margin-left: 27px;
+  padding-left: 9px;
+  border-left: 1px solid rgba(120, 174, 233, 0.22);
 }
 
 .brain-thinking {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 7px;
+  gap: 5px;
+  padding: 9px 12px;
 }
 
 .brain-thinking > span {
@@ -2396,14 +2451,20 @@ p {
 .brain-threadbar select {
   flex: 1 1 auto;
   min-width: 0;
-  max-height: 30px;
-  padding: 5px 8px;
+  max-height: 28px;
+  padding: 4px 7px;
   border: 1px solid var(--line-soft);
   border-radius: 7px;
   background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 12.5px;
+  /* A quiet control, not a headline: the thread title must not compete
+     with "Producer Brain" above it. */
+  color: var(--text-soft);
+  font-family: var(--sans);
+  font-size: 10.5px;
+}
+
+.brain-threadbar button {
+  white-space: nowrap;
 }
 
 .brain-threadview {
@@ -2551,11 +2612,26 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin: 6px 0;
-  padding: 8px 10px;
-  border: 1px solid var(--gold, #e2bd3f);
-  border-radius: 8px;
-  font-size: 12.5px;
+  margin: 7px 0 2px;
+  padding: 9px 11px;
+  border: 1px solid rgba(216, 179, 74, 0.38);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(216, 179, 74, 0.10) 0%, rgba(216, 179, 74, 0.03) 100%),
+    var(--surface-2);
+  box-shadow: 0 8px 18px -14px rgba(216, 179, 74, 0.55);
+  font-size: 11px;
+  transition: border-color 160ms ease-out, transform 160ms ease-out;
+}
+
+.brain-action-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.brain-action-card strong {
+  color: var(--gold-bright);
+  font-size: 11px;
 }
 
 .brain-action-card code {

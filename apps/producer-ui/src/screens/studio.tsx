@@ -672,41 +672,18 @@ function PieceWorkspace(): JSX.Element {
   );
 }
 
-function toolSummary(message: BrainMessage, parsed: unknown): string {
-  if (message.effect_state === 'reconciliation_required') {
-    return 'needs manual reconciliation';
-  }
-  if (parsed && typeof parsed === 'object') {
-    const value = parsed as Record<string, unknown>;
-    if (Array.isArray(value.pieces)) return `${value.pieces.length} piece(s) read`;
-    if (typeof value.state === 'string' && typeof value.id === 'string') {
-      return `${value.id.slice(0, 14)} · ${value.state}`;
-    }
-    if (typeof value.name === 'string') return String(value.name);
-    if (typeof value.id === 'string') return String(value.id).slice(0, 20);
-    const keys = Object.keys(value);
-    return keys.length ? `${keys.length} field(s)` : 'no payload';
-  }
-  return message.text.length > 60 ? `${message.text.slice(0, 60)}…` : message.text;
-}
-
 function ToolTurn({ message }: { message: BrainMessage }): JSX.Element {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(message.text);
-  } catch {
-    parsed = undefined;
-  }
+  const summary = message.effect_state === 'reconciliation_required'
+    ? 'needs manual reconciliation'
+    : message.summary || 'done';
   return (
     <details class="brain-tool">
       <summary>
         <span class="brain-tool__name">{message.tool_name || 'tool'}</span>
-        <span class="brain-tool__summary">{toolSummary(message, parsed)}</span>
+        <span class="brain-tool__summary">{summary}</span>
         {message.mutating && message.committed && <Badge tone="gold">committed</Badge>}
       </summary>
-      <pre class="brain-tool__payload">
-        {parsed !== undefined ? JSON.stringify(parsed, null, 2) : message.text}
-      </pre>
+      <pre class="brain-tool__payload">{message.text}</pre>
     </details>
   );
 }
@@ -776,40 +753,47 @@ function BrainThread({ job, ready }: { job?: BrainJob; ready: boolean }): JSX.El
   return (
     <div class="brain-thread">
       {job.messages.map((message) => (
-        <div key={message.id} class={`brain-message brain-message--${message.role}`}>
-          {message.role !== 'tool' && (
-            <div class="brain-message__role">
-              {message.role === 'assistant' ? 'Brain' : message.role}
+        message.role === 'tool'
+          ? (
+            <div key={message.id} class="brain-turn brain-turn--tool">
+              <ToolTurn message={message} />
+              {message.effect_state === 'reconciliation_required' && (
+                <Badge tone="amber">needs reconciliation</Badge>
+              )}
+              {message.effect_state === 'effect_observed' && (
+                <Badge tone="gold">observed &amp; reconciled</Badge>
+              )}
+              {message.action && <BrainActionCard action={message.action} />}
             </div>
-          )}
-          {message.role === 'tool'
-            ? <ToolTurn message={message} />
-            : (
-              <div class="brain-message__text">
-                {message.role === 'assistant'
-                  ? <RichText text={message.text} />
-                  : message.text}
+          )
+          : (
+            <div key={message.id} class={`brain-turn brain-turn--${message.role}`}>
+              {message.role === 'assistant' && (
+                <div class="brain-avatar brain-avatar--turn" aria-hidden="true">
+                  <span /><span /><span />
+                </div>
+              )}
+              <div class="brain-bubble">
+                <div class="brain-message__text">
+                  {message.role === 'assistant'
+                    ? <RichText text={message.text} />
+                    : message.text}
+                </div>
+                {message.receipt && <Receipt receipt={message.receipt} />}
+                <time>{formatDateTime(message.created_at)}</time>
               </div>
-            )}
-          {message.action && <BrainActionCard action={message.action} />}
-          {message.effect_state === 'reconciliation_required' && (
-            <Badge tone="amber">effect: reconciliation required</Badge>
-          )}
-          {message.effect_state === 'effect_observed' && (
-            <Badge tone="gold">effect: observed & reconciled</Badge>
-          )}
-          {message.mutating && message.committed
-            && message.effect_state === 'finalized' && (
-            <Badge tone="gold">effect committed</Badge>
-          )}
-          {message.receipt && <Receipt receipt={message.receipt} />}
-          <time>{formatDateTime(message.created_at)}</time>
-        </div>
+            </div>
+          )
       ))}
       {['queued', 'running', 'waiting_for_tool', 'cancelling'].includes(job.state) && (
-        <div class="brain-thinking">
-          <span /><span /><span />
-          <small>{job.state === 'waiting_for_tool' ? 'Waiting for tool receipt' : 'Working on pinned context'}</small>
+        <div class="brain-turn brain-turn--assistant brain-turn--pending">
+          <div class="brain-avatar brain-avatar--turn" aria-hidden="true">
+            <span /><span /><span />
+          </div>
+          <div class="brain-bubble brain-thinking">
+            <span /><span /><span />
+            <small>{job.state === 'waiting_for_tool' ? 'Reading truth…' : 'Composing…'}</small>
+          </div>
         </div>
       )}
       {job.error && <p class="inline-error">{job.error}</p>}
@@ -1048,7 +1032,7 @@ function BrainDock(): JSX.Element {
             : 'Unpinned — click to pin the current revision'}
           onClick={() => appStore.setBrainPin(!pinEnabled)}
         >
-          {pinEnabled ? '📌' : '○'}
+          {pinEnabled ? '⌖' : '○'}
         </button>
         {pinEnabled && piece
           ? (
