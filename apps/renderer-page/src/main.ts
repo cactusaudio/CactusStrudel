@@ -419,6 +419,11 @@ class CactusCapture extends AudioWorkletProcessor {
     this.port.onmessage = (e) => {
       if (e.data && e.data.cmd === 'flush') {
         this.flush(true);
+      } else if (e.data && e.data.cmd === 'reset') {
+        // Drop anything captured before the render's t=0 (soundfont
+        // pre-warm audio flows through this node while warming).
+        this.pos = 0;
+        this.port.postMessage({ resetDone: true });
       }
     };
   }
@@ -449,10 +454,16 @@ registerProcessor('cactus-capture', CactusCapture);
     await ctx.audioWorklet.addModule(dataUrl);
     cap = new AudioWorkletNode(ctx, 'cactus-capture', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
     let flushAck: (() => void) | null = null;
+    let resetAck: (() => void) | null = null;
     cap.port.onmessage = (e: MessageEvent) => {
       if (e.data?.flush) {
         flushAck?.();
         flushAck = null;
+        return;
+      }
+      if (e.data?.resetDone) {
+        resetAck?.();
+        resetAck = null;
         return;
       }
       if (!capturing) return;
@@ -464,6 +475,11 @@ registerProcessor('cactus-capture', CactusCapture);
       cap.port.postMessage({ cmd: 'flush' });
       setTimeout(() => { flushAck?.(); flushAck = null; }, 500);
     });
+    cap.__reset = () => new Promise<void>((resolve) => {
+      resetAck = resolve;
+      cap.port.postMessage({ cmd: 'reset' });
+      setTimeout(() => { resetAck?.(); resetAck = null; }, 300);
+    });
   } catch (e) {
     // Fallback: ScriptProcessor (worse, glitchy under load — only if worklet add fails)
     warnings.push('cap-worklet-fallback: ' + (e instanceof Error ? e.message.slice(0, 80) : 'err'));
@@ -473,6 +489,14 @@ registerProcessor('cactus-capture', CactusCapture);
       chunksL.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
       chunksR.push(new Float32Array(ev.inputBuffer.getChannelData(1)));
     };
+    // ScriptProcessor has no flush API: keep capturing for one extra buffer
+    // period so the in-flight tail block is delivered instead of dropped.
+    cap.__flush = () => new Promise<void>((resolve) => {
+      setTimeout(resolve, Math.ceil((16384 / ctx.sampleRate) * 1000) + 60);
+    });
+    // Blocks are delivered whole and pre-start ones are gated by
+    // `capturing`, so there is no internal partial buffer to reset.
+    cap.__reset = () => Promise.resolve();
   }
   (cap as any).__cap = true;
   const sink = ctx.createGain();
@@ -560,6 +584,7 @@ registerProcessor('cactus-capture', CactusCapture);
       // grid by that amount (~400ms ≈ 0.7 beat at cps 0.44) → entire
       // groove sounds offset. Leading silence in the mp3 is fine; phase
       // alignment to pattern downbeat is what matters.
+      try { await cap.__reset?.(); } catch { /* ack is best-effort */ }
       capturing = true;
       await evaluate(input.code, true); // realtime: drives repl.scheduler (= strudel.cc PLAY)
     } finally { console.error = oErr; console.warn = oWarn; }

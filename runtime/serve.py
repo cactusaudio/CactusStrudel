@@ -192,6 +192,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._json(200, self.app.bootstrap())
             if path == "/api/v2/health":
                 return self._json(200, self.app.health())
+            if path == "/api/v2/doctor":
+                return self._json(200, self.app.doctor())
             if path == "/api/v2/pieces":
                 query = urllib.parse.parse_qs(parsed.query)
                 include_archived = (query.get("archived") or ["active"])[0] == "all"

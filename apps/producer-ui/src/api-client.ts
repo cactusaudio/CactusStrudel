@@ -4,6 +4,7 @@ import type {
   BootstrapPayload,
   BrainJob,
   BrainJobInput,
+  DoctorReport,
   EventEnvelope,
   GenerationJob,
   GenerationJobInput,
@@ -237,6 +238,10 @@ export const api = {
       method: 'POST',
       json: { ...input },
     }, intent, { kind: 'brain', summary: 'Brain message' });
+  },
+
+  doctor(): Promise<DoctorReport> {
+    return request('/api/v2/doctor');
   },
 
   operationReadback(idempotencyKey: string): Promise<OperationReadback> {

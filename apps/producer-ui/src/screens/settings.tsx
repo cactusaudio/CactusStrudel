@@ -1,10 +1,11 @@
 import type { JSX } from 'preact';
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, ApiError } from '../api-client';
 import { bootstrapCoordinator } from '../bootstrap';
 import type {
   AgentConnectionDraft,
   AgentSettings,
+  DoctorReport,
   GenerationProfile,
   ModelCatalogItem,
   ReasoningEffort,
@@ -575,6 +576,50 @@ export function GenerationSettingsScreen(): JSX.Element {
   );
 }
 
+function DoctorPanel(): JSX.Element {
+  const [report, setReport] = useState<DoctorReport>();
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string>();
+  const run = async () => {
+    setRunning(true);
+    setError(undefined);
+    try {
+      setReport(await api.doctor());
+    } catch (caught) {
+      setError(errorText(caught));
+    } finally {
+      setRunning(false);
+    }
+  };
+  useEffect(() => {
+    void run();
+  }, []);
+  return (
+    <Panel>
+      <PanelHeader
+        title="Doctor"
+        eyebrow={report ? (report.ok ? 'all green' : 'attention needed') : 'running'}
+        actions={<Button size="sm" busy={running} onClick={() => void run()}>Run again</Button>}
+      />
+      {error && <p class="inline-error" role="alert">{error}</p>}
+      {report && (
+        <ul class="doctor-checks">
+          {report.checks.map((check) => (
+            <li key={check.id}>
+              <StatusDot tone={check.ok ? 'green' : 'amber'} />
+              <div>
+                <strong>{check.id}</strong>
+                <small>{check.detail}</small>
+                {!check.ok && check.fix && <code>{check.fix}</code>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
 export function SystemSettingsScreen(): JSX.Element {
   const state = useAppState();
   const system = state.bootstrap?.settings.system;
@@ -597,6 +642,7 @@ export function SystemSettingsScreen(): JSX.Element {
       </section>
 
       <div class="system-grid">
+        <DoctorPanel />
         <Panel>
           <PanelHeader title="Runtime" />
           <dl class="settings-facts settings-facts--large">

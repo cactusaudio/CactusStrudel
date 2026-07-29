@@ -102,10 +102,28 @@ marks the rows `interrupted`. During quiescing, mutating API calls return
 
 ## Backup and restore
 
-There is currently no repo-owned command that captures and restores the
-canonical SQLite database together with immutable assets, Agent state and
-generation revisions. Per-setting revision history and asset receipts are not a
-full runtime backup. Full snapshot/restore automation remains outstanding.
+```bash
+python3 -m runtime.v3.cli backup            # → ~/.cactus-strudel/v3/backups/
+python3 -m runtime.v3.cli restore <archive> # verify-before-adopt
+```
+
+One dated archive captures the WAL-checkpointed database, Agent state,
+generation config + immutable revisions, and the rendered assets (staging
+and owner liveness excluded). Restore verifies every archived byte against
+the manifest before adopting anything, refuses live state without `--force`,
+and requires the same repo-relative layout (receipts record repo-relative
+asset paths — a mislocated restore honestly fails usability afterwards).
+Stop the runtime before restoring.
+
+## Doctor
+
+`GET /api/v2/doctor` (also on /settings/system) runs one diagnostic pass:
+owner/lifecycle, database quick_check, receipt reconciliation, disk,
+ffmpeg/ffprobe/node/pnpm, Playwright Chromium, render-worker deps, CLIProxy
+reachability, Keychain credential resolution, Agent readiness, and backup
+age. Every failing check names its exact fix command. Renders preflight the
+same environment and retry once on transient failure with the first error
+recorded on the job.
 
 ## Builds
 

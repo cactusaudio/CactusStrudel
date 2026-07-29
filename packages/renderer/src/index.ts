@@ -192,14 +192,30 @@ async function waitForChildExit(child: ChildProcess, timeoutMs: number): Promise
   });
 }
 
+function signalProcessTree(child: ChildProcess, signal: NodeJS.Signals): void {
+  // pnpm spawns vite as a descendant: signalling only the direct child can
+  // leave the vite grandchild alive and holding the port. The child is
+  // spawned detached (its own process group), so signal the whole group and
+  // fall back to the single process for fakes/already-gone groups.
+  if (typeof child.pid === 'number') {
+    try {
+      process.kill(-child.pid, signal);
+      return;
+    } catch {
+      // ESRCH/EPERM: group is gone or not ours — fall through.
+    }
+  }
+  if (!child.killed) child.kill(signal);
+}
+
 async function stopChildProcess(child: ChildProcess, timeoutMs = 5_000): Promise<void> {
   if (childHasExited(child)) return;
   const termExit = waitForChildExit(child, timeoutMs);
-  if (!child.killed) child.kill('SIGTERM');
+  signalProcessTree(child, 'SIGTERM');
   if (await termExit) return;
 
   const killExit = waitForChildExit(child, timeoutMs);
-  child.kill('SIGKILL');
+  signalProcessTree(child, 'SIGKILL');
   if (!await killExit) {
     throw new Error(`renderer vite child ${child.pid ?? 'unknown'} did not exit after SIGTERM/SIGKILL`);
   }
@@ -217,6 +233,9 @@ async function startRendererPageServer(options: RendererServerStartOptions): Pro
     return spawn('pnpm', args, {
       cwd: options.rendererPageDir,
       stdio: 'pipe',
+      // Own process group so shutdown can signal pnpm AND its vite
+      // descendant together (see signalProcessTree).
+      detached: true,
     });
   });
 

@@ -26,6 +26,8 @@ import tempfile
 import threading
 import time
 from typing import Any, Mapping
+import urllib.error
+import urllib.request
 from uuid import uuid4
 
 from agent.capabilities import build_catalog
@@ -1014,6 +1016,187 @@ class V3Application:
         self.owner.advance("accepting")
 
     # ------------------------------------------------------------------
+    # Doctor (B1): one honest diagnostic pass over runtime + environment
+
+    def doctor(self) -> dict[str, Any]:
+        """Read-only health verdicts with a concrete fix per failure."""
+
+        checks: list[dict[str, Any]] = []
+
+        def check(
+            check_id: str, ok: bool, detail: str, fix: str | None = None
+        ) -> None:
+            entry: dict[str, Any] = {
+                "id": check_id,
+                "ok": bool(ok),
+                "detail": detail,
+            }
+            if fix and not ok:
+                entry["fix"] = fix
+            checks.append(entry)
+
+        check(
+            "owner",
+            self.owner.held and self.owner.stage == "accepting",
+            f"epoch {self.owner.epoch} · {self.owner.stage}",
+            "restart the runtime (launchctl kickstart gui/$UID/com.cactus.strudel)",
+        )
+        try:
+            with closing(sqlite3.connect(self.db_path)) as conn:
+                verdict = conn.execute("PRAGMA quick_check").fetchone()[0]
+                version = conn.execute(
+                    "SELECT COALESCE(MAX(version),0) FROM schema_migrations"
+                ).fetchone()[0]
+            check(
+                "database",
+                verdict == "ok",
+                f"quick_check={verdict} · schema v{version}",
+                "restore the latest backup (bin/cactus restore)",
+            )
+        except Exception as exc:  # noqa: BLE001 - the failure IS the verdict
+            check("database", False, f"unreadable: {exc}", "inspect runtime.sqlite3")
+        try:
+            reconciliation = self.truth.reconcile_receipts()
+            problem_count = sum(
+                len(reconciliation[key])
+                for key in (
+                    "orphan_promoted",
+                    "invalid",
+                    "registered_receipt_identity_mismatch",
+                    "registered_without_valid_receipt",
+                    "abandoned_commit_intents",
+                    "staging_leftovers",
+                )
+            )
+            check(
+                "receipts",
+                problem_count == 0,
+                f"{len(reconciliation['matched'])} matched · "
+                f"{problem_count} problem(s)",
+                "bin/v3-reconcile for the itemized report",
+            )
+        except Exception as exc:  # noqa: BLE001
+            check("receipts", False, f"reconciliation failed: {exc}", None)
+        try:
+            usage = shutil.disk_usage(self.state_root)
+            free_gb = usage.free / 1e9
+            check(
+                "disk",
+                free_gb > 2.0,
+                f"{free_gb:.1f} GB free at state root",
+                "free disk space; renders and backups need headroom",
+            )
+        except OSError as exc:
+            check("disk", False, str(exc), None)
+        for binary, fix in (
+            ("ffmpeg", "brew install ffmpeg"),
+            ("ffprobe", "brew install ffmpeg"),
+            ("node", "brew install node"),
+            ("pnpm", "corepack enable && corepack prepare pnpm@latest --activate"),
+        ):
+            path = shutil.which(binary)
+            check(
+                f"binary:{binary}",
+                path is not None,
+                path or "not on PATH",
+                fix,
+            )
+        playwright_cache = Path.home() / "Library" / "Caches" / "ms-playwright"
+        chromium_present = any(
+            entry.name.startswith("chromium")
+            for entry in (
+                playwright_cache.iterdir() if playwright_cache.is_dir() else []
+            )
+        )
+        check(
+            "playwright-chromium",
+            chromium_present,
+            str(playwright_cache) if chromium_present else "no chromium runtime",
+            "pnpm -C packages/renderer exec playwright install chromium",
+        )
+        render_worker_deps = (
+            self.repo_root / "apps" / "render-worker" / "node_modules"
+        ).is_dir() or (self.repo_root / "node_modules").is_dir()
+        check(
+            "render-worker-deps",
+            render_worker_deps,
+            "workspace node_modules present"
+            if render_worker_deps
+            else "node_modules missing",
+            "pnpm install --frozen-lockfile",
+        )
+        config = self.generation_config.read()
+        if config:
+            base_url = str(config.get("base_url") or "")
+            reachable = False
+            detail = "no base_url"
+            if base_url:
+                try:
+                    request = urllib.request.Request(
+                        f"{base_url.rstrip('/')}/models",
+                        headers={"Authorization": "Bearer doctor-probe"},
+                    )
+                    with urllib.request.urlopen(request, timeout=3):
+                        reachable = True
+                        detail = f"{base_url} reachable"
+                except urllib.error.HTTPError as exc:
+                    # 401/403 means the service answered: reachable.
+                    reachable = exc.code in {401, 403}
+                    detail = f"{base_url} → HTTP {exc.code}"
+                except Exception as exc:  # noqa: BLE001
+                    detail = f"{base_url} unreachable: {exc}"
+            check(
+                "cliproxy",
+                reachable,
+                detail,
+                "start CLIProxy on the configured port",
+            )
+            try:
+                self.credentials.get(str(config["credential_ref"]))
+                check("generation-credential", True, "Keychain reference resolves")
+            except Exception as exc:  # noqa: BLE001
+                check(
+                    "generation-credential",
+                    False,
+                    f"Keychain reference failed: {type(exc).__name__}",
+                    "re-enter the API key in Agent Settings and re-sync",
+                )
+        else:
+            check(
+                "cliproxy",
+                False,
+                "generation is not configured",
+                "run Agent Settings catalog+test, then sync generation",
+            )
+        agent_document = self.agent_settings.ui_document()
+        check(
+            "agent",
+            bool((agent_document.get("status") or {}).get("ready")),
+            str((agent_document.get("status") or {}).get("detail") or ""),
+            "Apply a tested Agent profile in Settings",
+        )
+        backups_dir = self.state_root / "backups"
+        newest: float | None = None
+        if backups_dir.is_dir():
+            stamps = [entry.stat().st_mtime for entry in backups_dir.iterdir()]
+            newest = max(stamps) if stamps else None
+        if newest is None:
+            check("backup", False, "no backup exists", "bin/cactus backup")
+        else:
+            age_hours = (time.time() - newest) / 3600
+            check(
+                "backup",
+                age_hours < 24 * 7,
+                f"latest backup {age_hours:.1f}h old",
+                "bin/cactus backup",
+            )
+        return {
+            "ok": all(entry["ok"] for entry in checks),
+            "checked_at": utc_now(),
+            "checks": checks,
+        }
+
+    # ------------------------------------------------------------------
     # Runtime-owner lifecycle
 
     def begin_quiesce(self) -> None:
@@ -1899,7 +2082,7 @@ class V3Application:
 
             identity = self.truth.allocate_render_identity()
             display_name = time.strftime("CS-%Y%m%d-%H%M%S") + f"-{child_job_id[-6:]}"
-            work_dir, audio_path, features = self._render_code(
+            work_dir, audio_path, features = self._render_code_with_retry(
                 code,
                 job_id=child_job_id,
                 cancel_event=cancel_event,
@@ -2070,7 +2253,7 @@ class V3Application:
             self._validate_code(code)
             if event.is_set():
                 raise JobCancelled("cancelled before preview render")
-            work_dir, audio_path, features = self._render_code(
+            work_dir, audio_path, features = self._render_code_with_retry(
                 code,
                 job_id=job["id"],
                 cancel_event=event,
@@ -3035,6 +3218,56 @@ class V3Application:
             )
             raise V3Error(f"deterministic Strudel validation failed: {detail or 'unknown issue'}")
         return report
+
+    def _render_preflight(self) -> None:
+        """Fail before spawning when the render environment cannot succeed."""
+
+        missing = [
+            binary
+            for binary in ("ffmpeg", "ffprobe", "pnpm", "node")
+            if shutil.which(binary) is None
+        ]
+        if missing:
+            raise V3Error(
+                "render environment is missing "
+                + ", ".join(missing)
+                + " — run the doctor for the exact fix"
+            )
+
+    def _render_code_with_retry(
+        self,
+        code: str,
+        *,
+        job_id: str,
+        cancel_event: threading.Event,
+    ) -> tuple[Path, Path, dict[str, Any] | None]:
+        """One bounded retry for a failed render (B2).
+
+        The first failure is recorded on the durable job before the retry,
+        so a green second attempt never hides that the first one failed.
+        """
+
+        self._render_preflight()
+        try:
+            return self._render_code(
+                code, job_id=job_id, cancel_event=cancel_event
+            )
+        except JobCancelled:
+            raise
+        except V3Error as exc:
+            if cancel_event.is_set():
+                raise
+            try:
+                self.truth.store.append_job_event(
+                    job_id,
+                    "render.retry",
+                    {"first_error": (str(exc) or "render failed")[:600]},
+                )
+            except Exception:  # noqa: BLE001 - retry evidence is best-effort
+                pass
+            return self._render_code(
+                code, job_id=job_id, cancel_event=cancel_event
+            )
 
     def _render_code(
         self,

@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from .backup import BackupError, create_backup, restore_backup
 from .db import Database
 from .legacy import LegacyReconcilePlanner
 from .legacy_importer import LegacyImporter
@@ -113,6 +114,65 @@ def command_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_backup(args: argparse.Namespace) -> int:
+    state_root = Path(
+        args.state_root
+        or os.environ.get("CACTUS_V3_STATE_ROOT")
+        or Path.home() / ".cactus-strudel" / "v3"
+    ).expanduser().resolve()
+    assets_root = Path(
+        args.assets_root or _repo_root(args.repo_root) / "producer-brain" / "assets"
+    ).expanduser().resolve()
+    try:
+        result = create_backup(
+            state_root=state_root,
+            assets_root=assets_root,
+            output_dir=args.output,
+            include_assets=not args.no_assets,
+        )
+    except BackupError as exc:
+        _print_json({"ok": False, "error": str(exc)})
+        return 1
+    _print_json({"ok": True, **result})
+    return 0
+
+
+def command_restore(args: argparse.Namespace) -> int:
+    state_root = Path(
+        args.state_root
+        or os.environ.get("CACTUS_V3_STATE_ROOT")
+        or Path.home() / ".cactus-strudel" / "v3"
+    ).expanduser().resolve()
+    assets_root = Path(
+        args.assets_root or _repo_root(args.repo_root) / "producer-brain" / "assets"
+    ).expanduser().resolve()
+    if (state_root / "owner.lock").exists() and not args.force:
+        # A live owner may hold the lock; restore only onto a stopped runtime.
+        _print_json(
+            {
+                "ok": False,
+                "error": (
+                    "state root may be owned by a running runtime; stop it "
+                    "first (launchctl bootout gui/$UID/com.cactus.strudel) "
+                    "or pass --force"
+                ),
+            }
+        )
+        return 1
+    try:
+        result = restore_backup(
+            archive=args.archive,
+            state_root=state_root,
+            assets_root=assets_root,
+            force=args.force,
+        )
+    except BackupError as exc:
+        _print_json({"ok": False, "error": str(exc)})
+        return 1
+    _print_json({"ok": True, **result})
+    return 0
+
+
 def command_reconcile(args: argparse.Namespace) -> int:
     root = _repo_root(args.repo_root)
     if args.plan:
@@ -202,6 +262,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="target immutable asset root (required with --apply)",
     )
     reconcile_parser.set_defaults(func=command_reconcile)
+
+    backup_parser = subparsers.add_parser(
+        "backup", help="snapshot database, agent state, config and assets"
+    )
+    backup_parser.add_argument("--state-root")
+    backup_parser.add_argument("--assets-root")
+    backup_parser.add_argument("--repo-root")
+    backup_parser.add_argument("--output")
+    backup_parser.add_argument("--no-assets", action="store_true")
+    backup_parser.set_defaults(func=command_backup)
+
+    restore_parser = subparsers.add_parser(
+        "restore", help="verify a backup archive byte-for-byte, then adopt it"
+    )
+    restore_parser.add_argument("archive")
+    restore_parser.add_argument("--state-root")
+    restore_parser.add_argument("--assets-root")
+    restore_parser.add_argument("--repo-root")
+    restore_parser.add_argument("--force", action="store_true")
+    restore_parser.set_defaults(func=command_restore)
     return parser
 
 

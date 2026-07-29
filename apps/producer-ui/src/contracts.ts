@@ -264,6 +264,19 @@ export interface RecoveryCandidate {
   human_decision_required: boolean;
 }
 
+export interface DoctorCheck {
+  id: string;
+  ok: boolean;
+  detail: string;
+  fix?: string;
+}
+
+export interface DoctorReport {
+  ok: boolean;
+  checked_at: string;
+  checks: DoctorCheck[];
+}
+
 export interface OperationReadback {
   found: boolean;
   kind: 'generation' | 'brain' | 'preview' | 'score' | null;
