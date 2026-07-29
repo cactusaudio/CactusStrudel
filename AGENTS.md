@@ -15,14 +15,7 @@ bin/catch-up
 Then choose one area:
 
 ```bash
-bin/catch-up ui
-bin/catch-up http
-bin/catch-up truth
-bin/catch-up agent
-bin/catch-up generation
-bin/catch-up renderer
-bin/catch-up research
-bin/catch-up repo
+bin/catch-up <ui|http|truth|agent|generation|renderer|research|repo>
 ```
 
 `docs/README.md` is the document router. Read only the selected area’s
@@ -41,7 +34,7 @@ http://127.0.0.1:8765/studio
 2. Best-of-1/2/4 creates independent first shots, not repeated rewrites.
 3. Successful work becomes an immutable revision with code, prompt, model,
    validator, audio, duration, and hash receipts.
-4. Bowei listens to the exact audio bytes and scores that revision from 0–10.
+4. Bowei listens when he chooses and scores 0–10; that is ground truth.
 5. Research and Brain suggestions may inform a decision; they never make the
    musical decision.
 
@@ -49,8 +42,16 @@ The prompt kernel is a technical envelope: real Strudel API, render-breaking
 syntax constraints, output format, and creative freedom. It must not prescribe
 taste, arrangement formulas, required layers, or mixing recipes.
 
-**Bowei’s ear is the only music-quality gate.** Mechanical validation proves
-usability and identity, not aesthetic success.
+**Bowei’s ear is the final music-quality authority — spot-checks and final
+verdicts, not a per-iteration gate** (policy 2026-07-29). Minimal AI
+evaluation may drive iteration and may promote with an explicit
+`ai-promoted` marker; Bowei's manual promote outranks it, old bytes are
+never overwritten, and AI evaluations live in their own receipt channel,
+never in the 0–10 rating. Mechanical validation proves usability and
+identity, not aesthetic success. Direction: a distributable AI-native music
+tool for Bowei's machine fleet (fast game/media scoring) — GUI usability,
+robustness/self-healing, complete MCP interface, and full CLI coverage
+outrank further music-model work for now.
 
 ## 2. Authority and evidence
 
@@ -151,16 +152,12 @@ Use the smallest check that proves the changed seam:
 python3 scripts/check_docs.py
 python3 -m unittest discover -s tests/v3_api -t .
 pnpm --filter @cactus/producer-ui test
+scripts/verify-repo.sh   # cross-layer change
 ```
 
-For a cross-layer change:
-
-```bash
-scripts/verify-repo.sh
-```
-
-Use a real model/render probe only when the model/render path changed. Never
-substitute a model matrix or automated aesthetic score for listening.
+Use a real model/render probe only when the model/render path changed. Do
+not build aesthetic-score theater beyond what iteration needs; AI evaluation
+receipts never masquerade as listening.
 
 ## 8. Bowei-facing protocol
 
