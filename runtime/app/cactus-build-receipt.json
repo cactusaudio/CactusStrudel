@@ -2,7 +2,7 @@
   "schema_version": 2,
   "protocol": {
     "name": "cactus-controlled-vite-build-v1",
-    "intent_sha256": "d5fd621ee212f1e96ccd120464e163b1ee8d816b7c1c52862938473779885ea9"
+    "intent_sha256": "41b198c4f26ee29998ad9889123add64e06605e21b54468651f5094af24a89a3"
   },
   "surface": "producer-ui",
   "task": {
@@ -17,21 +17,21 @@
   },
   "source": {
     "schema_version": 2,
-    "observed_head": "2325d148da8d30e00b7f4967b6c14a8025be6c59",
+    "observed_head": "cfb97c7901bc52910e02b5b99838fcae591f8314",
     "branch": "codex/cactusstrudel-v3",
-    "working_tree_sha256": "928f83f35777161d29070f38981c3953cec54684ac983646f61afa38fc3c7484",
-    "landing_state_sha256": "6d4baad46550743295d27091889e1601f17b2f4ce013ef8bd9405751866236c4",
-    "effective_tree_sha256": "859f36d699e198916687938cfee49543cf383e7f827173ee71354e2532071219",
-    "tracked_worktree_sha256": "859f36d699e198916687938cfee49543cf383e7f827173ee71354e2532071219",
-    "index_tree_sha256": "994b9e4616e82f16694777721519cbd40ad76dfc493b978a4a3e9f7df93bb716",
+    "working_tree_sha256": "c26770e31f5132ba38ea99ef46ce20d5f7c9a61967105cf4998085735b0240b5",
+    "landing_state_sha256": "71f126baef80557410e7dbc93c3d493348a5a89d3f80e2a278098a7c02694853",
+    "effective_tree_sha256": "ee26be9d1fd3f19d45be33f0ff284fc0270de72681f4a8deaa9f5bc1a84c6448",
+    "tracked_worktree_sha256": "ee26be9d1fd3f19d45be33f0ff284fc0270de72681f4a8deaa9f5bc1a84c6448",
+    "index_tree_sha256": "91982fb3a17df9f76a9290ccac2524bf4f71c16e3e54864c98550d737d7075b0",
     "index_flags_sha256": "817bd56aa70006d9101df6f107d54b0484b739c59e0d866a374fb0c3a1925338",
     "untracked_tree_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "staged_state_sha256": "7f7170588881802be981152c9a4f139092a26d13d4d6959d78894ba795fb07fa",
-    "unstaged_state_sha256": "fccdb0342b351daed10cb4d7cf602fcdd8af7163fdbb7cdb122d5e8cd8d4cbb5",
+    "staged_state_sha256": "439f8f7375a4e75727ea17b7c34ff943bf92b3a29d2b879119f7f5e01eb31982",
+    "unstaged_state_sha256": "0bb7f613fbdb056ff315de4e6c1e3b596101f36ac77822213c13c6cc93410031",
     "staged_changes": 0,
-    "unstaged_changes": 3,
+    "unstaged_changes": 1,
     "untracked_files": 0,
-    "dirty_entries": 3
+    "dirty_entries": 1
   },
   "builder": {
     "node": "v26.3.0",
@@ -54,7 +54,7 @@
     "sha256": "cc0a30662c87bc636f75b10502112c49e84b0198c7feda7146c9252c69868eab"
   },
   "inputs": {
-    "sha256": "061badc608c3a3eaecb12114ed9c3b1e2ffc8119d53561a75238bb1898e3da6c",
+    "sha256": "60251eb63dc6501525273ed97e34d0cb01bd93087fe0dde049c28c8fce911ff3",
     "files": [
       {
         "path": "apps/producer-ui/index.html",
@@ -233,8 +233,8 @@
       {
         "path": "apps/producer-ui/src/style.css",
         "type": "file",
-        "bytes": 64111,
-        "sha256": "36f7a620c7c6a9a0995fa6722c5e28ad395186ddb17457d59bd09515558df43a"
+        "bytes": 64445,
+        "sha256": "8302578819062ef362f11c688835e44a6d1d9e758647f1cfb50c2df4d1d345a3"
       },
       {
         "path": "apps/producer-ui/tsconfig.json",
@@ -294,25 +294,25 @@
   },
   "outputs": {
     "root": "runtime/app",
-    "sha256": "210608945934f47435befc6fba915e02d888c9015e760e1a4c3ab0e8d0a7c093",
+    "sha256": "bfea462b3dde61994cc19fc3fcfde092d23a7939886615a469e8936bb0350e05",
     "files": [
       {
-        "path": "assets/index-CDApOt6d.js",
+        "path": "assets/index-Dhz5VjPV.js",
         "type": "file",
         "bytes": 107986,
         "sha256": "79bfa787ee4394190738fbac72406b9157b9967310070de4a3ee1b1161373948"
       },
       {
-        "path": "assets/index-DJuDF2gU.css",
+        "path": "assets/index-K8CX3k6j.css",
         "type": "file",
-        "bytes": 51682,
-        "sha256": "678787292a69e1f683c4e8f02383e12f794d5e7e9fcf9928872b1d9caaef8509"
+        "bytes": 51834,
+        "sha256": "fdcb8e0abbe6036ac81c539249e637c9bed87ccfb7283dfb4e1afcb4aba8909e"
       },
       {
         "path": "index.html",
         "type": "file",
         "bytes": 847,
-        "sha256": "b5533649faca9f3b82a7533b5067cdb1d54e7b79cf0034dc9eaf42baff5f2f7d"
+        "sha256": "8f93485cc3453f6fe4122135f5375c249f90e18e5239bb2acc72af5168f90851"
       }
     ]
   }

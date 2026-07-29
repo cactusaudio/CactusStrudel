@@ -1565,6 +1565,17 @@ p {
   border-left: 1px solid var(--line-soft);
 }
 
+/* Every band keeps its natural height; only the thread scrolls. Without
+   this, a long thread flex-shrinks the header/pin rows and clips them. */
+.brain-dock > * {
+  flex: 0 0 auto;
+}
+
+.brain-dock > .brain-threadview {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .brain-heading {
   min-height: 66px;
   display: flex;
@@ -1655,11 +1666,14 @@ p {
 .context-pin {
   display: flex;
   gap: 8px;
-  align-items: baseline;
-  padding: 6px 14px;
+  align-items: center;
+  padding: 7px 14px;
+  min-height: 30px;
+  line-height: 1.5;
   font-size: 11.5px;
   white-space: nowrap;
   overflow: hidden;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .context-pin strong {
@@ -2380,8 +2394,9 @@ p {
 }
 
 .brain-threadbar select {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  max-height: 30px;
   padding: 5px 8px;
   border: 1px solid var(--line-soft);
   border-radius: 7px;
@@ -2392,8 +2407,6 @@ p {
 }
 
 .brain-threadview {
-  flex: 1 1 auto;
-  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
