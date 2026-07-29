@@ -36,6 +36,7 @@ Machine-readable routing is in [`areas.json`](areas.json).
 | [`STATE.md`](STATE.md) | generated, time-anchored readback |
 | [`HANDOFF.md`](HANDOFF.md) | handoff format and commands |
 | [`reviews/ultrareview-2026-07-28.md`](reviews/ultrareview-2026-07-28.md) | dated non-security v3 Ultrareview and debt ledger |
+| [`blueprint-platform-2026-07-29.md`](blueprint-platform-2026-07-29.md) | active platformization blueprint (Brain/robustness/MCP+CLI/fleet) |
 
 Component-level documents stay beside their owners:
 
